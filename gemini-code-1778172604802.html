@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+<meta http-equiv="Pragma" content="no-cache"/>
+<meta http-equiv="Expires" content="0"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="theme-color" content="#1a2e1a"/>
+<title>Mise en Place</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0f1a0f;--ink2:#3d4f3d;--ink3:#7a8f7a;
+  --paper:#f6f3ed;--paper2:#ede9e1;--paper3:#e0dbd0;
+  --sage:#2d5a27;--sage-l:#4a7c43;--sage-p:#d4e8cc;
+  --accent:#c44d32;--accent-l:#e06b52;
+  --radius:12px;--shadow:0 4px 12px rgba(0,0,0,0.08);
+  --font-serif:'Playfair Display', serif;--font-sans:'DM Sans', sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  margin:0;padding:0;background:var(--paper);color:var(--ink);
+  font-family:var(--font-sans);line-height:1.5;overflow-x:hidden;
+  padding-bottom:100px; /* space for nav */
+}
+/* Basic Layout */
+.top-bar{
+  background:var(--ink);color:white;padding:50px 20px 20px;
+  border-radius:0 0 24px 24px;margin-bottom:20px;
+}
+.top-bar h1{margin:0;font-family:var(--font-serif);font-size:28px;font-weight:500;font-style:italic}
+.container{padding:0 20px}
+
+/* Nav */
+.nav{
+  position:fixed;bottom:20px;left:20px;right:20px;
+  background:var(--ink);border-radius:40px;display:flex;
+  justify-content:space-around;padding:12px;box-shadow:0 10px 30px rgba(0,0,0,0.3);z-index:1000;
+}
+.nav-item{color:var(--ink3);text-decoration:none;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:4px;flex:1}
+.nav-item.active{color:var(--paper)}
+.nav-item i{font-size:20px}
+
+/* Cards & Lists */
+.card{background:white;border-radius:var(--radius);padding:16px;margin-bottom:16px;box-shadow:var(--shadow)}
+.btn{
+  background:var(--sage);color:white;border:none;padding:12px 20px;
+  border-radius:var(--radius);font-family:var(--font-sans);font-weight:500;
+  cursor:pointer;width:100%;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.btn-alt{background:var(--paper3);color:var(--ink)}
+.btn-small{padding:6px 12px;font-size:13px;width:auto}
+
+/* Recipe List specific */
+.recipe-item{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--paper2)}
+.recipe-item:last-child{border-bottom:none}
+.recipe-name{font-family:var(--font-serif);font-size:17px;color:var(--ink)}
+
+/* Inputs */
+input,textarea,select{
+  width:100%;padding:12px;border:1px solid var(--paper3);border-radius:var(--radius);
+  font-family:var(--font-sans);font-size:16px;margin-bottom:12px;background:white;
+}
+
+/* Modal */
+.modal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,26,15,0.8);z-index:2000;padding:20px;overflow-y:auto}
+.modal-content{background:var(--paper);border-radius:24px;padding:24px;max-width:500px;margin:20px auto;position:relative}
+
+/* Utilities */
+.hidden{display:none}
+.tag{background:var(--sage-p);color:var(--sage);padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500}
+.flex-between{display:flex;justify-content:space-between;align-items:center}
+</style>
+</head>
+<body>
+
+<div id="view-planner" class="view container" style="margin-top:20px">
+  <div class="flex-between" style="margin-bottom:20px">
+    <h2 style="font-family:var(--font-serif);margin:0">Weekly Plan</h2>
+    <button class="btn btn-small" onclick="openRandomizer()">Magic Fill</button>
+  </div>
+  <div id="planner-days"></div>
+</div>
+
+<div id="view-recipes" class="view container hidden" style="margin-top:20px">
+  <div class="flex-between" style="margin-bottom:10px">
+    <h2 style="font-family:var(--font-serif);margin:0">Cookbook</h2>
+    <button class="btn btn-small" onclick="openRecipeModal()">+ New</button>
+  </div>
+  <input type="text" id="recipe-search" placeholder="Search recipes..." oninput="updateSearch(this.value)">
+  <div id="tag-filters" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:12px;margin-bottom:10px"></div>
+  <div id="recipe-list" class="card"></div>
+</div>
+
+<div id="view-shopping" class="view container hidden" style="margin-top:20px">
+  <h2 style="font-family:var(--font-serif);margin-bottom:20px">Groceries</h2>
+  <div id="shopping-list" class="card"></div>
+  <button class="btn btn-alt" style="margin-top:10px" onclick="shareList()">Share List</button>
+</div>
+
+<div id="view-settings" class="view container hidden" style="margin-top:20px">
+  <h2 style="font-family:var(--font-serif);margin-bottom:20px">Settings</h2>
+  <div class="card">
+    <h3 style="margin-top:0">Data Sync</h3>
+    <p style="font-size:14px;color:var(--ink2)">Share your plan and cookbook with another device via URL.</p>
+    <button class="btn" onclick="generateShareUrl()">Generate Share Link</button>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">Reset</h3>
+    <button class="btn" style="background:var(--accent)" onclick="confirmReset()">Clear All Data</button>
+  </div>
+</div>
+
+<nav class="nav">
+  <a href="#" class="nav-item active" onclick="showView('planner')"><span>📅</span>Plan</a>
+  <a href="#" class="nav-item" onclick="showView('recipes')"><span>📖</span>Recipes</a>
+  <a href="#" class="nav-item" onclick="showView('shopping')"><span>🛒</span>Shop</a>
+  <a href="#" class="nav-item" onclick="showView('settings')"><span>⚙️</span>Settings</a>
+</nav>
+
+<div id="modal-recipe" class="modal">
+  <div class="modal-content">
+    <h2 id="recipe-modal-title" style="font-family:var(--font-serif);margin-top:0">Add Recipe</h2>
+    <input type="text" id="edit-name" placeholder="Recipe Name">
+    <input type="text" id="edit-tags" placeholder="Tags (comma separated)">
+    <textarea id="edit-ingredients" placeholder="Ingredients (one per line)" style="height:150px"></textarea>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-alt" onclick="closeModal('modal-recipe')">Cancel</button>
+      <button class="btn" onclick="saveRecipe()">Save Recipe</button>
+    </div>
+    <button id="delete-recipe-btn" class="btn" style="background:transparent;color:var(--accent);margin-top:10px;display:none" onclick="deleteRecipe()">Delete Recipe</button>
+  </div>
+</div>
+
+<div id="modal-day" class="modal">
+  <div class="modal-content">
+    <h2 id="day-modal-title" style="font-family:var(--font-serif);margin-top:0">Monday</h2>
+    <div id="day-meals-list" style="margin-bottom:20px"></div>
+    <select id="add-meal-select"></select>
+    <div style="display:flex;gap:10px;margin-top:10px">
+      <button class="btn btn-alt" onclick="closeModal('modal-day')">Close</button>
+      <button class="btn" onclick="addMealToDay()">Add to Day</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-random" class="modal">
+    <div class="modal-content">
+      <h2 style="font-family:var(--font-serif);margin-top:0">Magic Fill</h2>
+      <p style="font-size:14px;color:var(--ink2);margin-bottom:20px">Let us pick some random meals for your empty days.</p>
+      
+      <div id="random-preview" style="max-height:300px;overflow-y:auto;margin-bottom:20px;border:1px solid var(--paper3);padding:12px;border-radius:var(--radius)"></div>
+      
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-alt" onclick="closeModal('modal-random')">Cancel</button>
+        <button class="btn btn-alt" id="rand-preview-btn" onclick="generateRandomPreview()">Roll Dice</button>
+        <button class="btn" id="rand-apply-btn" onclick="applyRandom()" style="display:none">Apply</button>
+      </div>
+    </div>
+  </div>
+
+<div id="modal-share" class="modal">
+  <div class="modal-content">
+    <h2 style="font-family:var(--font-serif);margin-top:0">Share Link</h2>
+    <p style="font-size:14px;color:var(--ink2)">Anyone with this link can view and import your current data.</p>
+    <textarea id="share-url-text" readonly style="height:100px;font-size:12px;background:var(--paper2)"></textarea>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-alt" onclick="closeModal('modal-share')">Close</button>
+      <button class="btn" onclick="copyShareUrl()">Copy URL</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// State
+let recipes = [];
+let plan = {}; // { 'Monday': [{recipeId, mealType}] }
+let currentView = 'planner';
+let editingRecipeId = null;
+let editingDay = null;
+let recipeSearch = '';
+let recipeTagFilter = 'All';
+let randPlan = {};
+
+const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const MEAL_TYPES = ['Breakfast','Lunch','Dinner','Snack'];
+
+function gr(id){ return document.getElementById(id); }
+
+// Storage & Init
+function init(){
+  const saved = localStorage.getItem('mise_data');
+  if(saved){
+    const data = JSON.parse(saved);
+    recipes = data.recipes || [];
+    plan = data.plan || {};
+  }
+  
+  // Check for URL Import
+  const params = new URLSearchParams(window.location.search);
+  const importData = params.get('import');
+  if(importData){
+    try {
+      const decoded = JSON.parse(atob(importData));
+      if(confirm('Import shared recipes and plan? This will overwrite your current data.')){
+        recipes = decoded.recipes;
+        plan = decoded.plan;
+        save();
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    } catch(e) { console.error('Import failed'); }
+  }
+
+  renderAll();
+}
+
+function save(){
+  localStorage.setItem('mise_data', JSON.stringify({recipes, plan}));
+}
+
+// Routing
+function showView(v){
+  currentView = v;
+  document.querySelectorAll('.view').forEach(el => el.classList.add('hidden'));
+  gr('view-' + v).classList.remove('hidden');
+  
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.toggle('active', el.innerText.toLowerCase().includes(v));
+  });
+  renderAll();
+}
+
+function renderAll(){
+  if(currentView === 'planner') renderPlanner();
+  if(currentView === 'recipes') renderRecipes();
+  if(currentView === 'shopping') renderShopping();
+}
+
+// Planner Logic
+function renderPlanner(){
+  const container = gr('planner-days');
+  container.innerHTML = '';
+  
+  DAYS.forEach(day => {
+    const dayMeals = plan[day] || [];
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="flex-between" style="margin-bottom:10px">
+        <strong style="font-size:18px">${day}</strong>
+        <button class="btn btn-small btn-alt" onclick="openDayModal('${day}')">Add</button>
+      </div>
+      <div id="day-list-${day}"></div>
+    `;
+    container.appendChild(card);
+    
+    const list = gr(`day-list-${day}`);
+    dayMeals.forEach((m, idx) => {
+      const r = recipes.find(rec => rec.id === m.recipeId);
+      const row = document.createElement('div');
+      row.className = 'flex-between';
+      row.style.padding = '8px 0';
+      row.style.borderTop = '1px solid var(--paper2)';
+      row.innerHTML = `
+        <div>
+          <span style="font-size:11px;color:var(--ink3);text-transform:uppercase;display:block">${m.mealType}</span>
+          <span>${r ? r.name : 'Unknown Recipe'}</span>
+        </div>
+        <button style="background:none;border:none;color:var(--accent);font-size:18px" onclick="removeMeal('${day}', ${idx})">×</button>
+      `;
+      list.appendChild(row);
+    });
+  });
+}
+
+function openDayModal(day){
+  editingDay = day;
+  gr('day-modal-title').innerText = day;
+  const select = gr('add-meal-select');
+  select.innerHTML = '<option value="">Select a recipe...</option>';
+  
+  // Robust check for recipes
+  recipes.sort((a,b) => a.name.localeCompare(b.name)).forEach(r => {
+    const opt = document.createElement('option');
+    opt.value = r.id;
+    opt.innerText = r.name;
+    select.appendChild(opt);
+  });
+  
+  gr('modal-day').style.display = 'block';
+}
+
+function addMealToDay(){
+  const rId = gr('add-meal-select').value;
+  if(!rId) return;
+  
+  if(!plan[editingDay]) plan[editingDay] = [];
+  plan[editingDay].push({
+    recipeId: parseInt(rId),
+    mealType: 'Dinner' // Default
+  });
+  
+  save();
+  closeModal('modal-day');
+  renderPlanner();
+}
+
+function removeMeal(day, idx){
+  plan[day].splice(idx, 1);
+  save();
+  renderPlanner();
+}
+
+// Recipe Logic
+function renderRecipes(){
+  const list = gr('recipe-list');
+  list.innerHTML = '';
+  
+  // Safeguard: Ensure search and filter are treated as clean strings
+  const searchTerm = (recipeSearch || "").toLowerCase().trim();
+  
+  const filtered = recipes.filter(r => {
+    if(!r.name) return false;
+    const matchesSearch = r.name.toLowerCase().includes(searchTerm);
+    const matchesTag = recipeTagFilter === 'All' || (r.tags && r.tags.includes(recipeTagFilter));
+    return matchesSearch && matchesTag;
+  });
+
+  // Render Tags
+  const tagBox = gr('tag-filters');
+  tagBox.innerHTML = '';
+  const allTags = ['All'];
+  recipes.forEach(r => {
+    if(r.tags) r.tags.forEach(t => { if(!allTags.includes(t)) allTags.push(t); });
+  });
+  
+  allTags.forEach(t => {
+    const btn = document.createElement('div');
+    btn.className = 'tag';
+    btn.style.cursor = 'pointer';
+    if(recipeTagFilter === t) {
+      btn.style.background = 'var(--sage)';
+      btn.style.color = 'white';
+    }
+    btn.innerText = t;
+    btn.onclick = () => { recipeTagFilter = t; renderRecipes(); };
+    tagBox.appendChild(btn);
+  });
+
+  if(filtered.length === 0) {
+    list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--ink3)">No recipes found.</div>';
+    return;
+  }
+
+  filtered.sort((a,b) => a.name.localeCompare(b.name)).forEach(r => {
+    const item = document.createElement('div');
+    item.className = 'recipe-item';
+    item.innerHTML = `
+      <div class="recipe-name" onclick="openRecipeModal(${r.id})">${r.name}</div>
+      <div style="color:var(--ink3);font-size:12px">${r.tags ? r.tags.join(', ') : ''}</div>
+    `;
+    list.appendChild(item);
+  });
+}
+
+function updateSearch(val){
+  recipeSearch = val;
+  renderRecipes();
+}
+
+function openRecipeModal(id = null){
+  editingRecipeId = id;
+  if(id){
+    const r = recipes.find(rec => rec.id === id);
+    gr('recipe-modal-title').innerText = 'Edit Recipe';
+    gr('edit-name').value = r.name;
+    gr('edit-tags').value = r.tags ? r.tags.join(', ') : '';
+    gr('edit-ingredients').value = r.ingredients ? r.ingredients.join('\n') : '';
+    gr('delete-recipe-btn').style.display = 'block';
+  } else {
+    gr('recipe-modal-title').innerText = 'New Recipe';
+    gr('edit-name').value = '';
+    gr('edit-tags').value = '';
+    gr('edit-ingredients').value = '';
+    gr('delete-recipe-btn').style.display = 'none';
+  }
+  gr('modal-recipe').style.display = 'block';
+}
+
+function saveRecipe(){
+  const name = gr('edit-name').value.trim();
+  if(!name) return;
+  
+  const tags = gr('edit-tags').value.split(',').map(t => t.trim()).filter(t => t);
+  const ingredients = gr('edit-ingredients').value.split('\n').map(i => i.trim()).filter(i => i);
+  
+  if(editingRecipeId){
+    const idx = recipes.findIndex(r => r.id === editingRecipeId);
+    recipes[idx] = { id: editingRecipeId, name, tags, ingredients };
+  } else {
+    recipes.push({ id: Date.now(), name, tags, ingredients });
+  }
+  
+  save();
+  closeModal('modal-recipe');
+  renderRecipes();
+}
+
+function deleteRecipe(){
+  if(confirm('Delete this recipe?')){
+    recipes = recipes.filter(r => r.id !== editingRecipeId);
+    save();
+    closeModal('modal-recipe');
+    renderRecipes();
+  }
+}
+
+// Shopping Logic
+function renderShopping(){
+  const list = gr('shopping-list');
+  list.innerHTML = '';
+  
+  const allIng = {};
+  Object.values(plan).flat().forEach(m => {
+    const r = recipes.find(rec => rec.id === m.recipeId);
+    if(r && r.ingredients){
+      r.ingredients.forEach(i => {
+        allIng[i] = (allIng[i] || 0) + 1;
+      });
+    }
+  });
+  
+  const keys = Object.keys(allIng);
+  if(keys.length === 0){
+    list.innerHTML = '<p style="text-align:center;color:var(--ink3)">No items. Add recipes to your plan!</p>';
+    return;
+  }
+  
+  keys.forEach(ing => {
+    const row = document.createElement('div');
+    row.style.padding = '10px 0';
+    row.style.borderBottom = '1px solid var(--paper2)';
+    row.innerHTML = `<label style="display:flex;gap:10px"><input type="checkbox" style="width:auto;margin:0"> ${ing}</label>`;
+    list.appendChild(row);
+  });
+}
+
+// Sharing Logic
+function generateShareUrl(){
+  const dataString = btoa(JSON.stringify({recipes, plan}));
+  const url = window.location.origin + window.location.pathname + '?import=' + dataString;
+  gr('share-url-text').value = url;
+  gr('modal-share').style.display = 'block';
+}
+
+/**
+ * FIXED COPY URL LOGIC
+ * Includes fallback for mobile browsers where navigator.clipboard fails
+ */
+function copyShareUrl(){
+  const copyText = gr('share-url-text');
+  
+  // Try Modern API
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(copyText.value).then(() => {
+        alert('URL copied to clipboard!');
+    }).catch(err => {
+        // If modern API fails, use fallback
+        fallbackCopyText(copyText.value);
+    });
+  } else {
+    // Immediate fallback for non-secure or older mobile webviews
+    fallbackCopyText(copyText.value);
+  }
+}
+
+function fallbackCopyText(text) {
+  try {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    // Ensure it's not visible but exists in the DOM
+    textArea.style.position = "fixed";
+    textArea.style.left = "-9999px";
+    textArea.style.top = "0";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    const successful = document.execCommand('copy');
+    document.body.removeChild(textArea);
+    if(successful) alert('URL copied to clipboard!');
+    else alert('Unable to copy. Please select the text and copy manually.');
+  } catch (err) {
+    alert('Unable to copy. Please select the text and copy manually.');
+  }
+}
+
+function shareList(){
+  let text = "Grocery List:\n";
+  const ings = [];
+  document.querySelectorAll('#shopping-list label').forEach(l => ings.push('- ' + l.innerText.trim()));
+  text += ings.join('\n');
+  
+  if (navigator.share) {
+    navigator.share({ title: 'My Grocery List', text: text });
+  } else {
+    alert('Sharing not supported on this browser. Copy the list manually.');
+  }
+}
+
+// Magic Fill / Randomizer
+function openRandomizer(){
+  randPlan = {};
+  gr('rand-apply-btn').style.display = 'none';
+  gr('rand-preview-btn').textContent = 'Roll Dice';
+  gr('random-preview').innerHTML = '<p style="color:var(--ink3);text-align:center">Click Roll to see suggestions</p>';
+  gr('modal-random').style.display = 'block';
+}
+
+function generateRandomPreview(){
+  if(recipes.length === 0) {
+    gr('random-preview').innerHTML = 'Add some recipes first!';
+    return;
+  }
+  
+  randPlan = {};
+  const prev = gr('random-preview');
+  prev.innerHTML = '';
+  let hasAny = false;
+
+  DAYS.forEach(day => {
+    const existing = plan[day] || [];
+    const dayDiv = document.createElement('div');
+    dayDiv.style.marginBottom = '12px';
+    dayDiv.innerHTML = `<strong>${day}</strong>`;
+    
+    // Only suggest if day is empty or mostly empty
+    if(existing.length === 0){
+      hasAny = true;
+      const r = recipes[Math.floor(Math.random() * recipes.length)];
+      const meal = { recipeId: r.id, recipeName: r.name, mealType: 'Dinner' };
+      randPlan[day] = [meal];
+      
+      const row = document.createElement('div');
+      row.style.fontSize = '14px';
+      row.style.color = 'var(--sage)';
+      row.textContent = `+ ${r.name}`;
+      dayDiv.appendChild(row);
+    } else {
+      const skip = document.createElement('div');
+      skip.style.fontSize = '12px';
+      skip.style.color = 'var(--ink3)';
+      skip.textContent = 'Skipped (already has meals)';
+      dayDiv.appendChild(skip);
+    }
+    prev.appendChild(dayDiv);
+  });
+
+  if(hasAny){
+    gr('rand-apply-btn').style.display = 'block';
+    gr('rand-preview-btn').textContent = 'Re-roll';
+  }
+}
+
+function applyRandom(){
+  Object.keys(randPlan).forEach(day => {
+    if(!plan[day]) plan[day] = [];
+    randPlan[day].forEach(m => {
+      plan[day].push({ recipeId: m.recipeId, mealType: m.mealType });
+    });
+  });
+  save();
+  closeModal('modal-random');
+  renderPlanner();
+}
+
+function closeModal(id){ gr(id).style.display = 'none'; }
+function confirmReset(){
+  if(confirm('Are you sure? This will delete all recipes and your current plan.')){
+    localStorage.clear();
+    location.reload();
+  }
+}
+
+// Start
+init();
+</script>
+</body>
+</html>
