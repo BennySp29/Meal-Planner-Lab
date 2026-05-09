@@ -222,7 +222,7 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);overscroll-behavior:none}
         </div>
         <div style="margin-top:12px;background:var(--warm-p);border:1.5px solid var(--warm);border-radius:var(--r);padding:14px">
           <div style="font-size:12px;font-weight:600;color:#6b4c1e;margin-bottom:8px">💡 No API key? Use this free method:</div>
-          <div style="font-size:12px;color:#6b4c1e;line-height:1.6;margin-bottom:10px">1. Paste a URL above and tap <strong>Copy prompt</strong> — it copies automatically<br>2. If not, a green box appears below — tap it, Select All, then Copy<br>3. Open Claude.ai in Safari and paste the prompt<br>4. Copy the JSON response, paste it in the box below and tap <strong>Import JSON</strong></div>
+          <div style="font-size:12px;color:#6b4c1e;line-height:1.6;margin-bottom:10px">1. Paste a URL above and tap <strong>Copy prompt</strong><br>2. The prompt appears — hold to select all, then copy<br>3. Open Claude.ai in Safari and paste the prompt<br>4. Copy the JSON response, paste it below and tap <strong>Import JSON</strong></div>
           <button class="btn btns btnw" id="url-copy-btn" style="margin-bottom:8px;width:100%">📋 Copy prompt for Claude/ChatGPT</button>
           <textarea class="fi" id="json-paste-url" placeholder="Paste the JSON response here…" style="height:80px;resize:none;font-size:12px;font-family:monospace"></textarea>
           <button class="btn btns btnp" id="url-json-btn" style="width:100%;margin-top:8px">Import JSON</button>
@@ -418,6 +418,7 @@ function loadFBSDK(){
 }
 function initFB(){
   try{
+    fbInitialLoad=true;
     if(!firebase.apps.length)firebase.initializeApp({apiKey:fbCfg.key,databaseURL:fbCfg.url,projectId:fbCfg.proj});
     fbRef=firebase.database().ref('mep');fbConn=true;
     gr('sync-bar').className='sync-bar';gr('sync-txt').textContent='Live sync active'+(fbCfg.who?' — '+fbCfg.who+"'s planner":'');
@@ -425,11 +426,41 @@ function initFB(){
     setTimeout(function(){closeM('modal-fb');},1200);
     fbRef.on('value',function(snap){
       var d=snap.val();if(!d)return;
-      // Ignore echoes of our own writes (prevents deleted meals reappearing)
-      var isOwnEcho=d.who===fbCfg.who&&d.ts&&(Date.now()-d.ts)<5000&&(Date.now()-lastLocalPush)<5000;
-      if(isOwnEcho)return;
+
+      // Ignore echoes of our own recent writes
+      var isOwnEcho=(Date.now()-lastLocalPush)<6000&&d.who===fbCfg.who;
+      if(isOwnEcho){fbInitialLoad=false;return;}
+
+      // On initial load: only merge IN recipes/plan that don't exist locally.
+      // Never let the cloud overwrite local data on first connect — local is authoritative.
+      if(fbInitialLoad){
+        fbInitialLoad=false;
+        if(d.recipes&&d.recipes.length>0){
+          var nd3=normaliseIds({recipes:d.recipes,plan:d.plan||{}});
+          // Add any recipes from cloud that we don't have locally
+          var localIds={};recipes.forEach(function(r){localIds[parseInt(r.id,10)]=true;});
+          nd3.recipes.forEach(function(r){
+            if(!localIds[parseInt(r.id,10)])recipes.push(r);
+          });
+          // Merge plan: add cloud meal entries for days that are empty locally
+          if(d.plan){
+            DAYS.forEach(function(day){
+              if((!plan[day]||plan[day].length===0)&&nd3.plan[day]&&nd3.plan[day].length>0){
+                plan[day]=nd3.plan[day];
+              }
+            });
+          }
+        }
+        if(d.checked&&Object.keys(checked).length===0)checked=d.checked;
+        // Push our authoritative local state back to Firebase so it's up to date
+        push();
+        renderAll();
+        return;
+      }
+
+      // Subsequent updates from the OTHER person — apply fully
       if(d.recipes&&d.recipes.length>0){
-        var nd3=normaliseIds({recipes:d.recipes,plan:d.plan||{}});d.recipes=nd3.recipes;if(d.plan)d.plan=nd3.plan;
+        var nd4=normaliseIds({recipes:d.recipes,plan:d.plan||{}});d.recipes=nd4.recipes;if(d.plan)d.plan=nd4.plan;
         var lm={};recipes.forEach(function(r){lm[parseInt(r.id,10)]=r;});
         recipes=d.recipes.map(function(r){
           var local=lm[parseInt(r.id,10)];
@@ -449,6 +480,8 @@ function initFB(){
   }catch(e){gr('sync-bar').className='sync-bar off';gr('sync-txt').textContent='Sync error — tap ☁️ to retry';}
 }
 var lastLocalPush=0;
+var fbInitialLoad=true; // true until first snapshot is processed after connect
+
 function push(){
   if(!fbConn||!fbRef)return;
   lastLocalPush=Date.now();
@@ -834,34 +867,41 @@ function initImportButtons(){
   gr('url-copy-btn').addEventListener('click', function(){
     var url = gr('url-input').value.trim();
     var prompt = 'Extract the recipe from this URL: '+(url||'[paste URL here]')+'\n\nReturn ONLY a raw JSON object with no markdown, no explanation:\n'+JSON.stringify({name:'',cuisine:'Italian',diets:[],allergens:[],time:30,desc:'',ingredients:[{name:'',qty:1,unit:'g'}],steps:['Step 1 instruction']})+'\n\nCuisine: Italian/Mexican/Asian/Indian/Mediterranean/British/American/Japanese/Thai/French\nDiets: Vegan/Vegetarian/Pescatarian/Gluten-free/Dairy-free/Halal\nAllergens: Gluten/Dairy/Nuts/Eggs/Fish/Shellfish/Soya/Sesame/Celery/Mustard\nUnits: g/kg/ml/l/tsp/tbsp/cup/oz/lb/clove(s)/slice(s)/can(s) or empty string. Include all method steps in the steps array, one sentence per step.';
-    // iOS PWA-safe copy: use a temporary textarea + execCommand
-    var copied=false;
-    try{
-      var tmp=document.createElement('textarea');
-      tmp.style.cssText='position:fixed;top:0;left:0;width:100%;height:100px;opacity:0;z-index:9999;font-size:16px';
-      tmp.value=prompt;
-      document.body.appendChild(tmp);
-      tmp.focus();
-      tmp.setSelectionRange(0,tmp.value.length);
-      copied=document.execCommand('copy');
-      document.body.removeChild(tmp);
-    }catch(e){copied=false;}
-    if(copied){
-      showToast('✓ Prompt copied — paste into Claude.ai');
-    } else {
-      // Fallback: show prompt in the textarea so user can manually copy
-      var ta=gr('json-paste-url');
-      ta.value=prompt;
-      ta.style.height='130px';
-      ta.style.borderColor='var(--sage)';
-      ta.scrollIntoView({behavior:'smooth',block:'nearest'});
-      setTimeout(function(){
-        ta.focus();
-        ta.setSelectionRange(0,ta.value.length);
-      },400);
-      showToast('Tap the green box below → Select All → Copy');
+
+    // Try clipboard API first (works in Safari browser, may not in PWA standalone)
+    var triedClipboard=false;
+    if(navigator.clipboard&&typeof navigator.clipboard.writeText==='function'){
+      triedClipboard=true;
+      navigator.clipboard.writeText(prompt).then(function(){
+        showToast('✓ Prompt copied!');
+      }).catch(function(){showPromptBox(prompt);});
     }
+    if(!triedClipboard){showPromptBox(prompt);}
   });
+
+  function showPromptBox(prompt){
+    // Show a full-screen overlay with the prompt text selected, ready to copy
+    var existing=gr('prompt-overlay');if(existing)existing.remove();
+    var ov=document.createElement('div');ov.id='prompt-overlay';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(15,26,15,0.85);z-index:500;display:flex;flex-direction:column;align-items:stretch;padding:20px;box-sizing:border-box;padding-top:calc(env(safe-area-inset-top,0px) + 20px);padding-bottom:calc(env(safe-area-inset-bottom,0px) + 20px)';
+    var title=document.createElement('div');
+    title.style.cssText='color:#fff;font-family:\'Playfair Display\',serif;font-size:18px;margin-bottom:6px';
+    title.textContent='Copy this prompt';
+    var sub=document.createElement('div');
+    sub.style.cssText='color:#a0b4a0;font-size:13px;margin-bottom:14px;line-height:1.5';
+    sub.textContent='Hold your finger on the text below → Select All → Copy, then paste into Claude.ai';
+    var ta=document.createElement('textarea');
+    ta.style.cssText='flex:1;background:#1a2e1a;color:#d4e8cc;border:2px solid var(--sage);border-radius:12px;padding:14px;font-size:13px;font-family:monospace;line-height:1.5;resize:none;-webkit-user-select:text;user-select:text';
+    ta.readOnly=true;
+    ta.value=prompt;
+    var closeBtn=document.createElement('button');
+    closeBtn.style.cssText='margin-top:14px;padding:14px;background:var(--sage);color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:600;font-family:\'DM Sans\',sans-serif;cursor:pointer';
+    closeBtn.textContent='Done';
+    closeBtn.addEventListener('click',function(){ov.remove();});
+    ov.appendChild(title);ov.appendChild(sub);ov.appendChild(ta);ov.appendChild(closeBtn);
+    document.body.appendChild(ov);
+    setTimeout(function(){ta.focus();ta.setSelectionRange(0,ta.value.length);},100);
+  }
   // URL import JSON
   gr('url-json-btn').addEventListener('click', function(){ processImport(gr('json-paste-url').value.trim()); });
   // Image import JSON
