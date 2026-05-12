@@ -868,7 +868,7 @@ function initImportButtons(){
   // URL copy prompt
   gr('url-copy-btn').addEventListener('click', function(){
     var url = gr('url-input').value.trim();
-    var prompt = 'Extract the recipe from this URL: '+(url||)+'\n\nReturn ONLY a raw JSON object with no markdown, no explanation:\n'+JSON.stringify({name:'',cuisine:'Italian',diets:[],allergens:[],time:30,desc:'',ingredients:[{name:'',qty:1,unit:'g'}],steps:['Step 1 instruction']})+'\n\nCuisine: Italian/Mexican/Asian/Indian/Mediterranean/British/American/Japanese/Thai/French\nDiets: Vegan/Vegetarian/Pescatarian/Gluten-free/Dairy-free/Halal\nAllergens: Gluten/Dairy/Nuts/Eggs/Fish/Shellfish/Soya/Sesame/Celery/Mustard\nUnits: g/kg/ml/l/tsp/tbsp/cup/oz/lb/clove(s)/slice(s)/can(s) or empty string. Include all method steps in the steps array, one sentence per step.';
+    var prompt = 'Extract the recipe from this URL: '+(url||'[Paste URL Here]')+'\n\nReturn ONLY a raw JSON object with no markdown, no explanation:\n'+JSON.stringify({name:'',cuisine:'Italian',diets:[],allergens:[],time:30,desc:'',ingredients:[{name:'',qty:1,unit:'g'}],steps:['Step 1 instruction']})+'\n\nCuisine: Italian/Mexican/Asian/Indian/Mediterranean/British/American/Japanese/Thai/French\nDiets: Vegan/Vegetarian/Pescatarian/Gluten-free/Dairy-free/Halal\nAllergens: Gluten/Dairy/Nuts/Eggs/Fish/Shellfish/Soya/Sesame/Celery/Mustard\nUnits: g/kg/ml/l/tsp/tbsp/cup/oz/lb/clove(s)/slice(s)/can(s) or empty string. Include all method steps in the steps array, one sentence per step.';
     // Always show the overlay — clipboard API is unreliable in iOS PWA standalone mode
     showPromptBox(prompt);
   });
