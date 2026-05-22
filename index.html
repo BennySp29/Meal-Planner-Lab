@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v2.7 -->
+<!-- v2.8 -->
 
 <html lang="en">
 <head>
@@ -945,12 +945,13 @@ function initImportButtons(){
   gr('url-copy-btn').addEventListener('click', function(){
     var url = gr('url-input').value.trim();
     var prompt = 'Extract the recipe from this URL: '+(url||'[paste URL here]')+'\n\nReturn ONLY a raw JSON object with no markdown, no explanation, no code fences:\n'+
-      '{"name":"","cuisine":"Italian","diets":[],"allergens":[],"time":30,"desc":"","ingredients":[{"name":"","qty":1,"unit":"g"}],"steps":["Step 1 instruction"]}\n\n'+
-      'Cuisine options: Italian/Mexican/Asian/Indian/Mediterranean/British/American/Japanese/Thai/French\n'+
-      'Diets options: Vegan/Vegetarian/Pescatarian/Gluten-free/Dairy-free/Halal\n'+
-      'Allergens options: Gluten/Dairy/Nuts/Eggs/Fish/Shellfish/Soya/Sesame/Celery/Mustard\n'+
-      'Unit options: g/kg/ml/l/tsp/tbsp/cup/oz/lb or empty string for whole items.\n'+
-      'Include ALL method steps in the steps array. Respond with JSON only — no other text.';
+      '{"name":"","cuisine":"Italian","diets":[],"allergens":[],"time":30,"desc":"","source_url":"","ingredients":[{"name":"","qty":1,"unit":"g"}],"steps":["Step 1 instruction"]}\n\n'+
+      'Cuisine: Italian/Mexican/Asian/Indian/Mediterranean/British/American/Japanese/Thai/French\n'+
+      'Diets: Vegan/Vegetarian/Pescatarian/Gluten-free/Dairy-free/Halal\n'+
+      'Allergens: Gluten/Dairy/Nuts/Eggs/Fish/Shellfish/Soya/Sesame/Celery/Mustard\n'+
+      'Units: g/kg/ml/l/tsp/tbsp/cup/oz/lb or empty string for whole items.\n'+
+      'source_url: set to the original recipe page URL if known, otherwise empty string.\n'+
+      'Include ALL method steps. Respond with JSON only — no other text.';
     showPromptBox(prompt);
   });
 
@@ -998,7 +999,7 @@ async function extractImg(){
   if(!API_KEY){showAPIKeyPrompt();return;}
   gr('import-loading').style.display='block';gr('import-result').innerHTML='';
   try{
-    var prompt='Extract the recipe from this image. Return ONLY a raw JSON object, no markdown, no code fences, no explanation: {"name":"","cuisine":"Italian","diets":[],"allergens":[],"time":30,"desc":"","ingredients":[{"name":"","qty":1,"unit":""}],"steps":["Step 1"]}';
+    var prompt='Extract the recipe from this image. Return ONLY a raw JSON object, no markdown, no code fences, no explanation: {\"name\":\"\",\"cuisine\":\"Italian\",\"diets\":[],\"allergens\":[],\"time\":30,\"desc\":\"\",\"source_url\":\"\",\"ingredients\":[{\"name\":\"\",\"qty\":1,\"unit\":\"g\"}],\"steps\":[\"Step 1 instruction\"]}\n\nCuisine: Italian/Mexican/Asian/Indian/Mediterranean/British/American/Japanese/Thai/French. Diets: Vegan/Vegetarian/Pescatarian/Gluten-free/Dairy-free/Halal. Allergens: Gluten/Dairy/Nuts/Eggs/Fish/Shellfish/Soya/Sesame/Celery/Mustard. source_url: empty string for images. Include ALL steps. JSON only.';
     var msg={role:'user',content:[{type:'image',source:{type:'base64',media_type:imgMime,data:imgB64}},{type:'text',text:prompt}]};
     var result=await callClaude([msg],'Return valid JSON only.');
     processImport(result);
@@ -1013,7 +1014,7 @@ async function importURL(){
   if(!API_KEY){showAPIKeyPrompt();return;}
   gr('import-loading').style.display='block';gr('import-result').innerHTML='';
   try{
-    var prompt='Extract the recipe from this URL: '+url+'. Return ONLY a raw JSON object, no markdown, no code fences: {"name":"","cuisine":"Italian","diets":[],"allergens":[],"time":30,"desc":"","ingredients":[{"name":"","qty":1,"unit":""}],"steps":["Step 1"]}';
+    var prompt='Extract the recipe from this URL: '+url+'. Return ONLY a raw JSON object, no markdown, no code fences: {\"name\":\"\",\"cuisine\":\"Italian\",\"diets\":[],\"allergens\":[],\"time\":30,\"desc\":\"\",\"source_url\":\"\",\"ingredients\":[{\"name\":\"\",\"qty\":1,\"unit\":\"g\"}],\"steps\":[\"Step 1 instruction\"]}\n\nCuisine: Italian/Mexican/Asian/Indian/Mediterranean/British/American/Japanese/Thai/French. Diets: Vegan/Vegetarian/Pescatarian/Gluten-free/Dairy-free/Halal. Allergens: Gluten/Dairy/Nuts/Eggs/Fish/Shellfish/Soya/Sesame/Celery/Mustard. source_url: set to the URL provided above. Include ALL steps. JSON only.';
     var result=await callClaude([{role:'user',content:prompt}],'Return valid JSON only.');
     processImport(result);
   }catch(e){
@@ -1029,17 +1030,18 @@ async function importFromText(){
   // If no API key, build a prompt the user can copy to Claude/ChatGPT manually
   if(!API_KEY){
     var manualPrompt='Extract the recipe from this text and return ONLY a raw JSON object, no markdown, no code fences:\n'+
-      '{"name":"","cuisine":"Italian","diets":[],"allergens":[],"time":30,"desc":"","ingredients":[{"name":"","qty":1,"unit":""}],"steps":["Step 1"]}\n\n'+
+      '{"name":"","cuisine":"Italian","diets":[],"allergens":[],"time":30,"desc":"","source_url":"","ingredients":[{"name":"","qty":1,"unit":"g"}],"steps":["Step 1 instruction"]}\n\n'+
       'Cuisine: Italian/Mexican/Asian/Indian/Mediterranean/British/American/Japanese/Thai/French\n'+
       'Diets: Vegan/Vegetarian/Pescatarian/Gluten-free/Dairy-free/Halal\n'+
-      'Allergens: Gluten/Dairy/Nuts/Eggs/Fish/Shellfish/Soya/Sesame/Celery/Mustard\n\n'+
+      'Allergens: Gluten/Dairy/Nuts/Eggs/Fish/Shellfish/Soya/Sesame/Celery/Mustard\n'+
+      'source_url: if the text includes a URL for the original recipe, put it here, otherwise empty string.\n\n'+
       'Recipe text:\n'+text;
     showPastePromptBox(manualPrompt);
     return;
   }
   gr('import-loading').style.display='block';gr('import-result').innerHTML='';
   try{
-    var prompt='Extract the recipe from this text and return ONLY a raw JSON object, no markdown, no code fences: {"name":"","cuisine":"Italian","diets":[],"allergens":[],"time":30,"desc":"","ingredients":[{"name":"","qty":1,"unit":""}],"steps":["Step 1"]}\n\nRecipe text:\n'+text;
+    var prompt='Extract the recipe from this text and return ONLY a raw JSON object, no markdown, no code fences: {\"name\":\"\",\"cuisine\":\"Italian\",\"diets\":[],\"allergens\":[],\"time\":30,\"desc\":\"\",\"source_url\":\"\",\"ingredients\":[{\"name\":\"\",\"qty\":1,\"unit\":\"g\"}],\"steps\":[\"Step 1 instruction\"]}\n\nCuisine: Italian/Mexican/Asian/Indian/Mediterranean/British/American/Japanese/Thai/French. Diets: Vegan/Vegetarian/Pescatarian/Gluten-free/Dairy-free/Halal. Allergens: Gluten/Dairy/Nuts/Eggs/Fish/Shellfish/Soya/Sesame/Celery/Mustard. source_url: if a URL is present in the text use it, otherwise empty string.\n\nRecipe text:\n'+text;
     var result=await callClaude([{role:'user',content:prompt}],'Return valid JSON only.');
     processImport(result);
   }catch(e){
@@ -1227,7 +1229,7 @@ handleShareTarget();
 
 // SERVICE WORKER
 (function(){
-  var CACHE_VERSION='v2.7';
+  var CACHE_VERSION='v2.8';
   if(!('serviceWorker' in navigator))return;
   var swCode=[
     'var CACHE="mep-'+CACHE_VERSION+'";',
