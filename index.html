@@ -1,5 +1,7 @@
 <!DOCTYPE html>
-<!-- v2.4 -->
+
+<!-- v2.7 -->
+
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
@@ -10,6 +12,7 @@
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="theme-color" content="#1a2e1a"/>
+<link rel="manifest" href="manifest.json"/>
 <title>Mise en Place</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
@@ -169,6 +172,14 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);overscroll-behavior:none}
 /* Recipe grid section labels */
 .sub-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:var(--ink3);margin:14px 0 8px;padding:0 2px}
 .sub-label.green{color:var(--sage)}
+/* Recipe image */
+.rc-img{width:100%;height:140px;object-fit:cover;border-radius:var(--r) var(--r) 0 0;display:block;margin:-14px -14px 10px;width:calc(100% + 28px)}
+.rv-img{width:100%;max-height:260px;object-fit:cover;border-radius:var(--r);margin-bottom:16px;display:block}
+.img-upload-btn{border:2px dashed var(--paper3);border-radius:var(--rs);padding:14px;text-align:center;cursor:pointer;background:var(--cream);font-size:13px;color:var(--ink3);width:100%;display:flex;align-items:center;justify-content:center;gap:8px}
+.img-upload-btn:active{background:var(--paper2)}
+.img-preview-wrap{position:relative;margin-bottom:6px}
+.img-preview-wrap img{width:100%;height:160px;object-fit:cover;border-radius:var(--rs);display:block}
+.img-remove-btn{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;border:none;background:rgba(0,0,0,0.55);color:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 </style>
 </head>
 <body>
@@ -223,10 +234,10 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);overscroll-behavior:none}
         </div>
         <div style="margin-top:12px;background:var(--warm-p);border:1.5px solid var(--warm);border-radius:var(--r);padding:14px">
           <div style="font-size:12px;font-weight:600;color:#6b4c1e;margin-bottom:8px">💡 No API key? Use this free method:</div>
-          <div style="font-size:12px;color:#6b4c1e;line-height:1.6;margin-bottom:10px">1. Paste a URL above and tap <strong>Copy prompt</strong><br>2. The prompt appears — hold to select all, then copy<br>3. Open Claude.ai in Safari and paste the prompt<br>4. Copy the JSON response, paste it below and tap <strong>Import JSON</strong></div>
+          <div style="font-size:12px;color:#6b4c1e;line-height:1.6;margin-bottom:10px">1. Paste a URL above and tap <strong>Copy prompt</strong><br>2. The prompt appears — hold to select all, then copy<br>3. Open Claude.ai or ChatGPT in Safari and paste the prompt<br>4. Copy the JSON response, paste it below and tap <strong>Import JSON</strong></div>
           <button class="btn btns btnw" id="url-copy-btn" style="margin-bottom:8px;width:100%">📋 Copy prompt for Claude/ChatGPT</button>
-          <textarea class="fi" id="json-paste-url" placeholder="Paste the JSON response here…" style="height:80px;resize:none;font-size:12px;font-family:monospace"></textarea>
-          <button class="btn btns btnp" id="url-json-btn" style="width:100%;margin-top:8px">Import JSON</button>
+          <textarea class="fi" id="json-paste-url" placeholder="Paste the JSON response from Claude or ChatGPT here…" style="height:100px;resize:none;font-size:12px;font-family:monospace"></textarea>
+          <button class="btn btns btnp" id="url-json-btn" style="width:100%;margin-top:8px">⬇️ Import JSON</button>
         </div>
       </div>
       <!-- IMAGE -->
@@ -237,21 +248,28 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);overscroll-behavior:none}
         <div style="margin-top:12px;background:var(--warm-p);border:1.5px solid var(--warm);border-radius:var(--r);padding:14px">
           <div style="font-size:12px;font-weight:600;color:#6b4c1e;margin-bottom:8px">💡 No API key? Use this free method:</div>
           <div style="font-size:12px;color:#6b4c1e;line-height:1.6;margin-bottom:10px">1. Select your image above<br>2. Open Claude.ai in a new tab — upload the same image<br>3. Send this message: <em>"Extract this recipe as JSON: {"name":"","cuisine":"","diets":[],"allergens":[],"time":0,"desc":"","ingredients":[{"name":"","qty":1,"unit":""}]}"</em><br>4. Paste the JSON response below</div>
-          <textarea class="fi" id="json-paste-img" placeholder="Paste the JSON response here…" style="height:80px;resize:none;font-size:12px;font-family:monospace"></textarea>
-          <button class="btn btns btnp" id="img-json-btn" style="width:100%;margin-top:8px">Import JSON</button>
+          <textarea class="fi" id="json-paste-img" placeholder="Paste the JSON response here…" style="height:100px;resize:none;font-size:12px;font-family:monospace"></textarea>
+          <button class="btn btns btnp" id="img-json-btn" style="width:100%;margin-top:8px">⬇️ Import JSON</button>
         </div>
       </div>
       <!-- PASTE TEXT -->
       <div id="ip-paste" style="display:none">
+        <div style="background:#010101;border-radius:var(--r);padding:14px;margin-bottom:12px;display:flex;gap:12px;align-items:flex-start">
+          <div style="font-size:26px;flex-shrink:0">🎵</div>
+          <div>
+            <div style="font-size:12px;font-weight:600;color:#fff;margin-bottom:4px">Importing from TikTok?</div>
+            <div style="font-size:12px;color:#aaa;line-height:1.6"><strong style="color:#fff">Option 1:</strong> Tap <em>...</em> on the video → <em>Copy description</em>, paste below.<br><strong style="color:#fff">Option 2:</strong> Tap Share → Copy link, use the 🔗 URL tab.<br><strong style="color:#fff">Option 3:</strong> Watch and type/paste the recipe text below.</div>
+          </div>
+        </div>
         <div class="url-wrap">
-          <label class="fl">Paste recipe text</label>
-          <textarea class="fi" id="paste-text" placeholder="Paste recipe text, ingredients list, or any recipe content here…" style="height:140px;resize:none"></textarea>
-          <button class="btn btns btnp" id="paste-extract-btn" style="width:100%;margin-top:10px">Extract Recipe</button>
+          <label class="fl">Paste TikTok description or recipe text</label>
+          <textarea class="fi" id="paste-text" placeholder="Paste TikTok description, recipe text, ingredients list…&#10;&#10;Hashtags and emojis are cleaned up automatically." style="height:150px;resize:none"></textarea>
+          <button class="btn btns btnp" id="paste-extract-btn" style="width:100%;margin-top:10px">✨ Extract Recipe</button>
         </div>
         <div style="margin-top:12px;background:var(--warm-p);border:1.5px solid var(--warm);border-radius:var(--r);padding:14px">
-          <div style="font-size:12px;font-weight:600;color:#6b4c1e;margin-bottom:6px">💡 Or copy text → paste into Claude.ai → paste JSON back:</div>
-          <textarea class="fi" id="json-paste-text" placeholder="Paste the JSON response here…" style="height:80px;resize:none;font-size:12px;font-family:monospace"></textarea>
-          <button class="btn btns btnp" id="text-json-btn" style="width:100%;margin-top:8px">Import JSON</button>
+          <div style="font-size:12px;font-weight:600;color:#6b4c1e;margin-bottom:6px">💡 Or paste text into Claude.ai / ChatGPT, then paste JSON back:</div>
+          <textarea class="fi" id="json-paste-text" placeholder="Paste the JSON response here…" style="height:100px;resize:none;font-size:12px;font-family:monospace"></textarea>
+          <button class="btn btns btnp" id="text-json-btn" style="width:100%;margin-top:8px">⬇️ Import JSON</button>
         </div>
       </div>
       <div id="import-loading" style="display:none;margin-top:16px"><div class="ai-thinking"><div class="ai-spin">🤖</div><div style="font-size:14px;font-weight:500;margin-bottom:4px">Reading recipe…</div><div style="font-size:12px;color:var(--ink2)">Extracting ingredients and steps</div></div></div>
@@ -290,6 +308,13 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);overscroll-behavior:none}
       <div class="fg"><label class="fl">Name</label><input class="fi" id="nr-name" placeholder="Recipe name"/></div>
       <div class="frow" style="margin-bottom:14px"><div><label class="fl">Cuisine</label><select class="fi" id="nr-cuisine"></select></div><div><label class="fl">Cook time (min)</label><input class="fi" type="number" id="nr-time" value="30" min="1"/></div></div>
       <div class="fg"><label class="fl">Description</label><input class="fi" id="nr-desc" placeholder="Brief description…"/></div>
+      <div class="fg">
+        <label class="fl">Recipe photo</label>
+        <input type="file" id="nr-img-file" accept="image/*" style="display:none" onchange="handleNRImg(event)"/>
+        <div id="nr-img-wrap"></div>
+        <button type="button" class="img-upload-btn" id="nr-img-btn" onclick="gr('nr-img-file').click()">📷 Add photo from camera roll</button>
+      </div>
+      <div class="fg"><label class="fl">Source URL <span style="font-weight:300;text-transform:none;letter-spacing:0">(website, TikTok, Instagram…)</span></label><input class="fi" id="nr-url" placeholder="https://…" type="url"/></div>
       <div class="fg"><label class="fl">Dietary labels</label><div class="cwrap" id="nr-diets"></div></div>
       <div class="fg"><label class="fl">Contains allergens</label><div class="cwrap" id="nr-allergens"></div></div>
       <div class="fg"><label class="fl">Ingredients</label><div id="nr-ings"></div><button class="btn btns" onclick="addIR()" style="margin-top:6px">＋ Ingredient</button></div>
@@ -311,7 +336,6 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);overscroll-behavior:none}
   </div>
 </div>
 
-<!-- FIREBASE SETUP -->
 <!-- RECIPE VIEW -->
 <div class="overlay" id="modal-rv">
   <div class="sheet">
@@ -345,6 +369,7 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);overscroll-behavior:none}
   </div>
 </div>
 
+<!-- FIREBASE SETUP -->
 <div class="overlay" id="modal-fb">
   <div class="sheet">
     <div class="sh"></div><div class="s-title">☁️ Real-time Sync Setup</div>
@@ -427,49 +452,25 @@ function initFB(){
     setTimeout(function(){closeM('modal-fb');},1200);
     fbRef.on('value',function(snap){
       var d=snap.val();if(!d)return;
-
-      // Ignore echoes of our own recent writes
       var isOwnEcho=(Date.now()-lastLocalPush)<6000&&d.who===fbCfg.who;
       if(isOwnEcho){fbInitialLoad=false;return;}
-
-      // On initial load: only merge IN recipes/plan that don't exist locally.
-      // Never let the cloud overwrite local data on first connect — local is authoritative.
       if(fbInitialLoad){
         fbInitialLoad=false;
         if(d.recipes&&d.recipes.length>0){
           var nd3=normaliseIds({recipes:d.recipes,plan:d.plan||{}});
-          // Add any recipes from cloud that we don't have locally
           var localIds={};recipes.forEach(function(r){localIds[parseInt(r.id,10)]=true;});
-          nd3.recipes.forEach(function(r){
-            if(!localIds[parseInt(r.id,10)])recipes.push(r);
-          });
-          // Merge plan: add cloud meal entries for days that are empty locally
-          if(d.plan){
-            DAYS.forEach(function(day){
-              if((!plan[day]||plan[day].length===0)&&nd3.plan[day]&&nd3.plan[day].length>0){
-                plan[day]=nd3.plan[day];
-              }
-            });
-          }
+          nd3.recipes.forEach(function(r){if(!localIds[parseInt(r.id,10)])recipes.push(r);});
+          if(d.plan){DAYS.forEach(function(day){if((!plan[day]||plan[day].length===0)&&nd3.plan[day]&&nd3.plan[day].length>0){plan[day]=nd3.plan[day];}});}
         }
         if(d.checked&&Object.keys(checked).length===0)checked=d.checked;
-        // Push our authoritative local state back to Firebase so it's up to date
-        push();
-        renderAll();
-        return;
+        push();renderAll();return;
       }
-
-      // Subsequent updates from the OTHER person — apply fully
       if(d.recipes&&d.recipes.length>0){
         var nd4=normaliseIds({recipes:d.recipes,plan:d.plan||{}});d.recipes=nd4.recipes;if(d.plan)d.plan=nd4.plan;
         var lm={};recipes.forEach(function(r){lm[parseInt(r.id,10)]=r;});
         recipes=d.recipes.map(function(r){
           var local=lm[parseInt(r.id,10)];
-          if(local){
-            if(!r.steps||!r.steps.length)r.steps=local.steps||[];
-            if(!r.source_book&&local.source_book)r.source_book=local.source_book;
-            if(!r.source_page&&local.source_page)r.source_page=local.source_page;
-          }
+          if(local){if(!r.steps||!r.steps.length)r.steps=local.steps||[];if(!r.source_book&&local.source_book)r.source_book=local.source_book;if(!r.source_page&&local.source_page)r.source_page=local.source_page;}
           return r;
         });
       }
@@ -481,7 +482,7 @@ function initFB(){
   }catch(e){gr('sync-bar').className='sync-bar off';gr('sync-txt').textContent='Sync error — tap ☁️ to retry';}
 }
 var lastLocalPush=0;
-var fbInitialLoad=true; // true until first snapshot is processed after connect
+var fbInitialLoad=true;
 
 function push(){
   if(!fbConn||!fbRef)return;
@@ -494,7 +495,6 @@ function saveL(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 function loadL(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}}
 function persist(){saveL('recipes',recipes);saveL('plan',plan);saveL('checked',checked);saveL('profile',{userAllergens:userAllergens,userDiet:userDiet});push();}
 function normaliseIds(data){
-  // Ensure all recipe IDs are numbers and plan recipeIds match
   if(data.recipes){data.recipes=data.recipes.map(function(r){r.id=parseInt(r.id,10)||r.id;return r;});}
   if(data.plan){Object.keys(data.plan).forEach(function(day){data.plan[day]=(data.plan[day]||[]).map(function(m){m.recipeId=parseInt(m.recipeId,10)||m.recipeId;return m;});});}
   return data;
@@ -543,7 +543,7 @@ function renderPlanner(){
     var dayDiv=mkEl('div','day-expanded');
     var hdr=mkEl('div','day-exp-hdr');
     var tw=mkEl('div');tw.appendChild(mkEl('div','day-exp-title',day));
-    if(isToday){var tb=mkEl('small');tb.textContent=' (today)';tb.style.cssText='font-size:12px;color:var(--sage);font-style:italic';tw.appendChild(tb);}
+    if(isToday){var tb=mkEl('small');tb.textContent=' (today)';tb.style.cssText='font-size:12px;color:var(--sage);font-style:italic';tw.appendChild(tb);}
     var addBtn=mkEl('button','btn btns','+');
     (function(d){addBtn.addEventListener('click',function(){openAM(d);});})(day);
     hdr.appendChild(tw);hdr.appendChild(addBtn);dayDiv.appendChild(hdr);
@@ -618,31 +618,19 @@ function makeRCard(r){
   var hits=r.allergens.filter(function(a){return userAllergens.indexOf(a)>=0;});
   var card=document.createElement('div');
   card.className='rcard'+(ha?' ha':'');
-  // Name
+  card.style.paddingTop=r.image?'0':'';
+  if(r.image){var thmb=document.createElement('img');thmb.className='rc-img';thmb.src='data:image/jpeg;base64,'+r.image;thmb.alt=r.name;card.appendChild(thmb);}
   var nm=document.createElement('div');nm.className='rc-name';nm.textContent=r.name;card.appendChild(nm);
-  // Meta
   var metaParts=[r.cuisine,r.time+' min',r.ingredients.length+' ingredients'];
   if(r.steps&&r.steps.length)metaParts.push(r.steps.length+' steps');
   var meta=document.createElement('div');meta.className='rc-meta';meta.textContent=metaParts.join(' - ');card.appendChild(meta);
-  // Source
-  if(r.source_book||r.source_page){
-    var src=document.createElement('div');src.className='rc-source';
-    src.textContent='Book: '+(r.source_book||'')+(r.source_page?' p.'+r.source_page:'');
-    card.appendChild(src);
-  }
-  // Tags
+  if(r.source_book||r.source_page){var src=document.createElement('div');src.className='rc-source';src.textContent='Book: '+(r.source_book||'')+(r.source_page?' p.'+r.source_page:'');card.appendChild(src);}
+  if(r.source_url){var ul=document.createElement('a');ul.href=r.source_url;ul.target='_blank';ul.rel='noopener';ul.style.cssText='font-size:12px;color:var(--sage);display:block;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%';ul.textContent='🔗 '+r.source_url.replace(/^https?:\/\//,'').replace(/\/$/,'').substring(0,60);card.appendChild(ul);}
   var tags=document.createElement('div');tags.className='rc-tags';
   r.diets.forEach(function(d){var t=document.createElement('span');t.className='tag tg';t.textContent=d;tags.appendChild(t);});
   r.allergens.forEach(function(a){var t=document.createElement('span');t.className='tag '+(hits.indexOf(a)>=0?'tr':'tgr');t.textContent=a;tags.appendChild(t);});
   card.appendChild(tags);
-  // Allergen warning
-  if(ha){
-    var w=document.createElement('div');w.className='rc-warn';
-    var s1=document.createElement('span');s1.textContent='!';
-    var s2=document.createElement('span');s2.textContent='Contains '+hits.join(', ');
-    w.appendChild(s1);w.appendChild(s2);card.appendChild(w);
-  }
-  // Actions
+  if(ha){var w=document.createElement('div');w.className='rc-warn';var s1=document.createElement('span');s1.textContent='!';var s2=document.createElement('span');s2.textContent='Contains '+hits.join(', ');w.appendChild(s1);w.appendChild(s2);card.appendChild(w);}
   var acts=document.createElement('div');acts.className='rc-actions';
   var vb=document.createElement('button');vb.className='btn btns';vb.textContent='View';vb.style.flex='1';
   (function(id){vb.addEventListener('click',function(){openRV(id);});})(r.id);
@@ -666,42 +654,27 @@ function renderRGrid(){
   });
   var rg=gr('rgrid');if(!rg)return;
   rg.innerHTML='';
-  if(!filtered.length){
-    var empty=document.createElement('div');empty.className='empty';
-    var ei=document.createElement('div');ei.className='empty-icon';ei.textContent='No recipes match';
-    rg.appendChild(ei);return;
-  }
-  // Work out which are not yet on the planner — normalise IDs to strings for reliable comparison
+  if(!filtered.length){var empty=document.createElement('div');empty.className='empty';var ei=document.createElement('div');ei.className='empty-icon';ei.textContent='No recipes match';rg.appendChild(ei);return;}
   var usedIds={};
   Object.values(plan).forEach(function(meals){(meals||[]).forEach(function(m){usedIds[String(m.recipeId)]=true;});});
   var unused=filtered.filter(function(r){return!usedIds[String(r.id)];});
   var used=filtered.filter(function(r){return!!usedIds[String(r.id)];});
   var isFiltered=(aCuisine!=='Any'||aDiet!=='Any'||s.length>0);
   if(!isFiltered&&unused.length>0){
-    var suggLabel=document.createElement('div');
-    suggLabel.className='sub-label green';
-    suggLabel.textContent='Not yet on your planner ('+unused.length+')';
-    rg.appendChild(suggLabel);
+    var suggLabel=document.createElement('div');suggLabel.className='sub-label green';suggLabel.textContent='Not yet on your planner ('+unused.length+')';rg.appendChild(suggLabel);
     unused.forEach(function(r){try{rg.appendChild(makeRCard(r));}catch(e){}});
-    if(used.length>0){
-      var allLabel=document.createElement('div');
-      allLabel.className='sub-label';
-      allLabel.textContent='Already planned ('+used.length+')';
-      rg.appendChild(allLabel);
-      used.forEach(function(r){try{rg.appendChild(makeRCard(r));}catch(e){}});
-    }
+    if(used.length>0){var allLabel=document.createElement('div');allLabel.className='sub-label';allLabel.textContent='Already planned ('+used.length+')';rg.appendChild(allLabel);used.forEach(function(r){try{rg.appendChild(makeRCard(r));}catch(e){}});}
   } else {
     filtered.forEach(function(r){try{rg.appendChild(makeRCard(r));}catch(e){}});
   }
 }
-
 function delR(id){if(!confirm('Delete this recipe?'))return;recipes=recipes.filter(function(r){return r.id!==id});DAYS.forEach(function(day){plan[day]=(plan[day]||[]).filter(function(m){return m.recipeId!==id});});persist();renderAll();showToast('Recipe deleted');}
 
 function openRV(id){
   var r=rec(id);if(!r)return;
   var ha=rha(r);var hits=r.allergens.filter(function(a){return userAllergens.indexOf(a)>=0;});
   var cont=gr('rv-content');cont.innerHTML='';
-  // Hero
+  if(r.image){var rvi=document.createElement('img');rvi.className='rv-img';rvi.src='data:image/jpeg;base64,'+r.image;rvi.alt=r.name;cont.appendChild(rvi);}
   var hero=mkEl('div','rv-hero');
   hero.appendChild(mkEl('div','rv-title',r.name));
   var meta=[r.cuisine,r.time+' min'];
@@ -709,37 +682,18 @@ function openRV(id){
   if(r.steps&&r.steps.length)meta.push(r.steps.length+' steps');
   hero.appendChild(mkEl('div','rv-meta',meta.join(' - ')));
   if(r.desc)hero.appendChild(mkEl('div','rv-desc',r.desc));
+  if(r.source_url){var sul=document.createElement('a');sul.href=r.source_url;sul.target='_blank';sul.rel='noopener';sul.style.cssText='font-size:12px;color:#7fcf7f;display:block;margin-top:8px;word-break:break-all';sul.textContent='🔗 '+r.source_url.replace(/^https?:\/\//,'');hero.appendChild(sul);}
   if(r.source_book||r.source_page){var src=mkEl('div','rv-source','Book: '+(r.source_book||'')+(r.source_page?' p.'+r.source_page:''));hero.appendChild(src);}
   cont.appendChild(hero);
-  // Tags
-  if(r.diets.length||r.allergens.length){
-    var tags=mkEl('div');tags.style.cssText='display:flex;flex-wrap:wrap;gap:5px;margin-bottom:16px';
-    r.diets.forEach(function(d){tags.appendChild(mkEl('span','tag tg',d));});
-    r.allergens.forEach(function(a){tags.appendChild(mkEl('span','tag '+(hits.indexOf(a)>=0?'tr':'tgr'),a));});
-    cont.appendChild(tags);
-  }
+  if(r.diets.length||r.allergens.length){var tags=mkEl('div');tags.style.cssText='display:flex;flex-wrap:wrap;gap:5px;margin-bottom:16px';r.diets.forEach(function(d){tags.appendChild(mkEl('span','tag tg',d));});r.allergens.forEach(function(a){tags.appendChild(mkEl('span','tag '+(hits.indexOf(a)>=0?'tr':'tgr'),a));});cont.appendChild(tags);}
   if(ha){var w=mkEl('div','rc-warn');w.style.marginBottom='16px';w.appendChild(mkEl('span','','!'));w.appendChild(mkEl('span','','Contains: '+hits.join(', ')));cont.appendChild(w);}
-  // Ingredients
   var iSec=mkEl('div','rv-section');iSec.appendChild(mkEl('div','rv-section-title','Ingredients'));
-  r.ingredients.forEach(function(ing){
-    var row=mkEl('div','ing-list-item');
-    row.appendChild(mkEl('div','ing-dot'));
-    var nm=mkEl('div','ing-name',ing.name);nm.style.flex='1';row.appendChild(nm);
-    row.appendChild(mkEl('div','ing-qty',fmt(ing.qty,ing.unit)));
-    iSec.appendChild(row);
-  });
+  r.ingredients.forEach(function(ing){var row=mkEl('div','ing-list-item');row.appendChild(mkEl('div','ing-dot'));var nm=mkEl('div','ing-name',ing.name);nm.style.flex='1';row.appendChild(nm);row.appendChild(mkEl('div','ing-qty',fmt(ing.qty,ing.unit)));iSec.appendChild(row);});
   cont.appendChild(iSec);
-  // Steps
   var sSec=mkEl('div','rv-section');sSec.appendChild(mkEl('div','rv-section-title','Method'));
-  if(r.steps&&r.steps.length){
-    r.steps.forEach(function(s,i){
-      var row=mkEl('div','step-row');row.appendChild(mkEl('div','step-num',String(i+1)));row.appendChild(mkEl('div','step-text',s));sSec.appendChild(row);
-    });
-  } else {
-    var ns=mkEl('div');ns.textContent='No method added yet - tap Edit to add steps';ns.style.cssText='padding:16px;text-align:center;color:var(--ink3);font-size:13px;background:var(--paper2);border-radius:var(--rs)';sSec.appendChild(ns);
-  }
+  if(r.steps&&r.steps.length){r.steps.forEach(function(s,i){var row=mkEl('div','step-row');row.appendChild(mkEl('div','step-num',String(i+1)));row.appendChild(mkEl('div','step-text',s));sSec.appendChild(row);});}
+  else{var ns=mkEl('div');ns.textContent='No method added yet - tap Edit to add steps';ns.style.cssText='padding:16px;text-align:center;color:var(--ink3);font-size:13px;background:var(--paper2);border-radius:var(--rs)';sSec.appendChild(ns);}
   cont.appendChild(sSec);
-  // Actions
   var act=mkEl('div');act.style.cssText='display:flex;gap:8px;margin-top:20px;padding-bottom:8px';
   var planBtn=mkEl('button','btn btnp','+ Add to planner');planBtn.style.flex='1';
   (function(rid){planBtn.addEventListener('click',function(){openAMForR(rid);closeM('modal-rv');});})(r.id);
@@ -768,13 +722,15 @@ function confirmAM(){if(!amRecipe){showToast('Pick a recipe first');return;}if(!
 
 // ADD/EDIT RECIPE
 function openAddRecipe(pf){
-  editId=null;nrDiets=[];nrAllergens=[];ingN=0;stepN=0;
+  editId=null;nrDiets=[];nrAllergens=[];ingN=0;stepN=0;nrImgB64='';
   gr('ar-title').textContent='New Recipe';
   gr('nr-name').value=pf?pf.name||'':'';gr('nr-desc').value=pf?pf.desc||'':'';gr('nr-time').value=pf?pf.time||30:30;
+  gr('nr-url').value=pf?pf.source_url||'':'';
   var sel=gr('nr-cuisine');sel.innerHTML=CUISINES.filter(function(c){return c!=='Any'}).map(function(c){return'<option>'+c+'</option>'}).join('');
   if(pf&&pf.cuisine)try{sel.value=pf.cuisine;}catch(e){}
   nrDiets=pf&&pf.diets?pf.diets.slice():[];nrAllergens=pf&&pf.allergens?pf.allergens.slice():[];
   renderNRD();renderNRA();gr('nr-ings').innerHTML='';gr('nr-steps').innerHTML='';
+  renderNRImg(pf&&pf.image?pf.image:'');
   if(pf&&pf.ingredients&&pf.ingredients.length)pf.ingredients.forEach(function(i){addIR(i.name,i.qty,i.unit);});
   else{addIR();addIR();addIR();}
   if(pf&&pf.steps&&pf.steps.length)pf.steps.forEach(function(s){addSR(s);});
@@ -782,12 +738,14 @@ function openAddRecipe(pf){
   openM('modal-ar');
 }
 function openEditR(id){
-  var r=rec(id);if(!r)return;editId=id;nrDiets=r.diets.slice();nrAllergens=r.allergens.slice();ingN=0;stepN=0;
+  var r=rec(id);if(!r)return;editId=id;nrDiets=r.diets.slice();nrAllergens=r.allergens.slice();ingN=0;stepN=0;nrImgB64=r.image||'';
   gr('ar-title').textContent='Edit Recipe';
   gr('nr-name').value=r.name;gr('nr-desc').value=r.desc||'';gr('nr-time').value=r.time||30;
+  gr('nr-url').value=r.source_url||'';
   var sel=gr('nr-cuisine');sel.innerHTML=CUISINES.filter(function(c){return c!=='Any'}).map(function(c){return'<option>'+c+'</option>'}).join('');
   try{sel.value=r.cuisine;}catch(e){}
   renderNRD();renderNRA();gr('nr-ings').innerHTML='';gr('nr-steps').innerHTML='';
+  renderNRImg(r.image||'');
   r.ingredients.forEach(function(i){addIR(i.name,i.qty,i.unit);});
   if(r.steps&&r.steps.length)r.steps.forEach(function(s){addSR(s);});
   else{addSR();addSR();}
@@ -817,11 +775,37 @@ function addSR(text){
   div.appendChild(badge);div.appendChild(ta);div.appendChild(rmBtn);
   gr('nr-steps').appendChild(div);
 }
+var nrImgB64='';
+function handleNRImg(e){
+  var file=e.target.files[0];if(!file)return;
+  // Resize to max 800px wide before storing to keep base64 size manageable
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    var img=new Image();
+    img.onload=function(){
+      var MAX=800;var w=img.width,h=img.height;
+      if(w>MAX){h=Math.round(h*(MAX/w));w=MAX;}
+      var canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      nrImgB64=canvas.toDataURL('image/jpeg',0.82).split(',')[1];
+      renderNRImg(nrImgB64);
+    };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function renderNRImg(b64){
+  var wrap=gr('nr-img-wrap');var btn=gr('nr-img-btn');
+  if(!b64){wrap.innerHTML='';btn.style.display='flex';return;}
+  btn.style.display='none';
+  wrap.innerHTML='<div class="img-preview-wrap"><img src="data:image/jpeg;base64,'+b64+'"/><button class="img-remove-btn" onclick="removeNRImg()">✕</button></div>';
+}
+function removeNRImg(){nrImgB64='';renderNRImg('');}
 function saveRecipe(){
   var name=gr('nr-name').value.trim();if(!name){showToast('Please enter a name');return;}
   var ings=[].slice.call(gr('nr-ings').querySelectorAll('.ingrow')).map(function(row){var inp=row.querySelectorAll('input,select');return{name:inp[0].value.trim(),qty:parseFloat(inp[1].value)||1,unit:inp[2].value};}).filter(function(i){return i.name;});
   var steps=[].slice.call(gr('nr-steps').querySelectorAll('textarea')).map(function(t){return t.value.trim();}).filter(Boolean);
-  var obj={id:editId?parseInt(editId,10):Date.now(),name:name,cuisine:gr('nr-cuisine').value,diets:nrDiets.slice(),allergens:nrAllergens.slice(),time:parseInt(gr('nr-time').value)||30,desc:gr('nr-desc').value.trim(),ingredients:ings,steps:steps};
+  var obj={id:editId?parseInt(editId,10):Date.now(),name:name,cuisine:gr('nr-cuisine').value,diets:nrDiets.slice(),allergens:nrAllergens.slice(),time:parseInt(gr('nr-time').value)||30,desc:gr('nr-desc').value.trim(),ingredients:ings,steps:steps,image:nrImgB64||'',source_url:gr('nr-url').value.trim()};
   if(editId){var idx=recipes.findIndex(function(r){return r.id===editId});if(idx>=0)recipes[idx]=obj;else recipes.push(obj);}
   else recipes.push(obj);
   closeM('modal-ar');persist();renderAll();showToast(editId?'Recipe updated':'Recipe saved');
@@ -848,46 +832,137 @@ function getSugg(){
   }).join('');
 }
 
-// IMPORT
+// ─── IMPORT ───────────────────────────────────────────────────────────────────
+
 var iMode='url';var imgB64='';var imgMime='';var importedData=null;
 
 function switchIT(m){
   iMode=m;
   ['url','img','paste'].forEach(function(t){
-    gr('itab-'+( t==='img'?'img':t==='paste'?'paste':'url')).className='itab'+(m===( t==='img'?'image':t)?' on':'');
+    gr('itab-'+(t==='img'?'img':t==='paste'?'paste':'url')).className='itab'+(m===(t==='img'?'image':t)?' on':'');
     gr('ip-'+(t==='img'?'img':t)).style.display=m===(t==='img'?'image':t)?'block':'none';
   });
   gr('import-result').innerHTML='';
   gr('import-loading').style.display='none';
 }
 
+/**
+ * Robustly extract a JSON object from any AI response string.
+ * Handles:
+ *  - Plain JSON
+ *  - ```json ... ``` fences (Claude, ChatGPT)
+ *  - ``` ... ``` plain fences
+ *  - JSON embedded in prose (finds first { ... } block)
+ *  - Windows line endings (\r\n)
+ *  - Leading/trailing whitespace of any kind
+ */
+function extractJSON(raw) {
+  if (!raw || !raw.trim()) throw new Error('Empty input');
+
+  // Normalise line endings
+  var text = raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+  // 1. Try stripping code fences (```json or ```) from start and end
+  var fenced = text.replace(/^\s*```(?:json)?\s*\n?/, '').replace(/\n?\s*```\s*$/, '').trim();
+  try { var p = JSON.parse(fenced); if (p && typeof p === 'object') return p; } catch(e) {}
+
+  // 2. Try the raw text trimmed as-is
+  try { var p2 = JSON.parse(text.trim()); if (p2 && typeof p2 === 'object') return p2; } catch(e) {}
+
+  // 3. Find the first { ... } block in the text (handles JSON embedded in prose)
+  var start = text.indexOf('{');
+  var end = text.lastIndexOf('}');
+  if (start !== -1 && end !== -1 && end > start) {
+    var slice = text.slice(start, end + 1);
+    try { var p3 = JSON.parse(slice); if (p3 && typeof p3 === 'object') return p3; } catch(e) {}
+  }
+
+  // 4. Nothing worked — throw with a preview of what we received
+  throw new Error('Could not find valid JSON in response. Received: ' + text.substring(0, 120));
+}
+
+function processImport(text) {
+  gr('import-loading').style.display = 'none';
+  if (!text || !text.trim()) { showToast('Nothing to import'); return; }
+
+  var data;
+  try {
+    data = extractJSON(text);
+  } catch(e) {
+    var preview = (text || '').substring(0, 200);
+    gr('import-result').innerHTML =
+      '<div class="rc-warn" style="flex-direction:column;gap:4px">' +
+      '<div style="font-weight:600">⚠ Could not read JSON</div>' +
+      '<div style="font-size:12px;line-height:1.5">Make sure you copied the <strong>full response</strong> from Claude or ChatGPT — it should start with <code>{</code> and end with <code>}</code>.</div>' +
+      '<code style="font-size:10px;word-break:break-all;display:block;margin-top:6px;background:var(--red-p);padding:6px;border-radius:4px">' + escHtml(preview) + '</code>' +
+      '</div>';
+    return;
+  }
+
+  if (!data.name) {
+    gr('import-result').innerHTML = '<div class="rc-warn"><span>⚠</span><span>JSON parsed but no recipe name found. Check the response format.</span></div>';
+    return;
+  }
+
+  importedData = data;
+  var div = document.createElement('div');
+  div.className = 'rcard';
+  div.style.cssText = 'background:var(--sage-p);border-color:var(--sage)';
+  div.innerHTML =
+    '<div style="font-size:11px;font-weight:500;color:var(--sage);margin-bottom:8px">✓ Recipe extracted!</div>' +
+    '<div class="rc-name">' + escHtml(data.name) + '</div>' +
+    '<div class="rc-meta">' + escHtml(data.cuisine || '?') + ' · ' + (data.time || '?') + ' min · ' + (data.ingredients || []).length + ' ingredients · ' + (data.steps || []).length + ' steps</div>' +
+    (data.desc ? '<div style="font-size:13px;color:var(--ink2);margin:8px 0">' + escHtml(data.desc) + '</div>' : '') +
+    '<div style="font-size:12px;color:var(--ink2);margin-top:8px"><strong>Ingredients preview:</strong> ' +
+    escHtml((data.ingredients || []).slice(0, 6).map(function(i){ return i.name; }).join(', ') + ((data.ingredients && data.ingredients.length > 6) ? '…' : '')) +
+    '</div>';
+  var btn = document.createElement('button');
+  btn.className = 'btn btnf btnp';
+  btn.style.marginTop = '10px';
+  btn.textContent = '＋ Add to my recipes';
+  btn.addEventListener('click', function(){ saveImported(); });
+  div.appendChild(btn);
+  gr('import-result').innerHTML = '';
+  gr('import-result').appendChild(div);
+}
+
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function saveImported(){
+  if(!importedData){showToast('No recipe to save');return;}
+  openAddRecipe(importedData);importedData=null;
+  gr('import-result').innerHTML='';
+  gr('img-preview').innerHTML='';gr('img-preview').style.display='none';
+  imgB64='';imgMime='';
+}
+
 // Wire up all buttons after DOM ready
 function initImportButtons(){
-  // URL extract (with API)
   gr('url-extract-btn').addEventListener('click', function(){ importURL(); });
-  // URL copy prompt
+
   gr('url-copy-btn').addEventListener('click', function(){
     var url = gr('url-input').value.trim();
-    var prompt = 'Extract the recipe from this URL: '+(url||'[Paste URL Here]')+'\n\nReturn ONLY a raw JSON object with no markdown, no explanation:\n'+JSON.stringify({name:'',cuisine:'Italian',diets:[],allergens:[],time:30,desc:'',ingredients:[{name:'',qty:1,unit:'g'}],steps:['Step 1 instruction']})+'\n\nCuisine: Italian/Mexican/Asian/Indian/Mediterranean/British/American/Japanese/Thai/French\nDiets: Vegan/Vegetarian/Pescatarian/Gluten-free/Dairy-free/Halal\nAllergens: Gluten/Dairy/Nuts/Eggs/Fish/Shellfish/Soya/Sesame/Celery/Mustard\nUnits: g/kg/ml/l/tsp/tbsp/cup/oz/lb/clove(s)/slice(s)/can(s) or empty string. Include all method steps in the steps array, one sentence per step.';
-    // Always show the overlay — clipboard API is unreliable in iOS PWA standalone mode
+    var prompt = 'Extract the recipe from this URL: '+(url||'[paste URL here]')+'\n\nReturn ONLY a raw JSON object with no markdown, no explanation, no code fences:\n'+
+      '{"name":"","cuisine":"Italian","diets":[],"allergens":[],"time":30,"desc":"","ingredients":[{"name":"","qty":1,"unit":"g"}],"steps":["Step 1 instruction"]}\n\n'+
+      'Cuisine options: Italian/Mexican/Asian/Indian/Mediterranean/British/American/Japanese/Thai/French\n'+
+      'Diets options: Vegan/Vegetarian/Pescatarian/Gluten-free/Dairy-free/Halal\n'+
+      'Allergens options: Gluten/Dairy/Nuts/Eggs/Fish/Shellfish/Soya/Sesame/Celery/Mustard\n'+
+      'Unit options: g/kg/ml/l/tsp/tbsp/cup/oz/lb or empty string for whole items.\n'+
+      'Include ALL method steps in the steps array. Respond with JSON only — no other text.';
     showPromptBox(prompt);
   });
 
   function showPromptBox(prompt){
-    // Show a full-screen overlay with the prompt text selected, ready to copy
     var existing=gr('prompt-overlay');if(existing)existing.remove();
     var ov=document.createElement('div');ov.id='prompt-overlay';
     ov.style.cssText='position:fixed;inset:0;background:rgba(15,26,15,0.85);z-index:500;display:flex;flex-direction:column;align-items:stretch;padding:20px;box-sizing:border-box;padding-top:calc(env(safe-area-inset-top,0px) + 20px);padding-bottom:calc(env(safe-area-inset-bottom,0px) + 20px)';
-    var title=document.createElement('div');
-    title.style.cssText='color:#fff;font-family:\'Playfair Display\',serif;font-size:18px;margin-bottom:6px';
-    title.textContent='Copy this prompt';
-    var sub=document.createElement('div');
-    sub.style.cssText='color:#a0b4a0;font-size:13px;margin-bottom:14px;line-height:1.5';
-    sub.textContent='Hold your finger on the text below → Select All → Copy, then paste into Claude.ai';
+    var title=document.createElement('div');title.style.cssText='color:#fff;font-family:\'Playfair Display\',serif;font-size:18px;margin-bottom:6px';title.textContent='Copy this prompt';
+    var sub=document.createElement('div');sub.style.cssText='color:#a0b4a0;font-size:13px;margin-bottom:14px;line-height:1.5';sub.textContent='Hold your finger on the text below → Select All → Copy, then paste into Claude.ai or ChatGPT';
     var ta=document.createElement('textarea');
     ta.style.cssText='flex:1;background:#1a2e1a;color:#d4e8cc;border:2px solid var(--sage);border-radius:12px;padding:14px;font-size:13px;font-family:monospace;line-height:1.5;resize:none;-webkit-user-select:text;user-select:text';
-    ta.readOnly=true;
-    ta.value=prompt;
+    ta.readOnly=true;ta.value=prompt;
     var closeBtn=document.createElement('button');
     closeBtn.style.cssText='margin-top:14px;padding:14px;background:var(--sage);color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:600;font-family:\'DM Sans\',sans-serif;cursor:pointer';
     closeBtn.textContent='Done';
@@ -896,121 +971,109 @@ function initImportButtons(){
     document.body.appendChild(ov);
     setTimeout(function(){ta.focus();ta.setSelectionRange(0,ta.value.length);},100);
   }
-  // URL import JSON
+
   gr('url-json-btn').addEventListener('click', function(){ processImport(gr('json-paste-url').value.trim()); });
-  // Image import JSON
   gr('img-json-btn').addEventListener('click', function(){ processImport(gr('json-paste-img').value.trim()); });
-  // Upload zone
   gr('upload-zone-el').addEventListener('click', function(){ gr('img-file').click(); });
-  // Paste extract (with API)
   gr('paste-extract-btn').addEventListener('click', function(){ importFromText(); });
-  // Paste import JSON
   gr('text-json-btn').addEventListener('click', function(){ processImport(gr('json-paste-text').value.trim()); });
 }
 
 function handleImg(e){
-  var file=e.target.files[0]; if(!file)return;
+  var file=e.target.files[0];if(!file)return;
   var reader=new FileReader();
   reader.onload=function(ev){
-    imgB64=ev.target.result.split(',')[1]; imgMime=file.type;
-    var preview=gr('img-preview');
-    preview.style.display='block';
-    preview.innerHTML='';
-    var img=document.createElement('img');
-    img.src=ev.target.result;
-    img.style.cssText='width:100%;border-radius:10px;margin-bottom:10px;max-height:220px;object-fit:cover;display:block';
-    var btn=document.createElement('button');
-    btn.className='btn btnf btnp'; btn.textContent='🤖 Extract with AI (needs API key)';
-    btn.addEventListener('click', function(){ extractImg(); });
-    preview.appendChild(img); preview.appendChild(btn);
+    imgB64=ev.target.result.split(',')[1];imgMime=file.type;
+    var preview=gr('img-preview');preview.style.display='block';preview.innerHTML='';
+    var img=document.createElement('img');img.src=ev.target.result;img.style.cssText='width:100%;border-radius:10px;margin-bottom:10px;max-height:220px;object-fit:cover;display:block';
+    var btn=document.createElement('button');btn.className='btn btnf btnp';btn.textContent='🤖 Extract with AI (needs API key)';
+    btn.addEventListener('click',function(){extractImg();});
+    preview.appendChild(img);preview.appendChild(btn);
   };
   reader.readAsDataURL(file);
 }
 
 async function extractImg(){
-  if(!imgB64){showToast('Please select an image first'); return;}
-  if(!API_KEY){showAPIKeyPrompt(); return;}
-  gr('import-loading').style.display='block'; gr('import-result').innerHTML='';
+  if(!imgB64){showToast('Please select an image first');return;}
+  if(!API_KEY){showAPIKeyPrompt();return;}
+  gr('import-loading').style.display='block';gr('import-result').innerHTML='';
   try{
-    var prompt='Extract the recipe from this image. Return ONLY a raw JSON object, no markdown, no explanation: {"name":"","cuisine":"Italian","diets":[],"allergens":[],"time":30,"desc":"","ingredients":[{"name":"","qty":1,"unit":""}],"steps":["Step 1 instruction","Step 2 instruction"]} Cuisine: Italian/Mexican/Asian/Indian/Mediterranean/British/American/Japanese/Thai/French. Diets: Vegan/Vegetarian/Pescatarian/Gluten-free/Dairy-free/Halal. Allergens: Gluten/Dairy/Nuts/Eggs/Fish/Shellfish/Soya/Sesame/Celery/Mustard. Include all method steps in the steps array, one sentence per step.';
+    var prompt='Extract the recipe from this image. Return ONLY a raw JSON object, no markdown, no code fences, no explanation: {"name":"","cuisine":"Italian","diets":[],"allergens":[],"time":30,"desc":"","ingredients":[{"name":"","qty":1,"unit":""}],"steps":["Step 1"]}';
     var msg={role:'user',content:[{type:'image',source:{type:'base64',media_type:imgMime,data:imgB64}},{type:'text',text:prompt}]};
     var result=await callClaude([msg],'Return valid JSON only.');
     processImport(result);
   }catch(e){
     gr('import-loading').style.display='none';
-    if(e.message!=='No API key') gr('import-result').innerHTML='<div class="rc-warn"><span>⚠</span><span>'+e.message+'</span></div>';
+    if(e.message!=='No API key')gr('import-result').innerHTML='<div class="rc-warn"><span>⚠</span><span>'+escHtml(e.message)+'</span></div>';
   }
 }
 
 async function importURL(){
-  var url=gr('url-input').value.trim(); if(!url){showToast('Paste a URL first'); return;}
-  if(!API_KEY){showAPIKeyPrompt(); return;}
-  gr('import-loading').style.display='block'; gr('import-result').innerHTML='';
+  var url=gr('url-input').value.trim();if(!url){showToast('Paste a URL first');return;}
+  if(!API_KEY){showAPIKeyPrompt();return;}
+  gr('import-loading').style.display='block';gr('import-result').innerHTML='';
   try{
-    var prompt='Extract the recipe from this URL: '+url+'. Return ONLY a raw JSON object, no markdown: {"name":"","cuisine":"Italian","diets":[],"allergens":[],"time":30,"desc":"","ingredients":[{"name":"","qty":1,"unit":""}],"steps":["Step 1 instruction","Step 2 instruction"]}';
+    var prompt='Extract the recipe from this URL: '+url+'. Return ONLY a raw JSON object, no markdown, no code fences: {"name":"","cuisine":"Italian","diets":[],"allergens":[],"time":30,"desc":"","ingredients":[{"name":"","qty":1,"unit":""}],"steps":["Step 1"]}';
     var result=await callClaude([{role:'user',content:prompt}],'Return valid JSON only.');
     processImport(result);
   }catch(e){
     gr('import-loading').style.display='none';
-    if(e.message!=='No API key') gr('import-result').innerHTML='<div class="rc-warn"><span>⚠</span><span>'+e.message+'</span></div>';
+    if(e.message!=='No API key')gr('import-result').innerHTML='<div class="rc-warn"><span>⚠</span><span>'+escHtml(e.message)+'</span></div>';
   }
 }
 
 async function importFromText(){
-  var text=gr('paste-text').value.trim(); if(!text){showToast('Paste some recipe text first'); return;}
-  if(!API_KEY){showAPIKeyPrompt(); return;}
-  gr('import-loading').style.display='block'; gr('import-result').innerHTML='';
+  var raw=gr('paste-text').value.trim();if(!raw){showToast('Paste some recipe text first');return;}
+  // Clean TikTok/social noise before sending to AI
+  var text=cleanSocialText(raw);
+  // If no API key, build a prompt the user can copy to Claude/ChatGPT manually
+  if(!API_KEY){
+    var manualPrompt='Extract the recipe from this text and return ONLY a raw JSON object, no markdown, no code fences:\n'+
+      '{"name":"","cuisine":"Italian","diets":[],"allergens":[],"time":30,"desc":"","ingredients":[{"name":"","qty":1,"unit":""}],"steps":["Step 1"]}\n\n'+
+      'Cuisine: Italian/Mexican/Asian/Indian/Mediterranean/British/American/Japanese/Thai/French\n'+
+      'Diets: Vegan/Vegetarian/Pescatarian/Gluten-free/Dairy-free/Halal\n'+
+      'Allergens: Gluten/Dairy/Nuts/Eggs/Fish/Shellfish/Soya/Sesame/Celery/Mustard\n\n'+
+      'Recipe text:\n'+text;
+    showPastePromptBox(manualPrompt);
+    return;
+  }
+  gr('import-loading').style.display='block';gr('import-result').innerHTML='';
   try{
-    var prompt='Extract the recipe from this text and return ONLY a raw JSON object, no markdown: {"name":"","cuisine":"Italian","diets":[],"allergens":[],"time":30,"desc":"","ingredients":[{"name":"","qty":1,"unit":""}],"steps":["Step 1 instruction","Step 2 instruction"]}\n\nRecipe text:\n'+text;
+    var prompt='Extract the recipe from this text and return ONLY a raw JSON object, no markdown, no code fences: {"name":"","cuisine":"Italian","diets":[],"allergens":[],"time":30,"desc":"","ingredients":[{"name":"","qty":1,"unit":""}],"steps":["Step 1"]}\n\nRecipe text:\n'+text;
     var result=await callClaude([{role:'user',content:prompt}],'Return valid JSON only.');
     processImport(result);
   }catch(e){
     gr('import-loading').style.display='none';
-    if(e.message!=='No API key') gr('import-result').innerHTML='<div class="rc-warn"><span>⚠</span><span>'+e.message+'</span></div>';
+    if(e.message!=='No API key')gr('import-result').innerHTML='<div class="rc-warn"><span>⚠</span><span>'+escHtml(e.message)+'</span></div>';
   }
 }
 
-function processImport(text){
-  gr('import-loading').style.display='none';
-  if(!text){showToast('Nothing to import'); return;}
-  try{
-    var clean=text.replace(/^```(?:json)?\s*/,'').replace(/\s*'''\s&$/,'').trim();
-    var data=JSON.parse(clean);
-    if(!data.name)throw new Error('No recipe name in response');
-    importedData=data;
-    var div=document.createElement('div');
-    div.className='rcard'; div.style.cssText='background:var(--sage-p);border-color:var(--sage)';
-    div.innerHTML='<div style="font-size:11px;font-weight:500;color:var(--sage);margin-bottom:8px">✓ Recipe extracted!</div>'
-      +'<div class="rc-name">'+data.name+'</div>'
-      +'<div class="rc-meta">'+(data.cuisine||'?')+' · '+(data.time||'?')+' min · '+(data.ingredients||[]).length+' ingredients</div>'
-      +(data.desc?'<div style="font-size:13px;color:var(--ink2);margin:8px 0">'+data.desc+'</div>':'')
-      +'<div style="font-size:12px;color:var(--ink2);margin-top:8px"><strong>Ingredients preview:</strong> '+(data.ingredients||[]).slice(0,6).map(function(i){return i.name;}).join(', ')+(data.ingredients&&data.ingredients.length>6?'…':'')+'</div>';
-    var btn=document.createElement('button');
-    btn.className='btn btnf btnp'; btn.style.marginTop='10px'; btn.textContent='＋ Add to my recipes';
-    btn.addEventListener('click', function(){ saveImported(); });
-    div.appendChild(btn);
-    gr('import-result').innerHTML=''; gr('import-result').appendChild(div);
-  }catch(e){
-    gr('import-result').innerHTML='<div class="rc-warn"><span>⚠</span><span>Could not read JSON. Make sure you copied the full response.<br><code style="font-size:10px;word-break:break-all;display:block;margin-top:6px">'+text.substring(0,200)+'</code></span></div>';
-  }
-}
-
-function saveImported(){
-  if(!importedData){showToast('No recipe to save'); return;}
-  openAddRecipe(importedData); importedData=null;
-  gr('import-result').innerHTML='';
-  gr('img-preview').innerHTML=''; gr('img-preview').style.display='none';
-  imgB64=''; imgMime='';
+function showPastePromptBox(prompt){
+  // Reuse the same overlay pattern as URL copy prompt
+  var existing=gr('prompt-overlay');if(existing)existing.remove();
+  var ov=document.createElement('div');ov.id='prompt-overlay';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(15,26,15,0.85);z-index:500;display:flex;flex-direction:column;align-items:stretch;padding:20px;box-sizing:border-box;padding-top:calc(env(safe-area-inset-top,0px) + 20px);padding-bottom:calc(env(safe-area-inset-bottom,0px) + 20px)';
+  var title=document.createElement('div');title.style.cssText='color:#fff;font-family:\'Playfair Display\',serif;font-size:18px;margin-bottom:6px';title.textContent='Copy this prompt';
+  var sub=document.createElement('div');sub.style.cssText='color:#a0b4a0;font-size:13px;margin-bottom:14px;line-height:1.5';sub.textContent='Hold the text below → Select All → Copy, then paste into Claude.ai or ChatGPT. Paste the JSON response back in the box below.';
+  var ta=document.createElement('textarea');
+  ta.style.cssText='flex:1;background:#1a2e1a;color:#d4e8cc;border:2px solid var(--sage);border-radius:12px;padding:14px;font-size:12px;font-family:monospace;line-height:1.5;resize:none;-webkit-user-select:text;user-select:text';
+  ta.readOnly=true;ta.value=prompt;
+  var closeBtn=document.createElement('button');
+  closeBtn.style.cssText='margin-top:14px;padding:14px;background:var(--sage);color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:600;font-family:\'DM Sans\',sans-serif;cursor:pointer';
+  closeBtn.textContent='Done — paste JSON in the box below';
+  closeBtn.addEventListener('click',function(){ov.remove();});
+  ov.appendChild(title);ov.appendChild(sub);ov.appendChild(ta);ov.appendChild(closeBtn);
+  document.body.appendChild(ov);
+  setTimeout(function(){ta.focus();ta.setSelectionRange(0,ta.value.length);},100);
 }
 
 function showAPIKeyPrompt(){
   gr('import-result').innerHTML='<div class="setup-card"><div style="font-family:\'Playfair Display\',serif;font-size:16px;margin-bottom:10px">🔑 Optional: Add Gemini API Key</div><p style="font-size:13px;color:var(--ink2);margin-bottom:14px;line-height:1.5">An API key enables one-tap AI extraction. Without it, use the free copy-paste method above.</p><div class="setup-step"><div class="setup-num">1</div><div style="font-size:13px;color:var(--ink2);line-height:1.5">Go to <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--sage);font-weight:500">aistudio.google.com/app/apikey</a></div></div><div class="setup-step"><div class="setup-num">2</div><div style="font-size:13px;color:var(--ink2);line-height:1.5">Sign in with Google → <strong>Create API key</strong> — free, no billing needed</div></div><input class="fi" id="api-key-input" placeholder="AIzaSy…" style="margin-bottom:10px"/><button class="btn btnf btnp" onclick="saveAPIKey()">Save API Key</button></div>';
 }
-
 function saveAPIKey(){
   var k=gr('api-key-input').value.trim();
-  if(!k.startsWith('AIza')){showToast("Gemini keys start with AIza…"); return;}
-  API_KEY=k; saveL('apiKey',k);
+  if(!k.startsWith('AIza')){showToast('Gemini keys start with AIza…');return;}
+  API_KEY=k;saveL('apiKey',k);
   gr('import-result').innerHTML='<div style="text-align:center;padding:16px;color:var(--sage);font-size:14px;font-weight:500">✓ API key saved!</div>';
   showToast('API key saved');
 }
@@ -1030,13 +1093,12 @@ function openM(id){gr(id).classList.add('open');}
 function closeM(id){gr(id).classList.remove('open');}
 document.querySelectorAll('.overlay').forEach(function(o){o.addEventListener('click',function(e){if(e.target===o)o.classList.remove('open');});});
 var rvcb=gr('rv-close-btn');if(rvcb)rvcb.addEventListener('click',function(){closeM('modal-rv');});
-  // Random meal
-  var randbtn=gr('random-btn');if(randbtn)randbtn.addEventListener('click',openRandom);
-  var rscw=gr('rscope-week');if(rscw)rscw.addEventListener('click',function(){randScope='week';renderRandScope();});
-  var rscd=gr('rscope-day');if(rscd)rscd.addEventListener('click',function(){randScope='day';renderRandScope();});
-  var rprev=gr('rand-preview-btn');if(rprev)rprev.addEventListener('click',previewRandom);
-  var rapply=gr('rand-apply-btn');if(rapply)rapply.addEventListener('click',applyRandom);
-  var rcanc=gr('rand-cancel');if(rcanc)rcanc.addEventListener('click',function(){closeM('modal-random');});
+var randbtn=gr('random-btn');if(randbtn)randbtn.addEventListener('click',openRandom);
+var rscw=gr('rscope-week');if(rscw)rscw.addEventListener('click',function(){randScope='week';renderRandScope();});
+var rscd=gr('rscope-day');if(rscd)rscd.addEventListener('click',function(){randScope='day';renderRandScope();});
+var rprev=gr('rand-preview-btn');if(rprev)rprev.addEventListener('click',previewRandom);
+var rapply=gr('rand-apply-btn');if(rapply)rapply.addEventListener('click',applyRandom);
+var rcanc=gr('rand-cancel');if(rcanc)rcanc.addEventListener('click',function(){closeM('modal-random');});
 
 function renderAll(){renderPlanner();if(gr('panel-shopping').classList.contains('active'))renderShop();renderCF();renderDF();renderRGrid();}
 
@@ -1061,43 +1123,28 @@ function renderRandScope(){
 function renderRandDayGrid(){
   var g=gr('rand-day-grid');g.innerHTML='';
   DAYS.forEach(function(d){
-    var b=document.createElement('button');
-    b.className='day-sel-btn'+(randDay===d?' on':'');
-    b.textContent=d.slice(0,3);
-    b.addEventListener('click',function(){randDay=d;renderRandDayGrid();});
-    g.appendChild(b);
+    var b=document.createElement('button');b.className='day-sel-btn'+(randDay===d?' on':'');b.textContent=d.slice(0,3);
+    b.addEventListener('click',function(){randDay=d;renderRandDayGrid();});g.appendChild(b);
   });
 }
 function renderRandTypes(){
   var g=gr('rand-types');g.innerHTML='';
   MT.forEach(function(t){
-    var b=document.createElement('button');
-    b.className='tchip'+(randTypes.indexOf(t)>=0?' on':'');
-    b.textContent=t;
-    b.addEventListener('click',function(){
-      randTypes=randTypes.indexOf(t)>=0?randTypes.filter(function(x){return x!==t;}):randTypes.concat(t);
-      renderRandTypes();
-    });
+    var b=document.createElement('button');b.className='tchip'+(randTypes.indexOf(t)>=0?' on':'');b.textContent=t;
+    b.addEventListener('click',function(){randTypes=randTypes.indexOf(t)>=0?randTypes.filter(function(x){return x!==t;}):randTypes.concat(t);renderRandTypes();});
     g.appendChild(b);
   });
 }
 function renderRandDietFilter(){
   var g=gr('rand-diet-filter');g.innerHTML='';
   ['Any'].concat(DIETS).forEach(function(d){
-    var b=document.createElement('button');
-    b.className='tchip'+(randDiet===d?' on':'');
-    b.textContent=d;
-    b.addEventListener('click',function(){randDiet=d;renderRandDietFilter();});
-    g.appendChild(b);
+    var b=document.createElement('button');b.className='tchip'+(randDiet===d?' on':'');b.textContent=d;
+    b.addEventListener('click',function(){randDiet=d;renderRandDietFilter();});g.appendChild(b);
   });
 }
 function getRandomRecipe(mealType,excludeIds){
-  var pool=recipes.filter(function(r){
-    if(randDiet!=='Any'&&r.diets.indexOf(randDiet)<0)return false;
-    if(excludeIds&&excludeIds[r.id])return false;
-    return true;
-  });
-  if(!pool.length)pool=recipes.filter(function(r){return !excludeIds||!excludeIds[r.id];});
+  var pool=recipes.filter(function(r){if(randDiet!=='Any'&&r.diets.indexOf(randDiet)<0)return false;if(excludeIds&&excludeIds[r.id])return false;return true;});
+  if(!pool.length)pool=recipes.filter(function(r){return!excludeIds||!excludeIds[r.id];});
   if(!pool.length)pool=recipes.slice();
   return pool[Math.floor(Math.random()*pool.length)];
 }
@@ -1106,63 +1153,68 @@ function previewRandom(){
   var skipPlanned=gr('rand-skip-planned').checked;
   var days=randScope==='week'?DAYS:[randDay];
   randPlan={};
-  var usedToday={};
   days.forEach(function(day){
-    usedToday={};
+    var usedToday={};
     var existing=plan[day]||[];
     if(skipPlanned&&existing.length>0){randPlan[day]=null;return;}
     randTypes.forEach(function(mt){
       var r=getRandomRecipe(mt,usedToday);
-      if(r){
-        if(!randPlan[day])randPlan[day]=[];
-        randPlan[day].push({recipeId:r.id,mealType:mt,recipeName:r.name});
-        usedToday[r.id]=true;
-      }
+      if(r){if(!randPlan[day])randPlan[day]=[];randPlan[day].push({recipeId:r.id,mealType:mt,recipeName:r.name});usedToday[r.id]=true;}
     });
   });
-  // Render preview
   var prev=gr('rand-preview');prev.innerHTML='';
   var hasAny=false;
   days.forEach(function(day){
     var meals=randPlan[day];
-    var dayDiv=document.createElement('div');
-    dayDiv.style.cssText='background:var(--cream);border:1.5px solid var(--paper3);border-radius:var(--rs);padding:10px 12px;margin-bottom:8px';
-    var dTitle=document.createElement('div');
-    dTitle.style.cssText='font-weight:600;font-size:13px;margin-bottom:6px;color:var(--ink2)';
-    dTitle.textContent=day;
-    dayDiv.appendChild(dTitle);
-    if(!meals){
-      var skip=document.createElement('div');skip.style.cssText='font-size:12px;color:var(--ink3)';skip.textContent='Skipped (already has meals)';dayDiv.appendChild(skip);
-    } else {
-      hasAny=true;
-      meals.forEach(function(m){
-        var row=document.createElement('div');row.style.cssText='font-size:13px;padding:2px 0;display:flex;gap:6px';
-        var label=document.createElement('span');label.style.cssText='color:var(--ink3);font-size:11px;width:65px;flex-shrink:0;padding-top:1px';label.textContent=m.mealType;
-        var name=document.createElement('span');name.textContent=m.recipeName;
-        row.appendChild(label);row.appendChild(name);dayDiv.appendChild(row);
-      });
-    }
+    var dayDiv=document.createElement('div');dayDiv.style.cssText='background:var(--cream);border:1.5px solid var(--paper3);border-radius:var(--rs);padding:10px 12px;margin-bottom:8px';
+    var dTitle=document.createElement('div');dTitle.style.cssText='font-weight:600;font-size:13px;margin-bottom:6px;color:var(--ink2)';dTitle.textContent=day;dayDiv.appendChild(dTitle);
+    if(!meals){var skip=document.createElement('div');skip.style.cssText='font-size:12px;color:var(--ink3)';skip.textContent='Skipped (already has meals)';dayDiv.appendChild(skip);}
+    else{hasAny=true;meals.forEach(function(m){var row=document.createElement('div');row.style.cssText='font-size:13px;padding:2px 0;display:flex;gap:6px';var label=document.createElement('span');label.style.cssText='color:var(--ink3);font-size:11px;width:65px;flex-shrink:0;padding-top:1px';label.textContent=m.mealType;var name=document.createElement('span');name.textContent=m.recipeName;row.appendChild(label);row.appendChild(name);dayDiv.appendChild(row);});}
     prev.appendChild(dayDiv);
   });
-  if(hasAny){
-    gr('rand-apply-btn').style.display='';
-    gr('rand-preview-btn').textContent='Re-roll';
-  } else {
-    gr('rand-apply-btn').style.display='none';
-  }
+  if(hasAny){gr('rand-apply-btn').style.display='';gr('rand-preview-btn').textContent='Re-roll';}
+  else{gr('rand-apply-btn').style.display='none';}
 }
 function applyRandom(){
-  Object.keys(randPlan).forEach(function(day){
-    var meals=randPlan[day];
-    if(!meals)return;
-    meals.forEach(function(m){
-      if(!plan[day])plan[day]=[];
-      plan[day].push({recipeId:m.recipeId,mealType:m.mealType});
-    });
-  });
-  closeM('modal-random');
-  renderPlanner();persist();
-  showToast('Random meals added!');
+  Object.keys(randPlan).forEach(function(day){var meals=randPlan[day];if(!meals)return;meals.forEach(function(m){if(!plan[day])plan[day]=[];plan[day].push({recipeId:m.recipeId,mealType:m.mealType});});});
+  closeM('modal-random');renderPlanner();persist();showToast('Random meals added!');
+}
+
+// ─── WEB SHARE TARGET ─────────────────────────────────────────────────────────
+// When opened via iOS/Android share sheet, shared URL arrives as ?share-url=...
+function handleShareTarget(){
+  try{
+    var params=new URLSearchParams(window.location.search);
+    var shared=params.get('share-url')||params.get('url')||params.get('text');
+    if(!shared)return;
+    if(window.history&&window.history.replaceState)window.history.replaceState({},'',window.location.pathname);
+    shared=shared.trim();
+    if(/^https?:\/\//i.test(shared)){
+      showTab('import');switchIT('url');gr('url-input').value=shared;
+      showToast('URL ready — tap Copy prompt or Extract');
+    }else{
+      showTab('import');switchIT('paste');gr('paste-text').value=shared;
+      showToast('Text pasted — tap Extract Recipe');
+    }
+  }catch(e){}
+}
+
+// ─── TIKTOK / SOCIAL TEXT CLEANER ─────────────────────────────────────────────
+// Pre-cleans pasted text before sending to AI: strips hashtags, @mentions,
+// URLs, most emoji, and normalises unicode fractions to decimals.
+function cleanSocialText(raw){
+  if(!raw)return raw;
+  var t=raw;
+  t=t.replace(/#\w+/g,'');           // hashtags
+  t=t.replace(/@\w+/g,'');           // @mentions
+  t=t.replace(/https?:\/\/\S+/g,''); // URLs
+  // emoji (common ranges)
+  t=t.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu,'');
+  // unicode fractions → decimals
+  t=t.replace(/\u00BD/g,'0.5').replace(/\u00BC/g,'0.25').replace(/\u00BE/g,'0.75')
+     .replace(/\u2153/g,'0.33').replace(/\u2154/g,'0.67').replace(/\u215B/g,'0.125');
+  t=t.replace(/\n{3,}/g,'\n\n').trim();
+  return t;
 }
 
 // INIT
@@ -1171,11 +1223,11 @@ renderPlanner();renderCF();renderDF();renderRGrid();renderFC();
 gr('a-ind').style.display=userAllergens.length?'block':'none';
 gr('p-btn').style.display=userAllergens.length?'none':'block';
 initImportButtons();
+handleShareTarget();
 
-// SERVICE WORKER — bump CACHE_VERSION here each time you deploy a change
-// iOS PWA will automatically reload with the new version (no re-adding needed)
+// SERVICE WORKER
 (function(){
-  var CACHE_VERSION='v2.4';
+  var CACHE_VERSION='v2.7';
   if(!('serviceWorker' in navigator))return;
   var swCode=[
     'var CACHE="mep-'+CACHE_VERSION+'";',
@@ -1204,11 +1256,9 @@ initImportButtons();
   var swUrl=URL.createObjectURL(blob);
   navigator.serviceWorker.register(swUrl,{scope:'./'}).then(function(reg){
     reg.addEventListener('updatefound',function(){
-      var nw=reg.installing;
-      if(!nw)return;
+      var nw=reg.installing;if(!nw)return;
       nw.addEventListener('statechange',function(){
         if(nw.state==='installed'&&navigator.serviceWorker.controller){
-          // New version installed — prompt user to reload
           if(confirm('A new version of Mise en Place is ready. Reload now?')){
             navigator.serviceWorker.controller.postMessage({type:'SKIP_WAITING'});
             window.location.reload();
@@ -1218,9 +1268,7 @@ initImportButtons();
     });
   }).catch(function(){});
   navigator.serviceWorker.addEventListener('message',function(e){
-    if(e.data&&e.data.type==='UPDATE_AVAILABLE'){
-      showToast('✓ Updated to '+e.data.version);
-    }
+    if(e.data&&e.data.type==='UPDATE_AVAILABLE'){showToast('✓ Updated to '+e.data.version);}
   });
 })();
 </script>
