@@ -633,13 +633,13 @@ function renderShop(){
     html+='<div class="shop-cat"><div class="shop-cat-hdr"><span>'+cat+'</span><span>'+items.length+' item'+(items.length!==1?'s':'')+'</span></div>';
     items.sort(function(a,b){return a.name.localeCompare(b.name)}).forEach(function(item){
       var k=item.name.toLowerCase().replace(/\s/g,'_');var on=!!checked[k];
-      var safeName=item.name.replace(/'/g,"\'");
+      var sn=item.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
       html+='<div class="shop-item'+(on?' done':'')+'" id="si-'+k+'">'
-           +'<div class="chk'+(on?' on':'')+'" onclick="toggleChk(''+k+'')">'
-           +'<span class="chk-tick">✓</span></div>'
+           +'<div class="chk'+(on?' on':'')+'" onclick="toggleChk(\''+k+'\')">'
+           +'<span class="chk-tick">&#10003;</span></div>'
            +'<div class="si-name">'+item.name+'</div>'
            +'<div class="si-qty">'+fmt(item.qty,item.unit)+'</div>'
-           +'<button class="rm-btn" onclick="removeShopItem(event,''+safeName+'')" title="Remove">x</button>'
+           +'<button class="rm-btn" onclick="removeShopItem(event,\''+sn+'\')" title="Remove">x</button>'
            +'</div>';
     });
     html+='</div>';
@@ -649,7 +649,7 @@ function renderShop(){
 }
 function removeShopItem(ev,name){
   ev.stopPropagation();
-  if(!confirm('Remove "'+name+'" from the list?\n\nThis removes the meal(s) containing this ingredient from your planner.'))return;
+  if(!confirm('Remove "'+name+'" from the list?\n\nThis removes the meal(s) that use this ingredient from your planner.'))return;
   var lower=name.toLowerCase().trim();
   DAYS.forEach(function(day){
     plan[day]=(plan[day]||[]).filter(function(m){
@@ -665,8 +665,8 @@ function renderExtras(){
   el.innerHTML=extraItems.map(function(item,i){
     var k='extra_'+i;var on=!!checked[k];
     return '<div class="shop-item'+(on?' done':'')+'" id="si-'+k+'">'
-          +'<div class="chk'+(on?' on':'')+'" onclick="toggleChk(''+k+'')">'
-          +'<span class="chk-tick">✓</span></div>'
+          +'<div class="chk'+(on?' on':'')+'" onclick="toggleChk(\''+k+'\')">'
+          +'<span class="chk-tick">&#10003;</span></div>'
           +'<div class="si-name">'+escHtml(item)+'</div>'
           +'<button class="rm-btn" onclick="removeExtra('+i+')" title="Remove">x</button>'
           +'</div>';
