@@ -456,13 +456,17 @@ function initFB(){
       if(isOwnEcho){fbInitialLoad=false;return;}
       if(fbInitialLoad){
         fbInitialLoad=false;
+        var localTs=loadL('planTs')||0;
+        var remoteTs=d.ts||0;
+        var remoteIsNewer=remoteTs>localTs+5000;
         if(d.recipes&&d.recipes.length>0){
           var nd3=normaliseIds({recipes:d.recipes,plan:d.plan||{}});
           var localIds={};recipes.forEach(function(r){localIds[parseInt(r.id,10)]=true;});
           nd3.recipes.forEach(function(r){if(!localIds[parseInt(r.id,10)])recipes.push(r);});
-          if(d.plan){DAYS.forEach(function(day){if((!plan[day]||plan[day].length===0)&&nd3.plan[day]&&nd3.plan[day].length>0){plan[day]=nd3.plan[day];}});}
+          if(remoteIsNewer&&d.plan){plan=nd3.plan;}
+          else if(d.plan){DAYS.forEach(function(day){if((!plan[day]||plan[day].length===0)&&nd3.plan[day]&&nd3.plan[day].length>0){plan[day]=nd3.plan[day];}});}
         }
-        if(d.checked&&Object.keys(checked).length===0)checked=d.checked;
+        if(d.checked&&(remoteIsNewer||Object.keys(checked).length===0))checked=d.checked;
         push();renderAll();return;
       }
       if(d.recipes&&d.recipes.length>0){
@@ -493,7 +497,7 @@ function push(){
 // PERSIST
 function saveL(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 function loadL(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}}
-function persist(){saveL('recipes',recipes);saveL('plan',plan);saveL('checked',checked);saveL('profile',{userAllergens:userAllergens,userDiet:userDiet});push();}
+function persist(){saveL('recipes',recipes);saveL('plan',plan);saveL('checked',checked);saveL('profile',{userAllergens:userAllergens,userDiet:userDiet});saveL('planTs',Date.now());push();}
 function normaliseIds(data){
   if(data.recipes){data.recipes=data.recipes.map(function(r){r.id=parseInt(r.id,10)||r.id;return r;});}
   if(data.plan){Object.keys(data.plan).forEach(function(day){data.plan[day]=(data.plan[day]||[]).map(function(m){m.recipeId=parseInt(m.recipeId,10)||m.recipeId;return m;});});}
