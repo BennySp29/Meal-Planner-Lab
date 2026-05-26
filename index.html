@@ -1304,9 +1304,71 @@ function saveRecipe(){
   var steps=[].slice.call(gr('nr-steps').querySelectorAll('textarea')).map(function(t){return t.value.trim();}).filter(Boolean);
   var oldR=editId?rec(editId):null;
   var obj={id:editId?parseInt(editId,10):Date.now(),name:name,cuisine:gr('nr-cuisine').value,diets:nrDiets.slice(),allergens:nrAllergens.slice(),time:parseInt(gr('nr-time').value)||30,servings:parseInt(gr('nr-servings').value)||4,desc:gr('nr-desc').value.trim(),ingredients:ings,steps:steps,image:nrImgB64||'',source_url:gr('nr-url').value.trim(),rating:nrRating||0,notes:gr('nr-notes')?gr('nr-notes').value.trim():'',cookCount:oldR?oldR.cookCount||0:0};
-  if(editId){var idx=recipes.findIndex(function(r){return r.id===editId});if(idx>=0)recipes[idx]=obj;else recipes.push(obj);}
+  if(editId){var idx=recipes.findIndex(function(r){return r.id===parseInt(editId,10);});if(idx>=0)recipes[idx]=obj;else recipes.push(obj);}
   else recipes.push(obj);
   closeM('modal-ar');persist();renderAll();showToast(editId?'Recipe updated':'Recipe saved');
+}
+
+// AI IMPORT
+async function callClaude(messages, instructions){
+  if(!API_KEY) throw new Error('No API key provided. Enter a Gemini or OpenAI key first.');
+  if(API_KEY.startsWith('sk-')) return await callOpenAI(messages, instructions);
+  if(API_KEY.startsWith('AIza')) return await callGemini(messages, instructions);
+  throw new Error('Unsupported API key type. Use a Gemini key starting with AIza or an OpenAI key starting with sk-.');
+}
+
+function buildMessageContent(content){
+  if(typeof content==='string') return [{type:'text',text:content}];
+  if(Array.isArray(content)) return content.map(function(item){
+    if(item&&item.type==='text') return {type:'text',text:item.text||''};
+    if(item&&item.type==='image') return {type:'image',image:{imageBytes:item.source.data,mimeType:item.source.media_type}};
+    return {type:'text',text:String(item.text||item||'')};
+  });
+  return [{type:'text',text:String(content||'')}];
+}
+
+async function callGemini(messages, instructions){
+  var url='https://generativelanguage.googleapis.com/v1beta2/models/text-bison-001:generate?key='+encodeURIComponent(API_KEY);
+  var promptMessages=[];
+  if(instructions){promptMessages.push({author:'user',content:[{type:'text',text:instructions}]});}
+  messages.forEach(function(msg){
+    promptMessages.push({
+      author:msg.role==='assistant'?'assistant':'user',
+      content:buildMessageContent(msg.content)
+    });
+  });
+  var body={prompt:{messages:promptMessages},temperature:0.2,maxOutputTokens:1200};
+  var resp=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  var data=await resp.json();
+  if(!resp.ok){var err=data.error||{};throw new Error('Gemini error: '+(err.message||JSON.stringify(data)));}
+  if(data.candidates&&data.candidates.length){return data.candidates[0].output||data.candidates[0].content||'';}
+  if(data.output){return typeof data.output==='string'?data.output:(data.output[0]&&data.output[0].content||'');}
+  throw new Error('No valid response from Gemini API');
+}
+
+async function callOpenAI(messages, instructions){
+  var url='https://api.openai.com/v1/chat/completions';
+  var payload={model:'gpt-3.5-turbo',temperature:0.2,max_tokens:1200,messages:[]};
+  if(instructions){payload.messages.push({role:'system',content:instructions});}
+  messages.forEach(function(msg){
+    var text='';
+    if(typeof msg.content==='string') text=msg.content;
+    else if(Array.isArray(msg.content)){
+      text=msg.content.map(function(item){
+        if(item&&item.type==='text') return item.text||'';
+        if(item&&item.type==='image') return '[image attached]';
+        return String(item.text||item||'');
+      }).join('\n\n');
+    }
+    payload.messages.push({role:msg.role==='assistant'?'assistant':'user',content:text});
+  });
+  var resp=await fetch(url,{method:'POST',headers:{'Authorization':'Bearer '+API_KEY,'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  var data=await resp.json();
+  if(!resp.ok){var err=(data.error&&data.error.message)||JSON.stringify(data);throw new Error('OpenAI error: '+err);}
+  if(data.choices&&data.choices[0]){
+    return (data.choices[0].message && data.choices[0].message.content) || data.choices[0].text || '';
+  }
+  throw new Error('No valid response from OpenAI');
 }
 
 // FRIDGE
@@ -1568,11 +1630,11 @@ function showPastePromptBox(prompt){
 }
 
 function showAPIKeyPrompt(){
-  gr('import-result').innerHTML='<div class="setup-card"><div style="font-family:\'Playfair Display\',serif;font-size:16px;margin-bottom:10px">🔑 Optional: Add Gemini API Key</div><p style="font-size:13px;color:var(--ink2);margin-bottom:14px;line-height:1.5">An API key enables one-tap AI extraction. Without it, use the free copy-paste method above.</p><div class="setup-step"><div class="setup-num">1</div><div style="font-size:13px;color:var(--ink2);line-height:1.5">Go to <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--sage);font-weight:500">aistudio.google.com/app/apikey</a></div></div><div class="setup-step"><div class="setup-num">2</div><div style="font-size:13px;color:var(--ink2);line-height:1.5">Sign in with Google → <strong>Create API key</strong> — free, no billing needed</div></div><input class="fi" id="api-key-input" placeholder="AIzaSy…" style="margin-bottom:10px"/><button class="btn btnf btnp" onclick="saveAPIKey()">Save API Key</button></div>';
+  gr('import-result').innerHTML='<div class="setup-card"><div style="font-family:\'Playfair Display\',serif;font-size:16px;margin-bottom:10px">🔑 Optional: Add AI API Key</div><p style="font-size:13px;color:var(--ink2);margin-bottom:14px;line-height:1.5">An API key enables one-tap AI extraction. Without it, use the free copy-paste method above.</p><div class="setup-step"><div class="setup-num">1</div><div style="font-size:13px;color:var(--ink2);line-height:1.5">For Gemini, go to <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--sage);font-weight:500">aistudio.google.com/app/apikey</a></div></div><div class="setup-step"><div class="setup-num">2</div><div style="font-size:13px;color:var(--ink2);line-height:1.5">For OpenAI, use a secret key that starts with <strong>sk-</strong></div></div><input class="fi" id="api-key-input" placeholder="AIzaSy… or sk-…" style="margin-bottom:10px"/><button class="btn btnf btnp" onclick="saveAPIKey()">Save API Key</button></div>';
 }
 function saveAPIKey(){
   var k=gr('api-key-input').value.trim();
-  if(!k.startsWith('AIza')){showToast('Gemini keys start with AIza…');return;}
+  if(!k.startsWith('AIza')&&!k.startsWith('sk-')){showToast('Enter a Gemini key (AIza…) or OpenAI key (sk-…); otherwise use manual import.');return;}
   API_KEY=k;saveL('apiKey',k);
   gr('import-result').innerHTML='<div style="text-align:center;padding:16px;color:var(--sage);font-size:14px;font-weight:500">✓ API key saved!</div>';
   showToast('API key saved');
