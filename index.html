@@ -1549,26 +1549,36 @@ function showPastePromptBox(prompt){
 }
 
 // ─── GEMINI API ───────────────────────────────────────────────────────────────
-// Calls Google Gemini 1.5 Flash (free tier via AI Studio key).
+// Calls Google Gemini 2.5 Flash (free tier: 15 RPM, 1500 RPD).
 // Handles both text-only and vision (image) requests.
+// Retries once on 429 after a short delay before surfacing the error.
 async function callGemini(parts) {
   if (!API_KEY) { showAPIKeyPrompt(); throw new Error('No API key'); }
-  var model = 'gemini-2.0-flash';
+  var model = 'gemini-2.5-flash';
   var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + API_KEY;
   var body = {
     contents: [{ role: 'user', parts: parts }],
     generationConfig: { temperature: 0.1, maxOutputTokens: 1500 }
   };
-  var resp = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
+  async function attempt() {
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+  }
+  var resp = await attempt();
+  // On 429, wait 8s and retry once automatically
+  if (resp.status === 429) {
+    gr('import-loading').querySelector('div[style]') && null; // no-op
+    await new Promise(function(r){ setTimeout(r, 8000); });
+    resp = await attempt();
+  }
   if (!resp.ok) {
     var err = await resp.json().catch(function(){ return {}; });
     var msg = (err.error && err.error.message) || ('API error ' + resp.status);
-    if (resp.status === 400) msg = 'Invalid API key — please re-enter it below.';
-    if (resp.status === 429) msg = 'Rate limit reached — wait a moment and try again.';
+    if (resp.status === 400 || resp.status === 403) msg = 'Invalid or expired API key — tap \'Change API key\' below to re-enter it.';
+    if (resp.status === 429) msg = 'Gemini rate limit hit — please wait 30 seconds and try again.';
     throw new Error(msg);
   }
   var data = await resp.json();
