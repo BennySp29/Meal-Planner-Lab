@@ -1615,7 +1615,7 @@ async function callGeminiWithURL(parts) {
              data.candidates[0].content && data.candidates[0].content.parts &&
              data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text;
   
-  console.log('Gemini URL response length',(text || ''). length;
+  console.log('Gemini URL response length',(text || ''). length);
   console.log('Last 500 chars', (text || '').slice(-500));
   
   return text || '';
