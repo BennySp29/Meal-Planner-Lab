@@ -1509,38 +1509,19 @@ async function importURL(){
   var url=gr('url-input').value.trim();if(!url){showToast('Paste a URL first');return;}
   if(!API_KEY){showAPIKeyPrompt();return;}
   gr('import-loading').style.display='block';gr('import-result').innerHTML='';
-  // Update loading message
-  var loadBox=gr('import-loading').querySelector('div');
-  if(loadBox){loadBox.innerHTML='<div class="ai-spin">🌐</div><div style="font-size:14px;font-weight:500;margin-bottom:4px">Fetching page…</div><div style="font-size:12px;color:var(--ink2)">Reading recipe from website</div>';}
   try{
-    // Step 1: fetch the page via CORS proxy, extract readable text
-    var pageText='';
-    try{
-      var proxyUrl='https://api.allorigins.win/get?url='+encodeURIComponent(url);
-      var pageResp=await fetch(proxyUrl);
-      if(pageResp.ok){
-        var pageJson=await pageResp.json();
-        var html=pageJson.contents||'';
-        // Strip scripts, styles, nav, footer, ads
-        html=html.replace(/<script[\s\S]*?<\/script>/gi,'')
-                 .replace(/<style[\s\S]*?<\/style>/gi,'')
-                 .replace(/<nav[\s\S]*?<\/nav>/gi,'')
-                 .replace(/<footer[\s\S]*?<\/footer>/gi,'')
-                 .replace(/<header[\s\S]*?<\/header>/gi,'')
-                 .replace(/<[^>]+>/g,' ')
-                 .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ').replace(/&#\d+;/g,' ')
-                 .replace(/\s{3,}/g,'\n').trim();
-        // Keep first ~6000 chars — enough for any recipe, avoids token bloat
-        pageText=html.substring(0,6000);
-      }
-    }catch(fe){}
-    // Step 2: if fetch failed or returned nothing useful, fall back to URL-only
-    var promptText = pageText.length > 200
-      ? 'Extract the recipe from this page content (URL: '+url+').\n\nPage text:\n'+pageText
-      : 'Extract the recipe from this URL: '+url;
-    if(loadBox){loadBox.innerHTML='<div class="ai-spin">🤖</div><div style="font-size:14px;font-weight:500;margin-bottom:4px">Extracting recipe…</div><div style="font-size:12px;color:var(--ink2)">Reading ingredients and steps</div>';}
-    var prompt=promptText+'\n\nReturn the recipe. source_url should be: '+url+'. Cuisine: Italian/Mexican/Asian/Indian/Mediterranean/British/American/Japanese/Thai/French. Diets: Vegan/Vegetarian/Pescatarian/Gluten-free/Dairy-free/Halal. Allergens: Gluten/Dairy/Nuts/Eggs/Fish/Shellfish/Soya/Sesame/Celery/Mustard. Units: g/kg/ml/l/tsp/tbsp/cup/oz/lb or empty string. Include ALL steps.';
-    var result=await callGemini([{text:prompt}]);
+    // Use Gemini's built-in url_context tool — Gemini fetches the page itself,
+    // no CORS proxy needed. responseSchema cannot be used alongside tools,
+    // so we rely on the prompt + extractJSON parser instead.
+    var prompt='Fetch and extract the recipe from this URL: '+url+'\n\n'+
+      'Return ONLY a raw JSON object — no markdown, no code fences, no explanation:\n'+
+      '{"name":"","cuisine":"Italian","diets":[],"allergens":[],"time":30,"servings":4,"desc":"","source_url":"'+url+'",'+
+      '"ingredients":[{"name":"","qty":1,"unit":"g"}],"steps":["Step 1"]}\n\n'+
+      'Cuisine: Italian/Mexican/Asian/Indian/Mediterranean/British/American/Japanese/Thai/French. '+
+      'Diets: Vegan/Vegetarian/Pescatarian/Gluten-free/Dairy-free/Halal. '+
+      'Allergens: Gluten/Dairy/Nuts/Eggs/Fish/Shellfish/Soya/Sesame/Celery/Mustard. '+
+      'Units: g/kg/ml/l/tsp/tbsp/cup/oz/lb or empty string. Include ALL steps. JSON only.';
+    var result=await callGeminiWithURL([{text:prompt}]);
     processImport(result);
   }catch(e){
     gr('import-loading').style.display='none';
@@ -1580,6 +1561,43 @@ function showPastePromptBox(prompt){
   ov.appendChild(title);ov.appendChild(sub);ov.appendChild(ta);ov.appendChild(closeBtn);
   document.body.appendChild(ov);
   setTimeout(function(){ta.focus();ta.setSelectionRange(0,ta.value.length);},100);
+}
+
+// ─── GEMINI URL FETCH — uses url_context tool so Gemini fetches the page itself
+async function callGeminiWithURL(parts) {
+  if (!API_KEY) { showAPIKeyPrompt(); throw new Error('No API key'); }
+  var model = 'gemini-2.5-flash';
+  var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + API_KEY;
+  var body = {
+    contents: [{ role: 'user', parts: parts }],
+    tools: [{ url_context: {} }],
+    generationConfig: { temperature: 0.1, maxOutputTokens: 1500 }
+    // Note: responseSchema cannot be combined with tools in Gemini API
+  };
+  async function attempt() {
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+  }
+  var resp = await attempt();
+  if (resp.status === 429) {
+    await new Promise(function(r){ setTimeout(r, 8000); });
+    resp = await attempt();
+  }
+  if (!resp.ok) {
+    var err = await resp.json().catch(function(){ return {}; });
+    var msg = (err.error && err.error.message) || ('API error ' + resp.status);
+    if (resp.status === 400 || resp.status === 403) msg = 'Invalid or expired API key — tap \'Change API key\' below to re-enter it.';
+    if (resp.status === 429) msg = 'Gemini rate limit hit — please wait 30 seconds and try again.';
+    throw new Error(msg);
+  }
+  var data = await resp.json();
+  var text = data.candidates && data.candidates[0] &&
+             data.candidates[0].content && data.candidates[0].content.parts &&
+             data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text;
+  return text || '';
 }
 
 // ─── GEMINI API ───────────────────────────────────────────────────────────────
