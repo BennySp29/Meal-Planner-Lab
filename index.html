@@ -580,7 +580,7 @@ function initFB(){
     setTimeout(function(){closeM('modal-fb');},1200);
     fbRef.on('value',function(snap){
       var d=snap.val();if(!d)return;
-      var isOwnEcho=(Date.now()-lastLocalPush)<6000&&d.who===fbCfg.who;
+      var isOwnEcho=(Date.now()-lastLocalPush)<15000&&d.who===fbCfg.who;
       if(isOwnEcho){fbInitialLoad=false;return;}
       if(fbInitialLoad){
         fbInitialLoad=false;
@@ -1614,7 +1614,15 @@ function renderProfWeekStart(){
 function setWeekStart(i){weekStart=i;renderProfWeekStart();}
 function togPA(a){var btn=[].slice.call(gr('prof-al').querySelectorAll('.tchip')).find(function(b){return b.textContent===a;});if(userAllergens.indexOf(a)>=0){userAllergens=userAllergens.filter(function(x){return x!==a;});btn&&btn.classList.remove('on');}else{userAllergens.push(a);btn&&btn.classList.add('on');}}
 function togPD(d){userDiet=userDiet===d?null:d;gr('prof-di').innerHTML=DIETS.map(function(di){return'<button class="tchip'+(userDiet===di?' on':'')+'" onclick="togPD(\''+di+'\')">'+di+'</button>';}).join('');}
-function saveProfile(){closeM('modal-prof');persist();renderAll();gr('a-ind').style.display=userAllergens.length?'block':'none';gr('p-btn').style.display=userAllergens.length?'none':'block';showToast('Profile saved');}
+function saveProfile(){
+  closeM('modal-prof');
+  // Save profile prefs locally only — no Firebase push (avoids stale plan overwrite)
+  saveL('profile',{userAllergens:userAllergens,userDiet:userDiet,weekStart:weekStart});
+  renderAll();
+  gr('a-ind').style.display=userAllergens.length?'block':'none';
+  gr('p-btn').style.display=userAllergens.length?'none':'block';
+  showToast('Profile saved');
+}
 
 // MODAL
 function openM(id){gr(id).classList.add('open');}
