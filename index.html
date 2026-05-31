@@ -1384,8 +1384,10 @@ function processImport(text) {
     gr('import-result').innerHTML =
       '<div class="rc-warn" style="flex-direction:column;gap:4px">' +
       '<div style="font-weight:600">⚠ Could not read recipe data</div>' +
-      '<div style="font-size:12px;line-height:1.5">Gemini returned something unexpected. Try again — if it keeps failing, the recipe page may be behind a login or paywall.</div>' +
-      '<code style="font-size:10px;word-break:break-all;display:block;margin-top:6px;background:var(--red-p);padding:6px;border-radius:4px">' + escHtml(preview) + '</code>' +
+      '<div style="font-size:12px;line-height:1.5">Gemini returned something unexpected. Please try again.</div>' +
+      '<details style="margin-top:6px"><summary style="font-size:11px;color:var(--red);cursor:pointer">Show raw response</summary>' +
+      '<code style="font-size:10px;word-break:break-all;display:block;margin-top:4px;background:var(--red-p);padding:6px;border-radius:4px;white-space:pre-wrap">' + escHtml(preview) + '</code>' +
+      '</details>' +
       '</div>';
     return;
   }
@@ -1561,7 +1563,38 @@ async function callGemini(parts) {
   var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + API_KEY;
   var body = {
     contents: [{ role: 'user', parts: parts }],
-    generationConfig: { temperature: 0.1, maxOutputTokens: 1500 }
+    generationConfig: {
+      temperature: 0.1,
+      maxOutputTokens: 1500,
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: 'object',
+        properties: {
+          name:        { type: 'string' },
+          cuisine:     { type: 'string' },
+          diets:       { type: 'array', items: { type: 'string' } },
+          allergens:   { type: 'array', items: { type: 'string' } },
+          time:        { type: 'number' },
+          servings:    { type: 'number' },
+          desc:        { type: 'string' },
+          source_url:  { type: 'string' },
+          ingredients: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                qty:  { type: 'number' },
+                unit: { type: 'string' }
+              },
+              required: ['name', 'qty', 'unit']
+            }
+          },
+          steps: { type: 'array', items: { type: 'string' } }
+        },
+        required: ['name', 'cuisine', 'diets', 'allergens', 'time', 'servings', 'desc', 'source_url', 'ingredients', 'steps']
+      }
+    }
   };
   async function attempt() {
     return fetch(url, {
