@@ -1350,14 +1350,17 @@ function extractJSON(raw) {
   // Normalise line endings
   var text = raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
-  // 1. Try stripping code fences (```json or ```) from start and end
+  // 1. Strip <think>...</think> blocks (Gemini 2.5 Flash thinking mode)
+  text = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+
+  // 2. Try stripping code fences (```json or ```) from start and end
   var fenced = text.replace(/^\s*```(?:json)?\s*\n?/, '').replace(/\n?\s*```\s*$/, '').trim();
   try { var p = JSON.parse(fenced); if (p && typeof p === 'object') return p; } catch(e) {}
 
-  // 2. Try the raw text trimmed as-is
+  // 3. Try the raw text trimmed as-is
   try { var p2 = JSON.parse(text.trim()); if (p2 && typeof p2 === 'object') return p2; } catch(e) {}
 
-  // 3. Find the first { ... } block in the text (handles JSON embedded in prose)
+  // 4. Find the first { ... } block in the text (handles JSON embedded in prose)
   var start = text.indexOf('{');
   var end = text.lastIndexOf('}');
   if (start !== -1 && end !== -1 && end > start) {
@@ -1365,8 +1368,8 @@ function extractJSON(raw) {
     try { var p3 = JSON.parse(slice); if (p3 && typeof p3 === 'object') return p3; } catch(e) {}
   }
 
-  // 4. Nothing worked — throw with a preview of what we received
-  throw new Error('Could not find valid JSON in response. Received: ' + text.substring(0, 120));
+  // 5. Nothing worked — throw with a preview of what we received
+  throw new Error('Could not parse recipe from Gemini response. Received: ' + text.substring(0, 120));
 }
 
 function processImport(text) {
@@ -1380,8 +1383,8 @@ function processImport(text) {
     var preview = (text || '').substring(0, 200);
     gr('import-result').innerHTML =
       '<div class="rc-warn" style="flex-direction:column;gap:4px">' +
-      '<div style="font-weight:600">⚠ Could not read JSON</div>' +
-      '<div style="font-size:12px;line-height:1.5">Make sure you copied the <strong>full response</strong> from Claude or ChatGPT — it should start with <code>{</code> and end with <code>}</code>.</div>' +
+      '<div style="font-weight:600">⚠ Could not read recipe data</div>' +
+      '<div style="font-size:12px;line-height:1.5">Gemini returned something unexpected. Try again — if it keeps failing, the recipe page may be behind a login or paywall.</div>' +
       '<code style="font-size:10px;word-break:break-all;display:block;margin-top:6px;background:var(--red-p);padding:6px;border-radius:4px">' + escHtml(preview) + '</code>' +
       '</div>';
     return;
