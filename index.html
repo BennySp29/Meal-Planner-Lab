@@ -1509,8 +1509,37 @@ async function importURL(){
   var url=gr('url-input').value.trim();if(!url){showToast('Paste a URL first');return;}
   if(!API_KEY){showAPIKeyPrompt();return;}
   gr('import-loading').style.display='block';gr('import-result').innerHTML='';
+  // Update loading message
+  var loadBox=gr('import-loading').querySelector('div');
+  if(loadBox){loadBox.innerHTML='<div class="ai-spin">🌐</div><div style="font-size:14px;font-weight:500;margin-bottom:4px">Fetching page…</div><div style="font-size:12px;color:var(--ink2)">Reading recipe from website</div>';}
   try{
-    var prompt='Extract the recipe from this URL: '+url+'\n\nReturn ONLY this JSON structure — no markdown, no code fences:\n{"name":"","cuisine":"Italian","diets":[],"allergens":[],"time":30,"servings":4,"desc":"","source_url":"","ingredients":[{"name":"","qty":1,"unit":"g"}],"steps":["Step 1 instruction"]}\n\nCuisine: Italian/Mexican/Asian/Indian/Mediterranean/British/American/Japanese/Thai/French. Diets: Vegan/Vegetarian/Pescatarian/Gluten-free/Dairy-free/Halal. Allergens: Gluten/Dairy/Nuts/Eggs/Fish/Shellfish/Soya/Sesame/Celery/Mustard. Units: g/kg/ml/l/tsp/tbsp/cup/oz/lb or empty string for whole items. Include ALL method steps. Return JSON only — no markdown, no code fences. Set source_url to the URL above.';
+    // Step 1: fetch the page via CORS proxy, extract readable text
+    var pageText='';
+    try{
+      var proxyUrl='https://api.allorigins.win/get?url='+encodeURIComponent(url);
+      var pageResp=await fetch(proxyUrl);
+      if(pageResp.ok){
+        var pageJson=await pageResp.json();
+        var html=pageJson.contents||'';
+        // Strip scripts, styles, nav, footer, ads
+        html=html.replace(/<script[\s\S]*?<\/script>/gi,'')
+                 .replace(/<style[\s\S]*?<\/style>/gi,'')
+                 .replace(/<nav[\s\S]*?<\/nav>/gi,'')
+                 .replace(/<footer[\s\S]*?<\/footer>/gi,'')
+                 .replace(/<header[\s\S]*?<\/header>/gi,'')
+                 .replace(/<[^>]+>/g,' ')
+                 .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ').replace(/&#\d+;/g,' ')
+                 .replace(/\s{3,}/g,'\n').trim();
+        // Keep first ~6000 chars — enough for any recipe, avoids token bloat
+        pageText=html.substring(0,6000);
+      }
+    }catch(fe){}
+    // Step 2: if fetch failed or returned nothing useful, fall back to URL-only
+    var promptText = pageText.length > 200
+      ? 'Extract the recipe from this page content (URL: '+url+').\n\nPage text:\n'+pageText
+      : 'Extract the recipe from this URL: '+url;
+    if(loadBox){loadBox.innerHTML='<div class="ai-spin">🤖</div><div style="font-size:14px;font-weight:500;margin-bottom:4px">Extracting recipe…</div><div style="font-size:12px;color:var(--ink2)">Reading ingredients and steps</div>';}
+    var prompt=promptText+'\n\nReturn the recipe. source_url should be: '+url+'. Cuisine: Italian/Mexican/Asian/Indian/Mediterranean/British/American/Japanese/Thai/French. Diets: Vegan/Vegetarian/Pescatarian/Gluten-free/Dairy-free/Halal. Allergens: Gluten/Dairy/Nuts/Eggs/Fish/Shellfish/Soya/Sesame/Celery/Mustard. Units: g/kg/ml/l/tsp/tbsp/cup/oz/lb or empty string. Include ALL steps.';
     var result=await callGemini([{text:prompt}]);
     processImport(result);
   }catch(e){
