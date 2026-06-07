@@ -1361,23 +1361,12 @@ function extractJSON(raw) {
   try { var p2 = JSON.parse(text.trim()); if (p2 && typeof p2 === 'object') return p2; } catch(e) {}
 
   // 4. Find the first { ... } block in the text (handles JSON embedded in prose)
- var start = text.indexOf('{');
-
-if (start !== -1) {
-  var candidate = text.slice(start);
-
-  var opens = (candidate.match(/\{/g) || []).length;
-  var closes = (candidate.match(/\}/g) || []).length;
-
-  if (opens > closes) {
-    candidate += new Array(opens - closes + 1).join('}');
+  var start = text.indexOf('{');
+  var end = text.lastIndexOf('}');
+  if (start !== -1 && end !== -1 && end > start) {
+    var slice = text.slice(start, end + 1);
+    try { var p3 = JSON.parse(slice); if (p3 && typeof p3 === 'object') return p3; } catch(e) {}
   }
-
-  try {
-    var p3 = JSON.parse(candidate);
-    if (p3 && typeof p3 === 'object') return p3;
-  } catch(e) {}
-}
 
   // 5. Nothing worked — throw with a preview of what we received
   throw new Error('Could not parse recipe from Gemini response. Received: ' + text.substring(0, 120));
@@ -1385,8 +1374,6 @@ if (start !== -1) {
 
 function processImport(text) {
   gr('import-loading').style.display = 'none';
-  console.log ('RAW IMPORT RESPONSE');
-  console.log(text);
   if (!text || !text.trim()) { showToast('Nothing to import'); return; }
 
   var data;
@@ -1533,11 +1520,7 @@ async function importURL(){
       'Cuisine: Italian/Mexican/Asian/Indian/Mediterranean/British/American/Japanese/Thai/French. '+
       'Diets: Vegan/Vegetarian/Pescatarian/Gluten-free/Dairy-free/Halal. '+
       'Allergens: Gluten/Dairy/Nuts/Eggs/Fish/Shellfish/Soya/Sesame/Celery/Mustard. '+
-      'Units: g/kg/ml/l/tsp/tbsp/cup/oz/lb or empty string.'+
-      'Include ALL steps.'+
-      'Keep descriptions short (maximum 30 words).'+
-      'Return ONLY valid JSON.'+
-      'No commentary before or after the JSON.';
+      'Units: g/kg/ml/l/tsp/tbsp/cup/oz/lb or empty string. Include ALL steps. JSON only.';
     var result=await callGeminiWithURL([{text:prompt}]);
     processImport(result);
   }catch(e){
@@ -1588,7 +1571,7 @@ async function callGeminiWithURL(parts) {
   var body = {
     contents: [{ role: 'user', parts: parts }],
     tools: [{ url_context: {} }],
-    generationConfig: { temperature: 0.1, maxOutputTokens: 8192 }
+    generationConfig: { temperature: 0.1, maxOutputTokens: 1500 }
     // Note: responseSchema cannot be combined with tools in Gemini API
   };
   async function attempt() {
@@ -1614,10 +1597,6 @@ async function callGeminiWithURL(parts) {
   var text = data.candidates && data.candidates[0] &&
              data.candidates[0].content && data.candidates[0].content.parts &&
              data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text;
-  
-  console.log('Gemini URL response length',(text || ''). length);
-  console.log('Last 500 chars', (text || '').slice(-500));
-  
   return text || '';
 }
 
