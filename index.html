@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v5.4 -->
+<!-- v5.5 -->
 
 <html lang="en">
 <head>
@@ -225,6 +225,24 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
 .last-cooked{font-size:11px;color:var(--ink3);margin-top:2px;margin-bottom:4px}
 /* Meal type chips */
 .mt-chip-wrap{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+/* ── v5.5 NEW STYLES ─────────────────────────────────────────── */
+.sm-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sm-chip{padding:10px 12px;border-radius:var(--rs);border:1.5px solid var(--paper3);background:var(--cream);color:var(--ink2);font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;text-align:left;transition:border-color 0.15s,box-shadow 0.15s;width:100%}
+.sm-chip.on{border-color:var(--sage);box-shadow:0 0 0 2px var(--sage-p);background:var(--sage-p)}
+.sm-chip:active{transform:scale(0.97)}
+.sm-chip-name{font-weight:600;display:block}
+.sm-chip-tier{font-size:10px;color:var(--ink3);display:block;margin-top:1px}
+.sm-chip.on .sm-chip-tier{color:var(--sage-l)}
+.cost-banner{background:var(--sage);color:#fff;border-radius:var(--r);padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
+.cost-banner.budget{background:#1e5c35}
+.cost-banner.premium{background:#3a2e20}
+.cost-banner-label{font-size:10px;opacity:0.75;font-weight:500;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:2px}
+.cost-banner-total{font-family:'Playfair Display',serif;font-size:28px;font-weight:700;line-height:1}
+.cost-banner-store{font-size:12px;opacity:0.8;margin-top:3px}
+.cost-disclaimer{font-size:11px;color:var(--ink3);margin-bottom:14px;line-height:1.5;font-style:italic}
+.app-chip{padding:7px 11px;border-radius:20px;border:1.5px solid var(--paper3);background:var(--cream);color:var(--ink2);font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif}
+.app-chip.on{background:var(--warm-p);color:#5a3a10;border-color:var(--warm)}
+.app-warn{background:var(--warm-p);border:1px solid var(--warm);border-radius:8px;padding:7px 10px;font-size:12px;color:#5a3a10;display:flex;gap:6px;margin-top:5px;align-items:flex-start}
 </style>
 </head>
 <body>
@@ -247,6 +265,7 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
     </div>
     <div id="panel-shopping" class="panel">
       <div class="sec-hdr"><div class="sec-title">Shopping list</div><div style="display:flex;gap:5px"><button class="btn btns" onclick="shareShopList()">&#128279;</button><button class="btn btns" onclick="openAisleOrder()">&#9776; Aisles</button><button class="btn btns" onclick="clearChecks()">Clear ticks</button></div></div>
+      <div id="cost-banner-wrap"></div>
       <div id="shop-content"></div>
       <hr class="shop-divider"/>
       <div class="sec-hdr" style="margin-bottom:8px"><div style="font-family:'Playfair Display',serif;font-size:16px">Extras</div></div>
@@ -428,6 +447,16 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
       <div class="fg"><label class="fl">My allergens — we'll warn you on every meal</label><div class="cwrap" id="prof-al"></div></div>
       <div class="fg"><label class="fl">My diet preference</label><div class="cwrap" id="prof-di"></div></div>
       <div class="fg"><label class="fl">Week starts on</label><div class="cwrap" id="prof-wk"></div></div>
+      <div class="fg">
+        <label class="fl">My supermarket</label>
+        <div style="font-size:12px;color:var(--ink3);margin-bottom:10px;line-height:1.5">Used to estimate your weekly shop cost. Prices are rough UK averages — actual costs will vary.</div>
+        <div class="sm-grid" id="prof-sm"></div>
+      </div>
+      <div class="fg">
+        <label class="fl">My kitchen appliances</label>
+        <div style="font-size:12px;color:var(--ink3);margin-bottom:10px;line-height:1.5">Tick what you own — we'll flag if a recipe needs something you haven't got.</div>
+        <div class="cwrap" id="prof-app"></div>
+      </div>
     </div>
     <div class="s-foot"><button class="btn btnp" onclick="saveProfile()">Save</button></div>
   </div>
@@ -491,7 +520,7 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
 <script>
 // ── CACHE NUKE v3.0: clears stale SW + caches, one-time reload ─────────────
 (function(){
-  var CURRENT='mep-app-v5.4';
+  var CURRENT='mep-app-v5.5';
   var nuked=sessionStorage.getItem('cache-nuked');
   if(nuked===CURRENT)return; // already done this session
   function doNuke(){
@@ -530,6 +559,49 @@ var weekOffset=0;
 var DEFAULT_AISLE_ORDER=['Produce','Protein','Dairy','Pantry','Spices','Other'];
 var aisleOrder=DEFAULT_AISLE_ORDER.slice();
 var nrRating=0;
+
+// ── v5.5: SUPERMARKETS ────────────────────────────────────────────────────────
+var SUPERMARKETS=[
+  {id:'tesco',      name:'Tesco',       emoji:'🔵', tier:'mid',     tierLabel:'Mid-range', mult:1.00},
+  {id:'asda',       name:'Asda',        emoji:'🟢', tier:'budget',  tierLabel:'Budget',    mult:0.90},
+  {id:'morrisons',  name:'Morrisons',   emoji:'🟡', tier:'mid',     tierLabel:'Mid-range', mult:0.97},
+  {id:'sainsburys', name:"Sainsbury's", emoji:'🟠', tier:'mid',     tierLabel:'Mid-range', mult:1.05},
+  {id:'lidl',       name:'Lidl',        emoji:'🔴', tier:'budget',  tierLabel:'Budget',    mult:0.78},
+  {id:'aldi',       name:'Aldi',        emoji:'🟤', tier:'budget',  tierLabel:'Budget',    mult:0.75},
+  {id:'ms',         name:'M&S',         emoji:'⚫', tier:'premium', tierLabel:'Premium',   mult:1.40},
+  {id:'waitrose',   name:'Waitrose',    emoji:'🌿', tier:'premium', tierLabel:'Premium',   mult:1.35}
+];
+var AISLE_BASE_COST={Produce:0.85,Protein:2.80,Dairy:1.20,Pantry:1.10,Spices:0.60,Other:0.90};
+var userSupermarket='tesco';
+
+// ── v5.5: APPLIANCES ──────────────────────────────────────────────────────────
+var ALL_APPLIANCES=[
+  {id:'hob',          name:'Hob / Stovetop',  emoji:'🍳'},
+  {id:'oven',         name:'Oven',             emoji:'🔥'},
+  {id:'microwave',    name:'Microwave',        emoji:'📻'},
+  {id:'airfryer',     name:'Air fryer',        emoji:'💨'},
+  {id:'slowcooker',   name:'Slow cooker',      emoji:'🥘'},
+  {id:'instantpot',   name:'Instant pot',      emoji:'⚡'},
+  {id:'blender',      name:'Blender',          emoji:'🌀'},
+  {id:'foodprocessor',name:'Food processor',   emoji:'⚙️'},
+  {id:'standmixer',   name:'Stand mixer',      emoji:'🎂'},
+  {id:'bbq',          name:'BBQ / Grill',      emoji:'🪵'},
+  {id:'ricecooker',   name:'Rice cooker',      emoji:'🍚'},
+  {id:'toaster',      name:'Toaster',          emoji:'🍞'}
+];
+var APPLIANCE_KEYWORDS={
+  oven:['bake','roast','oven','broil','casserole','fan oven','preheated','180c','200c','degrees c','°c'],
+  microwave:['microwave','nuke'],
+  airfryer:['air fry','airfry','air-fry'],
+  slowcooker:['slow cook','slow-cook','crockpot','low and slow'],
+  instantpot:['instant pot','pressure cook','pressure-cook'],
+  blender:['blend','blender','smoothie','purée','puree','liquidise','liquidize'],
+  foodprocessor:['food processor','food-processor','pulse until'],
+  standmixer:['stand mixer','stand-mixer','beat until fluffy','cream the butter'],
+  bbq:['bbq','barbecue','barbecued','charcoal','griddle'],
+  ricecooker:['rice cooker']
+};
+var userAppliances=[];
 
 var recipes=[
   {id:1,name:'Spaghetti Bolognese',cuisine:'Italian',diets:[],allergens:['Gluten','Dairy'],time:40,desc:'Classic Italian meat sauce pasta',ingredients:[{name:'spaghetti',qty:400,unit:'g'},{name:'minced beef',qty:500,unit:'g'},{name:'onion',qty:1,unit:''},{name:'garlic',qty:3,unit:'clove(s)'},{name:'tinned tomatoes',qty:1,unit:'can(s)'},{name:'tomato paste',qty:2,unit:'tbsp'},{name:'parmesan',qty:60,unit:'g'},{name:'olive oil',qty:2,unit:'tbsp'}],steps:['Heat olive oil in a large pan over medium heat. Finely dice the onion and cook for 5 minutes until soft.','Add minced garlic and cook for 1 minute until fragrant.','Add minced beef and cook, breaking it apart, until browned all over — about 8 minutes.','Stir in tomato paste and cook for 2 minutes. Add tinned tomatoes, season well, and simmer on low heat for 20 minutes.','Cook spaghetti in well-salted boiling water according to packet instructions. Reserve a cup of pasta water before draining.','Toss drained pasta with the sauce, adding a splash of pasta water to loosen. Serve topped with grated parmesan.']},
@@ -580,33 +652,72 @@ function initFB(){
     setTimeout(function(){closeM('modal-fb');},1200);
     fbRef.on('value',function(snap){
       var d=snap.val();if(!d)return;
-      var isOwnEcho=(Date.now()-lastLocalPush)<15000&&d.who===fbCfg.who;
-      if(isOwnEcho){fbInitialLoad=false;return;}
+      // isOwnEcho: use timestamp only — don't check who name, two users could share a name
+      // ignore only updates whose timestamp is within 2 seconds of the one I just wrote
+      var remoteTs = d.ts || 0;
+      var isOwnEcho = 
+        remoteTs &&
+        Math.abs(remoteTs - lastLocalPush) < 2000;
+      if(isOwnEcho) {
+        fbInitialLoad = false;
+        return
+      }
+
       if(fbInitialLoad){
         fbInitialLoad=false;
         var localTs=loadL('planTs')||0;
         var remoteTs=d.ts||0;
         var remoteIsNewer=remoteTs>localTs+5000;
+
+        // Merge recipes: add any remote recipes we don't have locally
         if(d.recipes&&d.recipes.length>0){
           var nd3=normaliseIds({recipes:d.recipes,plan:d.plan||{}});
           var localIds={};recipes.forEach(function(r){localIds[parseInt(r.id,10)]=true;});
           nd3.recipes.forEach(function(r){if(!localIds[parseInt(r.id,10)])recipes.push(r);});
-          if(remoteIsNewer&&d.plan){plan=nd3.plan;}
-          else if(d.plan){DAYS.forEach(function(day){if((!plan[day]||plan[day].length===0)&&nd3.plan[day]&&nd3.plan[day].length>0){plan[day]=nd3.plan[day];}});}
+          // Only overwrite plan if remote is definitively newer AND has plan data
+          if(remoteIsNewer&&d.plan&&Object.keys(d.plan).length>0){
+            plan=nd3.plan;
+          } else if(d.plan){
+            // Merge: fill empty local days from remote
+            DAYS.forEach(function(day){
+              if((!plan[day]||plan[day].length===0)&&nd3.plan[day]&&nd3.plan[day].length>0){plan[day]=nd3.plan[day];}
+            });
+          }
         }
         if(d.checked&&(remoteIsNewer||Object.keys(checked).length===0))checked=d.checked;
-        push();renderAll();return;
+        // Only push back if we actually have data to contribute — never push empty over populated
+        if(recipes.length>0||Object.keys(plan).some(function(k){return(plan[k]||[]).length>0;})){
+          push();
+        }
+        renderAll();return;
+      }
+
+      // Live update from partner — only apply if their data is newer or richer
+      var remoteTs2=d.ts||0;
+      var localTs2=loadL('planTs')||0;
+      // Never blindly overwrite local data with older or empty remote data
+      if(remoteTs2<localTs2-30000){
+        // Remote is more than 30s older than local — ignore silently
+        renderAll();return;
       }
       if(d.recipes&&d.recipes.length>0){
-        var nd4=normaliseIds({recipes:d.recipes,plan:d.plan||{}});d.recipes=nd4.recipes;if(d.plan)d.plan=nd4.plan;
+        var nd4=normaliseIds({recipes:d.recipes,plan:d.plan||{}});
         var lm={};recipes.forEach(function(r){lm[parseInt(r.id,10)]=r;});
-        recipes=d.recipes.map(function(r){
+        // Merge recipes: keep local steps/extras, add new remote recipes
+        var mergedRecipes=nd4.recipes.map(function(r){
           var local=lm[parseInt(r.id,10)];
           if(local){if(!r.steps||!r.steps.length)r.steps=local.steps||[];if(!r.source_book&&local.source_book)r.source_book=local.source_book;if(!r.source_page&&local.source_page)r.source_page=local.source_page;}
           return r;
         });
+        // Also keep any local recipes not in remote
+        nd4.recipes.forEach(function(r){lm[parseInt(r.id,10)]=r;});
+        recipes.forEach(function(r){if(!lm[parseInt(r.id,10)])mergedRecipes.push(r);});
+        recipes=mergedRecipes;
+        if(d.plan&&Object.keys(d.plan).length>0)plan=nd4.plan;
+      } else if(d.plan&&Object.keys(d.plan).length>0){
+        // Remote has plan but no recipes (shouldn't happen, but handle gracefully)
+        plan=d.plan;
       }
-      if(d.plan)plan=d.plan;
       if(d.checked)checked=d.checked;
       renderAll();
       if(d.who)showToast(d.who+' updated the planner');
@@ -619,13 +730,23 @@ var fbInitialLoad=true;
 function push(){
   if(!fbConn||!fbRef)return;
   lastLocalPush=Date.now();
-  fbRef.set({recipes:recipes,plan:plan,checked:checked,who:fbCfg.who||'Someone',ts:Date.now()});
+  //Save recipes
+fbRef.child("recipes").set(recipes);
+
+  //Save planner and checked together
+  fbRef:.child("planner").set({
+    plan: plan,
+    checked: checked,
+    who: fbCfg.who || "Someone",
+    ts: Date.now()
+
+  });
 }
 
 // PERSIST
 function saveL(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 function loadL(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}}
-function persist(){saveL('recipes',recipes);saveL('plan',plan);saveL('checked',checked);saveL('extraItems',extraItems);saveL('aisleOrder',aisleOrder);saveL('collections',collections);saveL('customMT',customMT);saveL('profile',{userAllergens:userAllergens,userDiet:userDiet,weekStart:weekStart});saveL('planTs',Date.now());push();}
+function persist(){saveL('recipes',recipes);saveL('plan',plan);saveL('checked',checked);saveL('extraItems',extraItems);saveL('aisleOrder',aisleOrder);saveL('collections',collections);saveL('customMT',customMT);saveL('profile',{userAllergens:userAllergens,userDiet:userDiet,weekStart:weekStart,userSupermarket:userSupermarket,userAppliances:userAppliances});saveL('planTs',Date.now());push();}
 function normaliseIds(data){
   if(data.recipes){data.recipes=data.recipes.map(function(r){r.id=parseInt(r.id,10)||r.id;return r;});}
   if(data.plan){Object.keys(data.plan).forEach(function(day){data.plan[day]=(data.plan[day]||[]).map(function(m){m.recipeId=parseInt(m.recipeId,10)||m.recipeId;return m;});});}
@@ -641,7 +762,7 @@ function loadPersisted(){
   var cmt=loadL('customMT');if(cmt)customMT=cmt;
   var dm=loadL('darkMode');if(dm===true)darkMode=true;
   if(darkMode)document.body.classList.add('dark');
-  var pf=loadL('profile');if(pf){userAllergens=pf.userAllergens||[];userDiet=pf.userDiet||null;weekStart=typeof pf.weekStart==='number'?pf.weekStart:0;}
+  var pf=loadL('profile');if(pf){userAllergens=pf.userAllergens||[];userDiet=pf.userDiet||null;weekStart=typeof pf.weekStart==='number'?pf.weekStart:0;userSupermarket=pf.userSupermarket||'tesco';userAppliances=pf.userAppliances||[];}
   var ak=loadL('apiKey');if(ak)API_KEY=ak;
   var cfg=loadL('fbCfg');if(cfg){fbCfg=cfg;loadFBSDK().then(initFB).catch(function(){});}
 }
@@ -722,6 +843,8 @@ function renderPlanner(){
         info.appendChild(mkEl('div','meal-title',r.name));
         if(m.note)info.appendChild(mkEl('div','meal-note','📝 '+m.note));
         if(ha){info.appendChild(mkEl('div','meal-warn','! Contains '+hits.join(', ')));}
+        var missingInPlan=getMissingAppliances(r);
+        if(missingInPlan.length){info.appendChild(mkEl('div','meal-warn','🔌 Needs: '+missingInPlan.map(function(id){var ap=ALL_APPLIANCES.find(function(a){return a.id===id;});return ap?ap.name:id;}).join(', ')));}
         var baseServings=r.servings||4;var planServings=m.servings||baseServings;
         var metaTxt=r.cuisine+' - '+r.time+' min'+(r.steps&&r.steps.length?' - '+r.steps.length+' steps':'');
         info.appendChild(mkEl('div','meal-meta',metaTxt));
@@ -748,6 +871,68 @@ function renderPlanner(){
 }
 function rmMeal(day,i){var k=planKey(day);if(plan[k])plan[k].splice(i,1);renderPlanner();persist();showToast('Meal removed');}
 
+// ─── v5.5 COST ESTIMATION ────────────────────────────────────────────────────
+function estimateCost(){
+  var sm=SUPERMARKETS.find(function(s){return s.id===userSupermarket;})||SUPERMARKETS[0];
+  var grps=consolidate();
+  var total=0;
+  aisleOrder.forEach(function(cat){
+    var items=grps[cat]||[];
+    var base=AISLE_BASE_COST[cat]||0.90;
+    items.forEach(function(item){
+      var cost=base*sm.mult;
+      if(item.unit==='g'&&item.qty>500)cost*=1.6;
+      else if(item.unit==='kg'&&item.qty>1)cost*=1.8;
+      else if(item.unit==='l'&&item.qty>0.5)cost*=1.4;
+      total+=cost;
+    });
+  });
+  total+=extraItems.length*(AISLE_BASE_COST.Pantry*sm.mult);
+  return{total:Math.round(total*100)/100,sm:sm};
+}
+function renderCostBanner(){
+  var wrap=gr('cost-banner-wrap');if(!wrap)return;
+  wrap.innerHTML='';
+  var wp=getWeekPlan();
+  var tot=Object.values(wp).reduce(function(s,a){return s+(a?a.length:0);},0);
+  if(tot===0)return;
+  var est=estimateCost();
+  var tierClass=est.sm.tier==='budget'?' budget':est.sm.tier==='premium'?' premium':'';
+  var banner=document.createElement('div');banner.className='cost-banner'+tierClass;
+  var left=document.createElement('div');
+  var lbl=document.createElement('div');lbl.className='cost-banner-label';lbl.textContent='Estimated weekly shop';
+  var totEl=document.createElement('div');totEl.className='cost-banner-total';totEl.textContent='£'+est.total.toFixed(2);
+  var storeEl=document.createElement('div');storeEl.className='cost-banner-store';storeEl.textContent=est.sm.emoji+' '+est.sm.name;
+  left.appendChild(lbl);left.appendChild(totEl);left.appendChild(storeEl);
+  var right=document.createElement('div');right.style.cssText='text-align:right;flex-shrink:0;margin-left:12px';
+  var mealsLbl=document.createElement('div');mealsLbl.style.cssText='font-size:11px;opacity:0.75;margin-bottom:6px';mealsLbl.textContent=tot+' meal'+(tot!==1?'s':'')+' planned';
+  var chgBtn=document.createElement('button');
+  chgBtn.style.cssText='background:rgba(255,255,255,0.18);color:#fff;border:1px solid rgba(255,255,255,0.3);border-radius:var(--rs);padding:5px 10px;font-size:11px;font-weight:500;cursor:pointer;font-family:\'DM Sans\',sans-serif';
+  chgBtn.textContent='Change store';
+  chgBtn.addEventListener('click',function(){openProfile();});
+  right.appendChild(mealsLbl);right.appendChild(chgBtn);
+  banner.appendChild(left);banner.appendChild(right);
+  wrap.appendChild(banner);
+  var disc=document.createElement('div');disc.className='cost-disclaimer';
+  disc.textContent='Rough estimates based on typical '+est.sm.name+' prices — actual costs vary by product and offers.';
+  wrap.appendChild(disc);
+}
+// ─── v5.5 APPLIANCE HELPERS ───────────────────────────────────────────────────
+function getRecipeAppliances(r){
+  var text=((r.name||'')+' '+(r.desc||'')+' '+(r.steps||[]).join(' ')).toLowerCase();
+  var needed=[];
+  Object.keys(APPLIANCE_KEYWORDS).forEach(function(id){
+    if(APPLIANCE_KEYWORDS[id].some(function(w){return text.indexOf(w)>=0;}))needed.push(id);
+  });
+  if(!needed.length&&r.ingredients&&r.ingredients.length>2)needed.push('hob');
+  return needed;
+}
+function getMissingAppliances(r){
+  if(!userAppliances.length)return[];
+  return getRecipeAppliances(r).filter(function(id){return userAppliances.indexOf(id)<0;});
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 // SHOPPING
 function consolidate(){
   var totals={};
@@ -765,6 +950,7 @@ function consolidate(){
   return cats;
 }
 function renderShop(){
+  renderCostBanner();
   var el=gr('shop-content');
   var tot=Object.values(getWeekPlan()).reduce(function(s,a){return s+(a?a.length:0)},0);
   if(tot===0){el.innerHTML='<div class="empty"><div class="empty-icon">🛒</div><div class="empty-text">Add meals to your planner first</div></div>';renderExtras();return;}
@@ -857,6 +1043,8 @@ function makeRCard(r){
   r.allergens.forEach(function(a){var t=document.createElement('span');t.className='tag '+(hits.indexOf(a)>=0?'tr':'tgr');t.textContent=a;tags.appendChild(t);});
   card.appendChild(tags);
   if(ha){var w=document.createElement('div');w.className='rc-warn';var s1=document.createElement('span');s1.textContent='!';var s2=document.createElement('span');s2.textContent='Contains '+hits.join(', ');w.appendChild(s1);w.appendChild(s2);card.appendChild(w);}
+  var missingApp=getMissingAppliances(r);
+  if(missingApp.length){var aw=document.createElement('div');aw.className='app-warn';var awI=document.createElement('span');awI.textContent='🔌';var awT=document.createElement('span');awT.textContent='May need: '+missingApp.map(function(id){var ap=ALL_APPLIANCES.find(function(a){return a.id===id;});return ap?ap.emoji+' '+ap.name:id;}).join(', ');aw.appendChild(awI);aw.appendChild(awT);card.appendChild(aw);}
   var acts=document.createElement('div');acts.className='rc-actions';
   var vb=document.createElement('button');vb.className='btn btns';vb.textContent='View';vb.style.flex='1';
   (function(id){vb.addEventListener('click',function(){openRV(id);});})(r.id);
@@ -1131,6 +1319,21 @@ function openRV(id){
   cont.appendChild(hero);
   if(r.diets.length||r.allergens.length){var tags=mkEl('div');tags.style.cssText='display:flex;flex-wrap:wrap;gap:5px;margin-bottom:16px';r.diets.forEach(function(d){tags.appendChild(mkEl('span','tag tg',d));});r.allergens.forEach(function(a){tags.appendChild(mkEl('span','tag '+(hits.indexOf(a)>=0?'tr':'tgr'),a));});cont.appendChild(tags);}
   if(ha){var w=mkEl('div','rc-warn');w.style.marginBottom='16px';w.appendChild(mkEl('span','','!'));w.appendChild(mkEl('span','','Contains: '+hits.join(', ')));cont.appendChild(w);}
+  var neededApp=getRecipeAppliances(r);
+  if(neededApp.length){
+    var appRow=document.createElement('div');appRow.style.cssText='display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:16px';
+    var appLbl=document.createElement('span');appLbl.style.cssText='font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink3)';appLbl.textContent='Needs:';
+    appRow.appendChild(appLbl);
+    neededApp.forEach(function(id){
+      var ap=ALL_APPLIANCES.find(function(a){return a.id===id;});if(!ap)return;
+      var missing=userAppliances.length>0&&userAppliances.indexOf(id)<0;
+      var chip=document.createElement('span');
+      chip.style.cssText='padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid;'+(missing?'background:var(--warm-p);color:#5a3a10;border-color:var(--warm)':'background:var(--sage-p);color:var(--sage);border-color:var(--sage-p)');
+      chip.textContent=ap.emoji+' '+ap.name+(missing?' ✕':'');
+      appRow.appendChild(chip);
+    });
+    cont.appendChild(appRow);
+  }
   // Servings scaler
   var rvServings=r.servings||4;
   var rvSWrap=mkEl('div');rvSWrap.style.cssText='display:flex;align-items:center;gap:10px;margin-bottom:16px;background:var(--paper2);border-radius:var(--rs);padding:10px 14px';
@@ -1361,12 +1564,23 @@ function extractJSON(raw) {
   try { var p2 = JSON.parse(text.trim()); if (p2 && typeof p2 === 'object') return p2; } catch(e) {}
 
   // 4. Find the first { ... } block in the text (handles JSON embedded in prose)
-  var start = text.indexOf('{');
-  var end = text.lastIndexOf('}');
-  if (start !== -1 && end !== -1 && end > start) {
-    var slice = text.slice(start, end + 1);
-    try { var p3 = JSON.parse(slice); if (p3 && typeof p3 === 'object') return p3; } catch(e) {}
+ var start = text.indexOf('{');
+
+if (start !== -1) {
+  var candidate = text.slice(start);
+
+  var opens = (candidate.match(/\{/g) || []).length;
+  var closes = (candidate.match(/\}/g) || []).length;
+
+  if (opens > closes) {
+    candidate += new Array(opens - closes + 1).join('}');
   }
+
+  try {
+    var p3 = JSON.parse(candidate);
+    if (p3 && typeof p3 === 'object') return p3;
+  } catch(e) {}
+}
 
   // 5. Nothing worked — throw with a preview of what we received
   throw new Error('Could not parse recipe from Gemini response. Received: ' + text.substring(0, 120));
@@ -1374,6 +1588,8 @@ function extractJSON(raw) {
 
 function processImport(text) {
   gr('import-loading').style.display = 'none';
+  console.log ('RAW IMPORT RESPONSE');
+  console.log(text);
   if (!text || !text.trim()) { showToast('Nothing to import'); return; }
 
   var data;
@@ -1492,12 +1708,21 @@ async function extractImg(){
   if(!API_KEY){showAPIKeyPrompt();return;}
   gr('import-loading').style.display='block';gr('import-result').innerHTML='';
   try{
-    var prompt='Extract the recipe from this image. Return ONLY this JSON structure — no markdown, no code fences:\n{"name":"","cuisine":"Italian","diets":[],"allergens":[],"time":30,"servings":4,"desc":"","source_url":"","ingredients":[{"name":"","qty":1,"unit":"g"}],"steps":["Step 1 instruction"]}\n\nCuisine: Italian/Mexican/Asian/Indian/Mediterranean/British/American/Japanese/Thai/French. Diets: Vegan/Vegetarian/Pescatarian/Gluten-free/Dairy-free/Halal. Allergens: Gluten/Dairy/Nuts/Eggs/Fish/Shellfish/Soya/Sesame/Celery/Mustard. Units: g/kg/ml/l/tsp/tbsp/cup/oz/lb or empty string for whole items. Include ALL method steps. Return JSON only — no markdown, no code fences. source_url: empty string for images.';
+    // FIX: Images must NOT use responseSchema — it conflicts with vision requests in Gemini.
+    // Use callGeminiVision which sends no schema and relies on extractJSON parser.
+    var prompt='Extract the recipe from this image. Return ONLY a raw JSON object — no markdown, no code fences, no explanation:\n'+
+      '{"name":"","cuisine":"British","diets":[],"allergens":[],"time":30,"servings":4,"desc":"","source_url":"",'+
+      '"ingredients":[{"name":"","qty":1,"unit":"g"}],"steps":["Step 1 instruction"]}\n\n'+
+      'Cuisine: Italian/Mexican/Asian/Indian/Mediterranean/British/American/Japanese/Thai/French. '+
+      'Diets: Vegan/Vegetarian/Pescatarian/Gluten-free/Dairy-free/Halal. '+
+      'Allergens: Gluten/Dairy/Nuts/Eggs/Fish/Shellfish/Soya/Sesame/Celery/Mustard. '+
+      'Units: g/kg/ml/l/tsp/tbsp/cup/oz/lb or empty string for whole items. '+
+      'Include ALL method steps. source_url: empty string for images. Return JSON only.';
     var parts=[
       {inline_data:{mime_type:imgMime,data:imgB64}},
       {text:prompt}
     ];
-    var result=await callGemini(parts);
+    var result=await callGeminiVision(parts);
     processImport(result);
   }catch(e){
     gr('import-loading').style.display='none';
@@ -1510,18 +1735,35 @@ async function importURL(){
   if(!API_KEY){showAPIKeyPrompt();return;}
   gr('import-loading').style.display='block';gr('import-result').innerHTML='';
   try{
-    // Use Gemini's built-in url_context tool — Gemini fetches the page itself,
-    // no CORS proxy needed. responseSchema cannot be used alongside tools,
-    // so we rely on the prompt + extractJSON parser instead.
     var prompt='Fetch and extract the recipe from this URL: '+url+'\n\n'+
       'Return ONLY a raw JSON object — no markdown, no code fences, no explanation:\n'+
-      '{"name":"","cuisine":"Italian","diets":[],"allergens":[],"time":30,"servings":4,"desc":"","source_url":"'+url+'",'+
+      '{"name":"","cuisine":"British","diets":[],"allergens":[],"time":30,"servings":4,"desc":"","source_url":"'+url+'",'+
       '"ingredients":[{"name":"","qty":1,"unit":"g"}],"steps":["Step 1"]}\n\n'+
       'Cuisine: Italian/Mexican/Asian/Indian/Mediterranean/British/American/Japanese/Thai/French. '+
       'Diets: Vegan/Vegetarian/Pescatarian/Gluten-free/Dairy-free/Halal. '+
       'Allergens: Gluten/Dairy/Nuts/Eggs/Fish/Shellfish/Soya/Sesame/Celery/Mustard. '+
-      'Units: g/kg/ml/l/tsp/tbsp/cup/oz/lb or empty string. Include ALL steps. JSON only.';
-    var result=await callGeminiWithURL([{text:prompt}]);
+      'Units: g/kg/ml/l/tsp/tbsp/cup/oz/lb or empty string for whole items. '+
+      'Include ALL steps. Keep descriptions under 30 words. Return ONLY valid JSON.';
+
+    var result = await callGeminiWithURL([{text:prompt}]);
+
+    // If url_context returned nothing (e.g. BBC Food blocks automated fetch),
+    // fall back to asking Gemini from its training knowledge
+    if (!result || !result.trim() || result.trim().length < 20) {
+      gr('import-result').innerHTML =
+        '<div style="background:var(--warm-p);border:1.5px solid var(--warm);border-radius:var(--r);padding:12px 14px;font-size:13px;color:#5a3a10;margin-bottom:10px">' +
+        '⚠️ Couldn\'t fetch that page directly (it may block automated access). Trying from Gemini\'s knowledge instead…</div>';
+      var fallbackPrompt = 'Extract the recipe from this URL using your training knowledge: '+url+'\n\n'+
+        'Return ONLY a raw JSON object — no markdown, no code fences:\n'+
+        '{"name":"","cuisine":"British","diets":[],"allergens":[],"time":30,"servings":4,"desc":"","source_url":"'+url+'",'+
+        '"ingredients":[{"name":"","qty":1,"unit":"g"}],"steps":["Step 1"]}\n\n'+
+        'Cuisine: Italian/Mexican/Asian/Indian/Mediterranean/British/American/Japanese/Thai/French. '+
+        'Diets: Vegan/Vegetarian/Pescatarian/Gluten-free/Dairy-free/Halal. '+
+        'Allergens: Gluten/Dairy/Nuts/Eggs/Fish/Shellfish/Soya/Sesame/Celery/Mustard. '+
+        'Units: g/kg/ml/l/tsp/tbsp/cup/oz/lb or empty string. Include ALL steps. Return ONLY valid JSON.';
+      result = await callGeminiVision([{text:fallbackPrompt}]);
+    }
+
     processImport(result);
   }catch(e){
     gr('import-loading').style.display='none';
@@ -1571,7 +1813,7 @@ async function callGeminiWithURL(parts) {
   var body = {
     contents: [{ role: 'user', parts: parts }],
     tools: [{ url_context: {} }],
-    generationConfig: { temperature: 0.1, maxOutputTokens: 1500 }
+    generationConfig: { temperature: 0.1, maxOutputTokens: 8192 }
     // Note: responseSchema cannot be combined with tools in Gemini API
   };
   async function attempt() {
@@ -1591,17 +1833,63 @@ async function callGeminiWithURL(parts) {
     var msg = (err.error && err.error.message) || ('API error ' + resp.status);
     if (resp.status === 400 || resp.status === 403) msg = 'Invalid or expired API key — tap \'Change API key\' below to re-enter it.';
     if (resp.status === 429) msg = 'Gemini rate limit hit — please wait 30 seconds and try again.';
+    // Handle "model is overloaded" gracefully
+    if (resp.status === 503 || (msg && msg.toLowerCase().indexOf('overload') >= 0)) msg = 'Gemini is busy right now — please wait a moment and try again.';
     throw new Error(msg);
   }
   var data = await resp.json();
-  var text = data.candidates && data.candidates[0] &&
-             data.candidates[0].content && data.candidates[0].content.parts &&
-             data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text;
+  // FIX: Gemini url_context returns multiple parts — concatenate ALL text parts
+  var textParts = data.candidates && data.candidates[0] &&
+                  data.candidates[0].content && data.candidates[0].content.parts;
+  var text = '';
+  if (textParts && Array.isArray(textParts)) {
+    text = textParts
+      .filter(function(p){ return p && typeof p.text === 'string'; })
+      .map(function(p){ return p.text; })
+      .join('\n');
+  }
+  // Check finish reason — RECITATION or other blocking reasons
+  var finishReason = data.candidates && data.candidates[0] && data.candidates[0].finishReason;
+  if (!text && finishReason && finishReason !== 'STOP') {
+    throw new Error('Gemini could not fetch this page (reason: ' + finishReason + '). Try copying the recipe text and using the Paste tab instead.');
+  }
+  console.log('Gemini URL response — parts:', (textParts||[]).length, 'text length:', text.length);
+  return text || '';
+}
+
+// ─── GEMINI VISION — for image imports (no responseSchema, works with inline_data) ─
+async function callGeminiVision(parts) {
+  if (!API_KEY) { showAPIKeyPrompt(); throw new Error('No API key'); }
+  var model = 'gemini-2.5-flash';
+  var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + API_KEY;
+  var body = {
+    contents: [{ role: 'user', parts: parts }],
+    generationConfig: { temperature: 0.1, maxOutputTokens: 4096 }
+    // No responseSchema — combining schema with image parts causes Gemini to fail
+  };
+  async function attempt() {
+    return fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+  }
+  var resp = await attempt();
+  if (resp.status === 429) { await new Promise(function(r){setTimeout(r,8000);}); resp = await attempt(); }
+  if (!resp.ok) {
+    var err = await resp.json().catch(function(){return{};});
+    var msg = (err.error && err.error.message) || ('API error ' + resp.status);
+    if (resp.status === 400 || resp.status === 403) msg = 'Invalid or expired API key — tap \'Change API key\' below.';
+    if (resp.status === 429) msg = 'Gemini rate limit hit — please wait 30 seconds and try again.';
+    if (resp.status === 503 || (msg && msg.toLowerCase().indexOf('overload') >= 0)) msg = 'Gemini is busy right now — please wait a moment and try again.';
+    throw new Error(msg);
+  }
+  var data = await resp.json();
+  var textParts = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts;
+  var text = '';
+  if (textParts && Array.isArray(textParts)) {
+    text = textParts.filter(function(p){return p && typeof p.text==='string';}).map(function(p){return p.text;}).join('\n');
+  }
   return text || '';
 }
 
 // ─── GEMINI API ───────────────────────────────────────────────────────────────
-// Calls Google Gemini 2.5 Flash (free tier: 15 RPM, 1500 RPD).
 // Handles both text-only and vision (image) requests.
 // Retries once on 429 after a short delay before surfacing the error.
 async function callGemini(parts) {
@@ -1662,6 +1950,7 @@ async function callGemini(parts) {
     var msg = (err.error && err.error.message) || ('API error ' + resp.status);
     if (resp.status === 400 || resp.status === 403) msg = 'Invalid or expired API key — tap \'Change API key\' below to re-enter it.';
     if (resp.status === 429) msg = 'Gemini rate limit hit — please wait 30 seconds and try again.';
+    if (resp.status === 503 || (msg && msg.toLowerCase().indexOf('overload') >= 0)) msg = 'Gemini is busy right now — please wait a moment and try again.';
     throw new Error(msg);
   }
   var data = await resp.json();
@@ -1696,6 +1985,34 @@ function openProfile(){
   gr('prof-al').innerHTML=ALLERGENS.map(function(a){return'<button class="tchip al'+(userAllergens.indexOf(a)>=0?' on':'')+'" onclick="togPA(\''+a+'\')">'+a+'</button>';}).join('');
   gr('prof-di').innerHTML=DIETS.map(function(d){return'<button class="tchip'+(userDiet===d?' on':'')+'" onclick="togPD(\''+d+'\')">'+d+'</button>';}).join('');
   renderProfWeekStart();
+  // Supermarket grid
+  var smEl=gr('prof-sm');smEl.innerHTML='';
+  SUPERMARKETS.forEach(function(sm){
+    var btn=document.createElement('button');
+    btn.className='sm-chip'+(userSupermarket===sm.id?' on':'');
+    var nameSpan=document.createElement('span');nameSpan.className='sm-chip-name';nameSpan.textContent=sm.emoji+' '+sm.name;
+    var tierSpan=document.createElement('span');tierSpan.className='sm-chip-tier';tierSpan.textContent=sm.tierLabel;
+    btn.appendChild(nameSpan);btn.appendChild(tierSpan);
+    (function(id){btn.addEventListener('click',function(){
+      userSupermarket=id;
+      smEl.querySelectorAll('.sm-chip').forEach(function(b){b.classList.remove('on');});
+      btn.classList.add('on');
+    });})(sm.id);
+    smEl.appendChild(btn);
+  });
+  // Appliances
+  var appEl=gr('prof-app');appEl.innerHTML='';
+  ALL_APPLIANCES.forEach(function(ap){
+    var btn=document.createElement('button');
+    btn.className='app-chip'+(userAppliances.indexOf(ap.id)>=0?' on':'');
+    btn.textContent=ap.emoji+' '+ap.name;
+    (function(id,b){b.addEventListener('click',function(){
+      var idx=userAppliances.indexOf(id);
+      if(idx>=0)userAppliances.splice(idx,1);else userAppliances.push(id);
+      b.className='app-chip'+(userAppliances.indexOf(id)>=0?' on':'');
+    });})(ap.id,btn);
+    appEl.appendChild(btn);
+  });
   openM('modal-prof');
 }
 function renderProfWeekStart(){
@@ -1710,7 +2027,7 @@ function togPD(d){userDiet=userDiet===d?null:d;gr('prof-di').innerHTML=DIETS.map
 function saveProfile(){
   closeM('modal-prof');
   // Save profile prefs locally only — no Firebase push (avoids stale plan overwrite)
-  saveL('profile',{userAllergens:userAllergens,userDiet:userDiet,weekStart:weekStart});
+  saveL('profile',{userAllergens:userAllergens,userDiet:userDiet,weekStart:weekStart,userSupermarket:userSupermarket,userAppliances:userAppliances});
   renderAll();
   gr('a-ind').style.display=userAllergens.length?'block':'none';
   gr('p-btn').style.display=userAllergens.length?'none':'block';
@@ -1856,7 +2173,7 @@ handleShareTarget();
 
 // SERVICE WORKER
 (function(){
-  var CACHE_VERSION='v5.4';
+  var CACHE_VERSION='v5.5';
   if(!('serviceWorker' in navigator))return;
   var swCode=[
     'var CACHE="mep-'+CACHE_VERSION+'";',
