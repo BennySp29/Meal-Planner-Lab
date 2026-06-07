@@ -642,26 +642,34 @@ function loadFBSDK(){
     s1.onerror=rej;document.head.appendChild(s1);
   });
 }
+function applyRemoteRecipes(d){
+  if (!d) return;
+  if(isOwnEcho("recipes, d)) {
+               return;
+}
+  var remoteRecipes = Array.isArray(d) ? d: (d.items || []);
+  recipes = remoteRecipes;
+  saveL("recipes", recipes);
+}
 function initFB(){
   try{
     fbInitialLoad=true;
     if(!firebase.apps.length)firebase.initializeApp({apiKey:fbCfg.key,databaseURL:fbCfg.url,projectId:fbCfg.proj});
     fbRef=firebase.database().ref('mep');fbConn=true;
+    fbRef.child("recipes").on("value", function (snap) {
+      applyRemoteRecipes(snap.val());
+    });
     gr('sync-bar').className='sync-bar';gr('sync-txt').textContent='Live sync active'+(fbCfg.who?' — '+fbCfg.who+"'s planner":'');
     gr('fb-status').innerHTML='<span style="color:var(--sage)">✓ Connected!</span>';
     setTimeout(function(){closeM('modal-fb');},1200);
-    fbRef.on('value',function(snap){
-      var d=snap.val();if(!d)return;
-      // isOwnEcho: use timestamp only — don't check who name, two users could share a name
-      // ignore only updates whose timestamp is within 2 seconds of the one I just wrote
-      var remoteTs = d.ts || 0;
-      var isOwnEcho = 
-        remoteTs &&
-        Math.abs(remoteTs - lastLocalPush) < 2000;
-      if(isOwnEcho) {
-        fbInitialLoad = false;
-        return
-      }
+   fbRef.child("recipes").on("value", function(snap) {
+     applyRemoteRecipes(snap.val());
+   });
+  } catch(e) {
+    gr('sync-bar').className = 'sync-bar off';
+    gr('sync-txt').textContent = 'Sync error';
+  }
+}
 
       if(fbInitialLoad){
         fbInitialLoad=false;
@@ -724,24 +732,53 @@ function initFB(){
     });
   }catch(e){gr('sync-bar').className='sync-bar off';gr('sync-txt').textContent='Sync error — tap ☁️ to retry';}
 }
-var lastLocalPush=0;
+var lastLocalPush={
+  recipes: 0,
+  plan: 0,
+  checked: 0
+};
 var fbInitialLoad=true;
-
-function push(){
+  
+function pushRecipes(){
   if(!fbConn||!fbRef)return;
-  lastLocalPush=Date.now();
+  lastLocalPush.recipes = Date.now();
   //Save recipes
-fbRef.child("recipes").set(recipes);
+fbRef.child("recipes").set({
+  items: recipes,
+  who:fbCfg.who ||"Someone",
+  ts: lastLocalPush.recipes
+  });
+}
 
-  //Save planner and checked together
-  fbRef:.child("planner").set({
-    plan: plan,
-    checked: checked,
+ function pushPlan() {
+   if(!fbConn || !fbRef) return;
+   lastLocalPush.plan = Date.now();
+   
+  fbRef.child("plan").set({
+    items: plan,
     who: fbCfg.who || "Someone",
-    ts: Date.now()
+    ts: lastLocalPush.plan
 
   });
 }
+  function pushChecked() {
+    if(!fbConn || !fbRef) return;
+
+    lastLocalPush.checked=Date.now();
+
+    fbRef.child ("checked").set({
+      items:checked, 
+      who:fbCfg.who || "Someone",
+      ts:lastLocalPush.checked
+    });
+  }
+
+  function push() {
+    pushRecipes();
+    pushPlan();
+    pushChecked();
+  }
+
 
 // PERSIST
 function saveL(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
