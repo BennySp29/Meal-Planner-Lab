@@ -644,7 +644,7 @@ function loadFBSDK(){
 }
 function applyRemoteRecipes(d){
   if (!d) return;
-  if(isOwnEcho("recipes, d)) {
+  if(isOwnEcho("recipes", d)) {
                return;
 }
   var remoteRecipes = Array.isArray(d) ? d: (d.items || []);
