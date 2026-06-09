@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v5.5 -->
+<!-- v5.8 -->
 
 <html lang="en">
 <head>
@@ -520,7 +520,7 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
 <script>
 // ── CACHE NUKE v3.0: clears stale SW + caches, one-time reload ─────────────
 (function(){
-  var CURRENT='mep-app-v5.7';
+  var CURRENT='mep-app-v5.8';
   var nuked=sessionStorage.getItem('cache-nuked');
   if(nuked===CURRENT)return; // already done this session
   function doNuke(){
@@ -621,7 +621,7 @@ var aCuisine='Any';var aDiet='Any';
 var amDay=DAYS[0];var amRecipe=null;var amType='Dinner';
 var nrDiets=[];var nrAllergens=[];var ingN=0;var stepN=0;var editId=null;
 var fridgeIngs=[];
-var fbConn=false;var fbRef=null;
+var fbConn=false;var fbRef=null;var fbPlanLoaded = false;
 var fbCfg={url:'',key:'',proj:'',who:''};
 var fbClientId='client-'+Date.now()+'-'+Math.random().toString(36).slice(2);
 var API_KEY='';
@@ -656,10 +656,38 @@ function applyRemoteData(key,d){
     var recipeItems=Array.isArray(items)?items:[];
     recipes=normaliseIds({recipes:recipeItems,plan:{}}).recipes;
     saveL('recipes',recipes);
-  }else if(key==='plan'){
-    var planItems=items&&typeof items==='object'&&!Array.isArray(items)?items:{};
-    plan=normaliseIds({recipes:[],plan:planItems}).plan;
-    saveL('plan',plan);
+ }else if(key==='plan'){
+  var planItems = items && typeof items === 'object' && !Array.isArray(items)
+    ? items
+    : {};
+
+  var normalisedPlan = normaliseIds({
+    recipes: [],
+    plan: planItems
+  }).plan;
+
+  if (!fbPlanLoaded) {
+  Object.keys(normalisedPlan).forEach(function(dateKey) {
+    plan[dateKey] = normalisedPlan[dateKey];
+  });
+
+  fbPlanLoaded = true;
+} else if (d.changedDateKey) {
+      if (normalisedPlan[d.changedDateKey]) {
+      plan[d.changedDateKey] = normalisedPlan[d.changedDateKey];
+    } else {
+      delete plan[d.changedDateKey];
+    }
+  } else {
+    Object.keys(normalisedPlan).forEach(function(dateKey) {
+      if (!plan[dateKey]) {
+        plan[dateKey] = normalisedPlan[dateKey];
+      }
+    });
+  }
+
+  migrateLegacyPlan();
+  saveL('plan', plan);
   }else if(key==='checked'){
     checked=items&&typeof items==='object'&&!Array.isArray(items)?items:{};
     saveL('checked',checked);
@@ -678,6 +706,7 @@ function initFB(){
   try{
     if(!firebase.apps.length)firebase.initializeApp({apiKey:fbCfg.key,databaseURL:fbCfg.url,projectId:fbCfg.proj});
     fbRef=firebase.database().ref('mep');fbConn=true;
+    fbPlanLoaded = false;
     listenForRemoteData('recipes');
     listenForRemoteData('plan');
     listenForRemoteData('checked');
@@ -707,17 +736,19 @@ fbRef.child("recipes").set({
   });
 }
 
- function pushPlan() {
-   if(!fbConn || !fbRef) return;
-   lastLocalPush.plan = Date.now();
-   
-  fbRef.child("plan").set({
-    items: plan,
-    who: fbCfg.who || "Someone",
-    ts: lastLocalPush.plan,
-    clientId:fbClientId
+function pushPlan(dateKey) {
+  if (!fbConn || !fbRef || !dateKey) return;
 
-  });
+  lastLocalPush.plan = Date.now();
+
+  var updates = {};
+  updates['items/' + dateKey] = plan[dateKey] || null;
+  updates.who = fbCfg.who || 'Someone';
+  updates.ts = lastLocalPush.plan;
+  updates.clientId = fbClientId;
+  updates.changedDateKey = dateKey;
+
+  fbRef.child('plan').update(updates);
 }
   function pushChecked() {
     if(!fbConn || !fbRef) return;
@@ -732,16 +763,16 @@ fbRef.child("recipes").set({
     });
   }
 
- function push(changedKey) {
+function push(changedKey, changedDateKey) {
   if (changedKey === 'recipes') pushRecipes();
-  if (changedKey === 'plan') pushPlan();
+  if (changedKey === 'plan') pushPlan(changedDateKey);
   if (changedKey === 'checked') pushChecked();
 }
 
 // PERSIST
 function saveL(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 function loadL(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}}
-function persist(changedKey){
+function persist(changedKey, changedDateKey){
   saveL('recipes',recipes);
   saveL('plan',plan);
   saveL('checked',checked);
@@ -758,7 +789,7 @@ function persist(changedKey){
     userAppliances:userAppliances
   });
   saveL ('planTs',Date.now());
-  push(changedKey);
+  push(changedKey, changedDateKey);
 }
 function normaliseIds(data){
   if(data.recipes){data.recipes=data.recipes.map(function(r){r.id=parseInt(r.id,10)||r.id;return r;});}
@@ -802,7 +833,67 @@ function showTab(n){
 }
 
 // ─── WEEK HELPERS ─────────────────────────────────────────────────────────────
-function planKey(day){return weekOffset===0?day:day+'_w'+(weekOffset<0?'m'+Math.abs(weekOffset):'p'+weekOffset);}
+function formatLocalDate(date) {
+  var year = date.getFullYear();
+  var month = String(date.getMonth() + 1).padStart(2, '0');
+  var day = String(date.getDate()).padStart(2, '0');
+
+  return year + '-' + month + '-' + day;
+}
+function getViewedWeekStart() {
+  var today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  var currentDayIndex = (today.getDay() + 6) % 7;
+  var daysSinceWeekStart = (currentDayIndex - weekStart + 7) % 7;
+
+  today.setDate(today.getDate() - daysSinceWeekStart + (weekOffset * 7));
+
+  return today;
+}
+function planKey(day) {
+  var weekStartDate = getViewedWeekStart();
+  var dayIndex = DAYS.indexOf(day);
+  var offsetFromWeekStart = (dayIndex - weekStart + 7) % 7;
+
+  var mealDate = new Date(weekStartDate);
+  mealDate.setDate(mealDate.getDate() + offsetFromWeekStart);
+
+  return formatLocalDate(mealDate);
+}
+function migrateLegacyPlan() {
+  var migrated = false;
+
+  Object.keys(plan).forEach(function(oldKey) {
+    var match = oldKey.match(
+      /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)(?:_w([mp])(\d+))?$/
+    );
+
+    if (!match) return;
+
+    var day = match[1];
+    var direction = match[2];
+    var amount = parseInt(match[3], 10) || 0;
+    var oldWeekOffset = direction === 'm' ? -amount : amount;
+
+    var currentOffset = weekOffset;
+    weekOffset = oldWeekOffset;
+
+    var dateKey = planKey(day);
+
+    weekOffset = currentOffset;
+
+    if (!plan[dateKey] && plan[oldKey] && plan[oldKey].length) {
+      plan[dateKey] = plan[oldKey].slice();
+      migrated = true;
+    }
+  });
+
+  if (migrated) {
+    saveL('plan', plan);
+  }
+}
+
 function changeWeek(dir){weekOffset+=dir;renderPlanner();renderShop();}
 function weekLabel(){
   if(weekOffset===0)return'This week';
@@ -867,10 +958,33 @@ function renderPlanner(){
         var sDn=mkEl('button','srv-btn','-');
         var sLbl=mkEl('div','srv-label',planServings+(planServings===1?' serving':' servings'));
         var sUp=mkEl('button','srv-btn','+');
-        (function(d2,idx2,base){
-          sDn.addEventListener('click',function(e){e.stopPropagation();var cur=plan[d2][idx2].servings||base;var nv=Math.max(1,cur-1);plan[d2][idx2].servings=nv;persist('plan');renderPlanner();renderShop();});
-          sUp.addEventListener('click',function(e){e.stopPropagation();var cur=plan[d2][idx2].servings||base;plan[d2][idx2].servings=cur+1;persist('plan');renderPlanner();renderShop();});
-        })(day,i,baseServings);
+        (function(day, index, base) {
+  sDn.addEventListener('click', function(e) {
+    e.stopPropagation();
+
+    var k = planKey(day);
+    var current = plan[k][index].servings || base;
+
+    plan[k][index].servings = Math.max(1, current - 1);
+
+    persist('plan', k);
+    renderPlanner();
+    renderShop();
+  });
+
+  sUp.addEventListener('click', function(e) {
+    e.stopPropagation();
+
+    var k = planKey(day);
+    var current = plan[k][index].servings || base;
+
+    plan[k][index].servings = current + 1;
+
+    persist('plan', k);
+    renderPlanner();
+    renderShop();
+  });
+})(day, i, baseServings);
         sWrap.appendChild(sDn);sWrap.appendChild(sLbl);sWrap.appendChild(sUp);
         var vb=mkEl('button','btn btns','View');vb.style.cssText='flex-shrink:0;font-size:11px;padding:5px 9px';
         (function(rid){vb.addEventListener('click',function(e){e.stopPropagation();openRV(rid);});})(m.recipeId);
@@ -882,7 +996,7 @@ function renderPlanner(){
     pc.appendChild(dayDiv);
   });
 }
-function rmMeal(day,i){var k=planKey(day);if(plan[k])plan[k].splice(i,1);renderPlanner();persist('plan');showToast('Meal removed');}
+function rmMeal(day,i){var k=planKey(day);if(plan[k])plan[k].splice(i,1);renderPlanner();persist('plan',k);showToast('Meal removed');}
 
 // ─── v5.5 COST ESTIMATION ────────────────────────────────────────────────────
 function estimateCost(){
@@ -987,17 +1101,43 @@ function renderShop(){
   el.innerHTML=html;
   renderExtras();
 }
-function removeShopItem(ev,name){
+function removeShopItem(ev, name) {
   ev.stopPropagation();
-  if(!confirm('Remove "'+name+'" from the list?\n\nThis removes the meal(s) that use this ingredient from your planner.'))return;
-  var lower=name.toLowerCase().trim();
-  DAYS.forEach(function(day){
-    plan[day]=(plan[day]||[]).filter(function(m){
-      var r=rec(m.recipeId);if(!r)return true;
-      return!r.ingredients.some(function(ing){return ing.name.toLowerCase().trim()===lower;});
+
+  if (!confirm(
+    'Remove "' + name + '" from the list?\n\n' +
+    'This removes the meal(s) that use this ingredient from your planner.'
+  )) return;
+
+  var lower = name.toLowerCase().trim();
+  var changedDates = [];
+
+  DAYS.forEach(function(day) {
+    var k = planKey(day);
+    var existingMeals = plan[k] || [];
+
+    var remainingMeals = existingMeals.filter(function(meal) {
+      var recipe = rec(meal.recipeId);
+      if (!recipe) return true;
+
+      return !recipe.ingredients.some(function(ingredient) {
+        return ingredient.name.toLowerCase().trim() === lower;
+      });
     });
+
+    if (remainingMeals.length !== existingMeals.length) {
+      plan[k] = remainingMeals;
+      changedDates.push(k);
+    }
   });
-  persist();renderPlanner();renderShop();showToast(name+' removed');
+
+  changedDates.forEach(function(dateKey) {
+    persist('plan', dateKey);
+  });
+
+  renderPlanner();
+  renderShop();
+  showToast(name + ' removed');
 }
 function renderExtras(){
   var el=gr('extras-list');if(!el)return;
@@ -1115,8 +1255,37 @@ function renderRGrid(){
     filtered.forEach(function(r){try{rg.appendChild(makeRCard(r));}catch(e){}});
   }
 }
-function delR(id){if(!confirm('Delete this recipe?'))return;recipes=recipes.filter(function(r){return r.id!==id});Object.keys(plan).forEach(function(k){plan[k]=(plan[k]||[]).filter(function(m){return m.recipeId!==id});});persist();renderAll();showToast('Recipe deleted');}
+function delR(id) {
+  if (!confirm('Delete this recipe?')) return;
 
+  recipes = recipes.filter(function(recipe) {
+    return recipe.id !== id;
+  });
+
+  var changedDates = [];
+
+  Object.keys(plan).forEach(function(dateKey) {
+    var existingMeals = plan[dateKey] || [];
+
+    var remainingMeals = existingMeals.filter(function(meal) {
+      return meal.recipeId !== id;
+    });
+
+    if (remainingMeals.length !== existingMeals.length) {
+      plan[dateKey] = remainingMeals;
+      changedDates.push(dateKey);
+    }
+  });
+
+  persist('recipes');
+
+  changedDates.forEach(function(dateKey) {
+    persist('plan', dateKey);
+  });
+
+  renderAll();
+  showToast('Recipe deleted');
+}
 function dupR(id){
   var r=rec(id);if(!r)return;
   var copy=JSON.parse(JSON.stringify(r));
@@ -1400,7 +1569,7 @@ function renderAML(){
   el.innerHTML=f.map(function(r){var ha=rha(r);var sel=amRecipe===r.id;var hits=r.allergens.filter(function(a){return userAllergens.indexOf(a)>=0});return'<div class="rpick'+(sel?' on':'')+'" onclick="selAMR('+r.id+')"><div style="font-size:13px;font-weight:500;margin-bottom:2px">'+r.name+(sel?' ✓':'')+'</div><div style="font-size:11px;color:var(--ink3)">'+r.cuisine+' · '+r.time+' min</div>'+(ha?'<div style="font-size:11px;color:var(--red);margin-top:3px">⚠ '+hits.join(', ')+'</div>':'')+'</div>';}).join('');
 }
 function selAMR(id){amRecipe=id;renderAML();}
-function confirmAM(){if(!amRecipe){showToast('Pick a recipe first');return;}var k=planKey(amDay);if(!plan[k])plan[k]=[];var note=(gr('am-note')?gr('am-note').value.trim():'');plan[k].push({recipeId:typeof amRecipe==='string'?parseInt(amRecipe,10):amRecipe,mealType:amType,note:note||undefined});closeM('modal-am');renderPlanner();persist('plan');showToast('Added to '+amDay);}
+function confirmAM(){if(!amRecipe){showToast('Pick a recipe first');return;}var k=planKey(amDay);if(!plan[k])plan[k]=[];var note=(gr('am-note')?gr('am-note').value.trim():'');plan[k].push({recipeId:typeof amRecipe==='string'?parseInt(amRecipe,10):amRecipe,mealType:amType,note:note||undefined});closeM('modal-am');renderPlanner();persist('plan',k);showToast('Added to '+amDay);}
 
 // ADD/EDIT RECIPE
 function openAddRecipe(pf){
@@ -2163,7 +2332,7 @@ function previewRandom(){
   randPlan={};
   days.forEach(function(day){
     var usedToday={};
-    var existing=plan[day]||[];
+    var existing=plan[planKey(day)]||[];
     if(skipPlanned&&existing.length>0){randPlan[day]=null;return;}
     randTypes.forEach(function(mt){
       var r=getRandomRecipe(mt,usedToday);
@@ -2183,9 +2352,37 @@ function previewRandom(){
   if(hasAny){gr('rand-apply-btn').style.display='';gr('rand-preview-btn').textContent='Re-roll';}
   else{gr('rand-apply-btn').style.display='none';}
 }
-function applyRandom(){
-  Object.keys(randPlan).forEach(function(day){var meals=randPlan[day];if(!meals)return;var k=planKey(day);if(!plan[k])plan[k]=[];meals.forEach(function(m){plan[k].push({recipeId:m.recipeId,mealType:m.mealType});});});
-  closeM('modal-random');renderPlanner();persist('plan');showToast('Random meals added!');
+function applyRandom() {
+  var changedDates = [];
+
+  Object.keys(randPlan).forEach(function(day) {
+    var meals = randPlan[day];
+    if (!meals) return;
+
+    var k = planKey(day);
+
+    if (!plan[k]) {
+      plan[k] = [];
+    }
+
+    meals.forEach(function(meal) {
+      plan[k].push({
+        recipeId: meal.recipeId,
+        mealType: meal.mealType
+      });
+    });
+
+    changedDates.push(k);
+  });
+
+  closeM('modal-random');
+  renderPlanner();
+
+  changedDates.forEach(function(dateKey) {
+    persist('plan', dateKey);
+  });
+
+  showToast('Random meals added!');
 }
 
 // ─── WEB SHARE TARGET ─────────────────────────────────────────────────────────
@@ -2226,7 +2423,9 @@ function cleanSocialText(raw){
 }
 
 // INIT
-loadPersisted();refreshMT();
+loadPersisted();
+migrateLegacyPlan();
+refreshMT();
 renderPlanner();renderCF();renderDF();renderRGrid();renderFC();renderExtras();
 gr('a-ind').style.display=userAllergens.length?'block':'none';
 gr('p-btn').style.display=userAllergens.length?'none':'block';
@@ -2235,7 +2434,7 @@ handleShareTarget();
 
 // SERVICE WORKER
 (function(){
-  var CACHE_VERSION='v5.7';
+  var CACHE_VERSION='v5.8';
   if(!('serviceWorker' in navigator))return;
   var swCode=[
     'var CACHE="mep-'+CACHE_VERSION+'";',
