@@ -520,7 +520,7 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
 <script>
 // ── CACHE NUKE v3.0: clears stale SW + caches, one-time reload ─────────────
 (function(){
-  var CURRENT='mep-app-v5.6';
+  var CURRENT='mep-app-v5.7';
   var nuked=sessionStorage.getItem('cache-nuked');
   if(nuked===CURRENT)return; // already done this session
   function doNuke(){
@@ -1714,17 +1714,53 @@ function initImportButtons(){
   gr('text-json-btn').addEventListener('click', function(){ processImport(gr('json-paste-text').value.trim()); });
 }
 
-function handleImg(e){
-  var file=e.target.files[0];if(!file)return;
-  var reader=new FileReader();
-  reader.onload=function(ev){
-    imgB64=ev.target.result.split(',')[1];imgMime=file.type;
-    var preview=gr('img-preview');preview.style.display='block';preview.innerHTML='';
-    var img=document.createElement('img');img.src=ev.target.result;img.style.cssText='width:100%;border-radius:10px;margin-bottom:10px;max-height:220px;object-fit:cover;display:block';
-    var btn=document.createElement('button');btn.className='btn btnf btnp';btn.textContent='✨ Extract with Gemini';
-    btn.addEventListener('click',function(){extractImg();});
-    preview.appendChild(img);preview.appendChild(btn);
+function handleImg(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+
+  var reader = new FileReader();
+
+  reader.onload = function(ev) {
+    var image = new Image();
+
+    image.onload = function() {
+      var maxSize = 1600;
+      var scale = Math.min(1, maxSize / Math.max(image.width, image.height));
+
+      var canvas = document.createElement('canvas');
+      canvas.width = Math.round(image.width * scale);
+      canvas.height = Math.round(image.height * scale);
+
+      var context = canvas.getContext('2d');
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+      var resizedImage = canvas.toDataURL('image/jpeg', 0.82);
+
+      imgB64 = resizedImage.split(',')[1];
+      imgMime = 'image/jpeg';
+
+      var preview = gr('img-preview');
+      preview.style.display = 'block';
+      preview.innerHTML = '';
+
+      var img = document.createElement('img');
+      img.src = resizedImage;
+      img.style.cssText = 'width:100%;border-radius:10px;margin-bottom:10px;max-height:220px;object-fit:cover;display:block';
+
+      var btn = document.createElement('button');
+      btn.className = 'btn btnf btnp';
+      btn.textContent = 'Extract with Gemini';
+      btn.addEventListener('click', function() {
+        extractImg();
+      });
+
+      preview.appendChild(img);
+      preview.appendChild(btn);
+    };
+
+    image.src = ev.target.result;
   };
+
   reader.readAsDataURL(file);
 }
 
@@ -1849,7 +1885,7 @@ async function callGeminiWithURL(parts) {
     });
   }
   var resp = await attempt();
-  if (resp.status === 429) {
+  if (resp.status === 429 || resp.status === 503) {
     await new Promise(function(r){ setTimeout(r, 8000); });
     resp = await attempt();
   }
@@ -1896,7 +1932,8 @@ async function callGeminiVision(parts) {
     return fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
   }
   var resp = await attempt();
-  if (resp.status === 429) { await new Promise(function(r){setTimeout(r,8000);}); resp = await attempt(); }
+  if (resp.status === 429 || resp.status === 503)
+  { await new Promise(function(r){setTimeout(r,8000);}); resp = await attempt(); }
   if (!resp.ok) {
     var err = await resp.json().catch(function(){return{};});
     var msg = (err.error && err.error.message) || ('API error ' + resp.status);
@@ -2198,7 +2235,7 @@ handleShareTarget();
 
 // SERVICE WORKER
 (function(){
-  var CACHE_VERSION='v5.6';
+  var CACHE_VERSION='v5.7';
   if(!('serviceWorker' in navigator))return;
   var swCode=[
     'var CACHE="mep-'+CACHE_VERSION+'";',
