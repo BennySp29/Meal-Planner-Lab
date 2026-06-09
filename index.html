@@ -732,12 +732,11 @@ fbRef.child("recipes").set({
     });
   }
 
-  function push() {
-    pushRecipes();
-    pushPlan();
-    pushChecked();
-  }
-
+ function push(changedKey) {
+  if (changedKey === 'recipes') pushRecipes();
+  if (changedKey === 'plan') pushPlan();
+  if (changedKey === 'checked') pushChecked();
+}
 
 // PERSIST
 function saveL(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
