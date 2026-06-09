@@ -311,7 +311,7 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
       </div>
       <!-- IMAGE -->
       <div id="ip-img" style="display:none">
-        <input type="file" id="img-file" accept="image/*" capture="environment" style="display:none" onchange="handleImg(event)"/>
+        <input type="file" id="img-file" accept="image/*" style="display:none" onchange="handleImg(event)"/>
         <div class="upload-zone" id="upload-zone-el"><div class="upload-icon">📷</div><div style="font-size:14px;color:var(--ink2);margin-bottom:4px">Tap to take photo or choose image</div><div style="font-size:12px;color:var(--ink3)">Recipe books, printed recipes, screenshots</div></div>
         <div id="img-preview" style="display:none;margin-top:12px"></div>
         <div style="display:none"><textarea id="json-paste-img"></textarea><button id="img-json-btn"></button></div>
@@ -741,7 +741,25 @@ fbRef.child("recipes").set({
 // PERSIST
 function saveL(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 function loadL(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}}
-function persist(){saveL('recipes',recipes);saveL('plan',plan);saveL('checked',checked);saveL('extraItems',extraItems);saveL('aisleOrder',aisleOrder);saveL('collections',collections);saveL('customMT',customMT);saveL('profile',{userAllergens:userAllergens,userDiet:userDiet,weekStart:weekStart,userSupermarket:userSupermarket,userAppliances:userAppliances});saveL('planTs',Date.now());push();}
+function persist(changedKey){
+  saveL('recipes',recipes);
+  saveL('plan',plan);
+  saveL('checked',checked);
+  saveL('extraItems',extraItems);
+  saveL('aisleOrder',aisleOrder);
+  saveL('collections',collections);
+  saveL('customMT',customMT);
+  saveL('darkMode',darkMode);
+  saveL('profile',{
+    userAllergens:userAllergens,
+    userDiet:userDiet,
+    weekStart:weekStart,
+    userSupermarket:userSupermarket,
+    userAppliances:userAppliances
+  });
+  saveL ('planTs',Date.now());
+  push(changedKey);
+}
 function normaliseIds(data){
   if(data.recipes){data.recipes=data.recipes.map(function(r){r.id=parseInt(r.id,10)||r.id;return r;});}
   if(data.plan){Object.keys(data.plan).forEach(function(day){data.plan[day]=(data.plan[day]||[]).map(function(m){m.recipeId=parseInt(m.recipeId,10)||m.recipeId;return m;});});}
@@ -850,8 +868,8 @@ function renderPlanner(){
         var sLbl=mkEl('div','srv-label',planServings+(planServings===1?' serving':' servings'));
         var sUp=mkEl('button','srv-btn','+');
         (function(d2,idx2,base){
-          sDn.addEventListener('click',function(e){e.stopPropagation();var cur=plan[d2][idx2].servings||base;var nv=Math.max(1,cur-1);plan[d2][idx2].servings=nv;persist();renderPlanner();renderShop();});
-          sUp.addEventListener('click',function(e){e.stopPropagation();var cur=plan[d2][idx2].servings||base;plan[d2][idx2].servings=cur+1;persist();renderPlanner();renderShop();});
+          sDn.addEventListener('click',function(e){e.stopPropagation();var cur=plan[d2][idx2].servings||base;var nv=Math.max(1,cur-1);plan[d2][idx2].servings=nv;persist('plan');renderPlanner();renderShop();});
+          sUp.addEventListener('click',function(e){e.stopPropagation();var cur=plan[d2][idx2].servings||base;plan[d2][idx2].servings=cur+1;persist('plan');renderPlanner();renderShop();});
         })(day,i,baseServings);
         sWrap.appendChild(sDn);sWrap.appendChild(sLbl);sWrap.appendChild(sUp);
         var vb=mkEl('button','btn btns','View');vb.style.cssText='flex-shrink:0;font-size:11px;padding:5px 9px';
@@ -864,7 +882,7 @@ function renderPlanner(){
     pc.appendChild(dayDiv);
   });
 }
-function rmMeal(day,i){var k=planKey(day);if(plan[k])plan[k].splice(i,1);renderPlanner();persist();showToast('Meal removed');}
+function rmMeal(day,i){var k=planKey(day);if(plan[k])plan[k].splice(i,1);renderPlanner();persist('plan');showToast('Meal removed');}
 
 // ─── v5.5 COST ESTIMATION ────────────────────────────────────────────────────
 function estimateCost(){
@@ -1382,7 +1400,7 @@ function renderAML(){
   el.innerHTML=f.map(function(r){var ha=rha(r);var sel=amRecipe===r.id;var hits=r.allergens.filter(function(a){return userAllergens.indexOf(a)>=0});return'<div class="rpick'+(sel?' on':'')+'" onclick="selAMR('+r.id+')"><div style="font-size:13px;font-weight:500;margin-bottom:2px">'+r.name+(sel?' ✓':'')+'</div><div style="font-size:11px;color:var(--ink3)">'+r.cuisine+' · '+r.time+' min</div>'+(ha?'<div style="font-size:11px;color:var(--red);margin-top:3px">⚠ '+hits.join(', ')+'</div>':'')+'</div>';}).join('');
 }
 function selAMR(id){amRecipe=id;renderAML();}
-function confirmAM(){if(!amRecipe){showToast('Pick a recipe first');return;}var k=planKey(amDay);if(!plan[k])plan[k]=[];var note=(gr('am-note')?gr('am-note').value.trim():'');plan[k].push({recipeId:typeof amRecipe==='string'?parseInt(amRecipe,10):amRecipe,mealType:amType,note:note||undefined});closeM('modal-am');renderPlanner();persist();showToast('Added to '+amDay);}
+function confirmAM(){if(!amRecipe){showToast('Pick a recipe first');return;}var k=planKey(amDay);if(!plan[k])plan[k]=[];var note=(gr('am-note')?gr('am-note').value.trim():'');plan[k].push({recipeId:typeof amRecipe==='string'?parseInt(amRecipe,10):amRecipe,mealType:amType,note:note||undefined});closeM('modal-am');renderPlanner();persist('plan');showToast('Added to '+amDay);}
 
 // ADD/EDIT RECIPE
 function openAddRecipe(pf){
@@ -1580,6 +1598,21 @@ if (start !== -1) {
   // 5. Nothing worked — throw with a preview of what we received
   throw new Error('Could not parse recipe from Gemini response. Received: ' + text.substring(0, 120));
 }
+function isUsableRecipeResponse(text) {
+  if (!text || !text.trim()) return false;
+  try{
+    var data = extractJSON(text);
+    return Boolean(
+      data.name &&
+      Array.isArray(data.ingredients) &&
+      data.ingredients.length > 0 &&
+      Array.isArray(data.steps) &&
+      data.steps.length > 0
+  );
+  } catch(e){
+    return false;
+  }
+}
 
 function processImport(text) {
   gr('import-loading').style.display = 'none';
@@ -1744,7 +1777,7 @@ async function importURL(){
 
     // If url_context returned nothing (e.g. BBC Food blocks automated fetch),
     // fall back to asking Gemini from its training knowledge
-    if (!result || !result.trim() || result.trim().length < 20) {
+    if (!isUsableRecipeResponse(result)) {
       gr('import-result').innerHTML =
         '<div style="background:var(--warm-p);border:1.5px solid var(--warm);border-radius:var(--r);padding:12px 14px;font-size:13px;color:#5a3a10;margin-bottom:10px">' +
         '⚠️ Couldn\'t fetch that page directly (it may block automated access). Trying from Gemini\'s knowledge instead…</div>';
@@ -2118,7 +2151,7 @@ function previewRandom(){
 }
 function applyRandom(){
   Object.keys(randPlan).forEach(function(day){var meals=randPlan[day];if(!meals)return;var k=planKey(day);if(!plan[k])plan[k]=[];meals.forEach(function(m){plan[k].push({recipeId:m.recipeId,mealType:m.mealType});});});
-  closeM('modal-random');renderPlanner();persist();showToast('Random meals added!');
+  closeM('modal-random');renderPlanner();persist('plan');showToast('Random meals added!');
 }
 
 // ─── WEB SHARE TARGET ─────────────────────────────────────────────────────────
