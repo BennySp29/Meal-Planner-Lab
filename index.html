@@ -623,6 +623,7 @@ var nrDiets=[];var nrAllergens=[];var ingN=0;var stepN=0;var editId=null;
 var fridgeIngs=[];
 var fbConn=false;var fbRef=null;
 var fbCfg={url:'',key:'',proj:'',who:''};
+var fbClientId='client-'+Date.now()+'-'+Math.random().toString(36).slice(2);
 var API_KEY='';
 
 // FIREBASE
@@ -642,29 +643,47 @@ function loadFBSDK(){
     s1.onerror=rej;document.head.appendChild(s1);
   });
 }
-function applyRemoteRecipes(d){
-  if (!d) return;
-  if(isOwnEcho("recipes", d)) {
-               return;
+function isOwnEcho(key,d){
+  if(!d)return false;
+  if(d.clientId)return d.clientId===fbClientId;
+  return d.ts&&d.ts===lastLocalPush[key];
 }
-  var remoteRecipes = Array.isArray(d) ? d: (d.items || []);
-  recipes = remoteRecipes;
-  saveL("recipes", recipes);
+function applyRemoteData(key,d){
+  if(!d||isOwnEcho(key,d))return;
+  var wrapped=Object.prototype.hasOwnProperty.call(d,'ts')||Object.prototype.hasOwnProperty.call(d,'who');
+  var items=wrapped?d.items:d;
+  if(key==='recipes'){
+    var recipeItems=Array.isArray(items)?items:[];
+    recipes=normaliseIds({recipes:recipeItems,plan:{}}).recipes;
+    saveL('recipes',recipes);
+  }else if(key==='plan'){
+    var planItems=items&&typeof items==='object'&&!Array.isArray(items)?items:{};
+    plan=normaliseIds({recipes:[],plan:planItems}).plan;
+    saveL('plan',plan);
+  }else if(key==='checked'){
+    checked=items&&typeof items==='object'&&!Array.isArray(items)?items:{};
+    saveL('checked',checked);
+  }
+  renderAll();
+  if(d.who)showToast(d.who+' updated '+key);
+}
+function listenForRemoteData(key){
+  var childRef=fbRef.child(key);
+  childRef.off('value');
+  childRef.on('value',function(snap){
+    applyRemoteData(key,snap.val());
+  });
 }
 function initFB(){
   try{
-    fbInitialLoad=true;
     if(!firebase.apps.length)firebase.initializeApp({apiKey:fbCfg.key,databaseURL:fbCfg.url,projectId:fbCfg.proj});
     fbRef=firebase.database().ref('mep');fbConn=true;
-    fbRef.child("recipes").on("value", function (snap) {
-      applyRemoteRecipes(snap.val());
-    });
+    listenForRemoteData('recipes');
+    listenForRemoteData('plan');
+    listenForRemoteData('checked');
     gr('sync-bar').className='sync-bar';gr('sync-txt').textContent='Live sync active'+(fbCfg.who?' — '+fbCfg.who+"'s planner":'');
     gr('fb-status').innerHTML='<span style="color:var(--sage)">✓ Connected!</span>';
     setTimeout(function(){closeM('modal-fb');},1200);
-   fbRef.child("recipes").on("value", function(snap) {
-     applyRemoteRecipes(snap.val());
-   });
   } catch(e) {
     gr('sync-bar').className = 'sync-bar off';
     gr('sync-txt').textContent = 'Sync error';
@@ -676,8 +695,6 @@ var lastLocalPush={
   plan: 0,
   checked: 0
 };
-var fbInitialLoad=true;
-  
 function pushRecipes(){
   if(!fbConn||!fbRef)return;
   lastLocalPush.recipes = Date.now();
@@ -685,7 +702,8 @@ function pushRecipes(){
 fbRef.child("recipes").set({
   items: recipes,
   who:fbCfg.who ||"Someone",
-  ts: lastLocalPush.recipes
+  ts: lastLocalPush.recipes,
+  clientId:fbClientId
   });
 }
 
@@ -696,7 +714,8 @@ fbRef.child("recipes").set({
   fbRef.child("plan").set({
     items: plan,
     who: fbCfg.who || "Someone",
-    ts: lastLocalPush.plan
+    ts: lastLocalPush.plan,
+    clientId:fbClientId
 
   });
 }
@@ -708,7 +727,8 @@ fbRef.child("recipes").set({
     fbRef.child ("checked").set({
       items:checked, 
       who:fbCfg.who || "Someone",
-      ts:lastLocalPush.checked
+      ts:lastLocalPush.checked,
+      clientId:fbClientId
     });
   }
 
