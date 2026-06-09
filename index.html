@@ -303,7 +303,7 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
       <div id="ip-url">
         <div class="url-wrap">
           <label class="fl">Paste a recipe URL</label>
-          <div style="display:flex;gap:8px;margin-bottom:10px"><input class="fi" id="url-input" placeholder="https://…" style="flex:1"/><button class="btn btns btnp" id="url-extract-btn">✨ Extract</button></div>
+          <div style="display:flex;gap:8px;margin-bottom:10px"><input class="fi" id="url-input" placeholder="https://…" style="flex:1"/><button class="btn btns btnp" id="url-extract-btn" onclick="importURL()">✨ Extract</button></div>
           <div style="font-size:12px;color:var(--ink3)">BBC Good Food, Delicious, AllRecipes, TikTok, Instagram and most recipe sites</div>
           <div style="margin-top:8px;font-size:12px;color:var(--ink3)">Powered by Gemini · <button onclick="showAPIKeyPrompt()" style="background:none;border:none;color:var(--sage);font-size:12px;cursor:pointer;padding:0;font-family:inherit">Change API key</button></div>
         </div>
@@ -312,7 +312,7 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
       <!-- IMAGE -->
       <div id="ip-img" style="display:none">
         <input type="file" id="img-file" accept="image/*" style="display:none" onchange="handleImg(event)"/>
-        <div class="upload-zone" id="upload-zone-el"><div class="upload-icon">📷</div><div style="font-size:14px;color:var(--ink2);margin-bottom:4px">Tap to take photo or choose image</div><div style="font-size:12px;color:var(--ink3)">Recipe books, printed recipes, screenshots</div></div>
+        <div class="upload-zone" id="upload-zone-el" onclick="gr('img-file').click()"><div class="upload-icon">📷</div><div style="font-size:14px;color:var(--ink2);margin-bottom:4px">Tap to take photo or choose image</div><div style="font-size:12px;color:var(--ink3)">Recipe books, printed recipes, screenshots</div></div>
         <div id="img-preview" style="display:none;margin-top:12px"></div>
         <div style="display:none"><textarea id="json-paste-img"></textarea><button id="img-json-btn"></button></div>
       </div>
@@ -328,7 +328,7 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
         <div class="url-wrap">
           <label class="fl">Paste TikTok description or recipe text</label>
           <textarea class="fi" id="paste-text" placeholder="Paste TikTok description, recipe text, ingredients list…&#10;&#10;Hashtags and emojis are cleaned up automatically." style="height:150px;resize:none"></textarea>
-          <button class="btn btns btnp" id="paste-extract-btn" style="width:100%;margin-top:10px">✨ Extract Recipe</button>
+          <button class="btn btns btnp" id="paste-extract-btn" onclick="importFromText()" style="width:100%;margin-top:10px">✨ Extract Recipe</button>
         </div>
         <div style="display:none"><textarea id="json-paste-text"></textarea><button id="text-json-btn"></button></div>
       </div>
@@ -1677,7 +1677,6 @@ function saveImported(){
 
 // Wire up all buttons after DOM ready
 function initImportButtons(){
-  gr('url-extract-btn').addEventListener('click', function(){ importURL(); });
 
   gr('url-copy-btn').addEventListener('click', function(){
     var url = gr('url-input').value.trim();
@@ -1712,8 +1711,6 @@ function initImportButtons(){
 
   gr('url-json-btn').addEventListener('click', function(){ processImport(gr('json-paste-url').value.trim()); });
   gr('img-json-btn').addEventListener('click', function(){ processImport(gr('json-paste-img').value.trim()); });
-  gr('upload-zone-el').addEventListener('click', function(){ gr('img-file').click(); });
-  gr('paste-extract-btn').addEventListener('click', function(){ importFromText(); });
   gr('text-json-btn').addEventListener('click', function(){ processImport(gr('json-paste-text').value.trim()); });
 }
 
