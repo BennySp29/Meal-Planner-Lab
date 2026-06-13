@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v5.8 -->
+<!-- v5.11 -->
 
 <html lang="en">
 <head>
@@ -520,7 +520,7 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
 <script>
 // ── CACHE NUKE v3.0: clears stale SW + caches, one-time reload ─────────────
 (function(){
-  var CURRENT='mep-app-v5.8';
+  var CURRENT='mep-app-v5.11';
   var nuked=sessionStorage.getItem('cache-nuked');
   if(nuked===CURRENT)return; // already done this session
   function doNuke(){
@@ -653,9 +653,16 @@ function applyRemoteData(key,d){
   var wrapped=Object.prototype.hasOwnProperty.call(d,'ts')||Object.prototype.hasOwnProperty.call(d,'who');
   var items=wrapped?d.items:d;
   if(key==='recipes'){
+    var localRecipesTs=loadL('recipesTs')||0;
+    var remoteRecipesTs=wrapped&&d.ts?d.ts:0;
+    if(localRecipesTs&&remoteRecipesTs<localRecipesTs){
+      pushRecipes();
+      return;
+    }
     var recipeItems=Array.isArray(items)?items:[];
     recipes=normaliseIds({recipes:recipeItems,plan:{}}).recipes;
     saveL('recipes',recipes);
+    if(remoteRecipesTs)saveL('recipesTs',remoteRecipesTs);
  }else if(key==='plan'){
   var planItems = items && typeof items === 'object' && !Array.isArray(items)
     ? items
@@ -726,12 +733,14 @@ var lastLocalPush={
 };
 function pushRecipes(){
   if(!fbConn||!fbRef)return;
-  lastLocalPush.recipes = Date.now();
+  var recipesTs=loadL('recipesTs')||Date.now();
+  saveL('recipesTs',recipesTs);
+  lastLocalPush.recipes = recipesTs;
   //Save recipes
 fbRef.child("recipes").set({
   items: recipes,
   who:fbCfg.who ||"Someone",
-  ts: lastLocalPush.recipes,
+  ts: recipesTs,
   clientId:fbClientId
   });
 }
@@ -773,6 +782,7 @@ function push(changedKey, changedDateKey) {
 function saveL(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 function loadL(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}}
 function persist(changedKey, changedDateKey){
+  if(changedKey==='recipes')saveL('recipesTs',Date.now());
   saveL('recipes',recipes);
   saveL('plan',plan);
   saveL('checked',checked);
@@ -1290,13 +1300,13 @@ function dupR(id){
   var r=rec(id);if(!r)return;
   var copy=JSON.parse(JSON.stringify(r));
   copy.id=Date.now();copy.name=r.name+' (copy)';copy.cookCount=0;copy.rating=0;
-  recipes.push(copy);persist();renderRGrid();showToast('Recipe duplicated');
+  recipes.push(copy);persist('recipes');renderRGrid();showToast('Recipe duplicated');
 }
 function markCooked(id,btn,starEl){
   var r=rec(id);if(!r)return;
   r.cookCount=(r.cookCount||0)+1;
   r.lastCooked=Date.now();
-  persist();renderRGrid();
+  persist('recipes');renderRGrid();
   if(starEl)starEl.textContent='★'.repeat(r.rating||0)+'☆'.repeat(5-(r.rating||0))+' · cooked '+r.cookCount+'×';
   showToast('Marked as cooked! (×'+r.cookCount+')');
 }
@@ -1681,7 +1691,7 @@ function saveRecipe(){
   var obj={id:editId?parseInt(editId,10):Date.now(),name:name,cuisine:gr('nr-cuisine').value,diets:nrDiets.slice(),allergens:nrAllergens.slice(),time:parseInt(gr('nr-time').value)||30,servings:parseInt(gr('nr-servings').value)||4,desc:gr('nr-desc').value.trim(),ingredients:ings,steps:steps,image:nrImgB64||'',source_url:gr('nr-url').value.trim(),rating:nrRating||0,notes:gr('nr-notes')?gr('nr-notes').value.trim():'',cookCount:oldR?oldR.cookCount||0:0};
   if(editId){var idx=recipes.findIndex(function(r){return r.id===editId});if(idx>=0)recipes[idx]=obj;else recipes.push(obj);}
   else recipes.push(obj);
-  closeM('modal-ar');persist();renderAll();showToast(editId?'Recipe updated':'Recipe saved');
+  closeM('modal-ar');persist('recipes');renderAll();showToast(editId?'Recipe updated':'Recipe saved');
 }
 
 // FRIDGE
@@ -1963,6 +1973,8 @@ async function extractImg(){
 async function importURL(){
   var url=gr('url-input').value.trim();if(!url){showToast('Paste a URL first');return;}
   if(!API_KEY){showAPIKeyPrompt();return;}
+  var extractBtn=gr('url-extract-btn');
+  extractBtn.disabled=true;extractBtn.textContent='Extracting...';
   gr('import-loading').style.display='block';gr('import-result').innerHTML='';
   try{
     var prompt='Fetch and extract the recipe from this URL: '+url+'\n\n'+
@@ -1973,9 +1985,25 @@ async function importURL(){
       'Diets: Vegan/Vegetarian/Pescatarian/Gluten-free/Dairy-free/Halal. '+
       'Allergens: Gluten/Dairy/Nuts/Eggs/Fish/Shellfish/Soya/Sesame/Celery/Mustard. '+
       'Units: g/kg/ml/l/tsp/tbsp/cup/oz/lb or empty string for whole items. '+
-      'Include ALL steps. Keep descriptions under 30 words. Return ONLY valid JSON.';
+      'Summarise and paraphrase the cooking method into concise steps; do not quote the page verbatim. '+
+      'Keep descriptions under 30 words. Return ONLY valid JSON.';
 
-    var result = await callGeminiWithURL([{text:prompt}]);
+    var result;
+    try{
+      result=await callGeminiWithURL([{text:prompt}]);
+    }catch(fetchError){
+      if(fetchError.code!=='RECITATION')throw fetchError;
+      gr('import-result').innerHTML =
+        '<div style="background:var(--warm-p);border:1.5px solid var(--warm);border-radius:var(--r);padding:12px 14px;font-size:13px;color:#5a3a10;margin-bottom:10px">' +
+        'Gemini could read the page but could not reproduce its wording. Creating a concise adaptation instead...</div>';
+      var adaptationPrompt='Create a concise, original recipe adaptation based on the publicly available factual recipe information at this URL: '+url+'\n\n'+
+        'Do not quote or closely reproduce the source wording. Use your own short cooking instructions. '+
+        'Return ONLY a raw JSON object with this structure:\n'+
+        '{"name":"","cuisine":"British","diets":[],"allergens":[],"time":30,"servings":4,"desc":"","source_url":"'+url+'",'+
+        '"ingredients":[{"name":"","qty":1,"unit":"g"}],"steps":["Concise original step"]}\n\n'+
+        'Preserve factual ingredient quantities when available. Use concise paraphrased steps. Return ONLY valid JSON.';
+      result=await callGeminiWithURL([{text:adaptationPrompt}]);
+    }
 
     // If url_context returned nothing (e.g. BBC Food blocks automated fetch),
     // fall back to asking Gemini from its training knowledge
@@ -1990,14 +2018,21 @@ async function importURL(){
         'Cuisine: Italian/Mexican/Asian/Indian/Mediterranean/British/American/Japanese/Thai/French. '+
         'Diets: Vegan/Vegetarian/Pescatarian/Gluten-free/Dairy-free/Halal. '+
         'Allergens: Gluten/Dairy/Nuts/Eggs/Fish/Shellfish/Soya/Sesame/Celery/Mustard. '+
-        'Units: g/kg/ml/l/tsp/tbsp/cup/oz/lb or empty string. Include ALL steps. Return ONLY valid JSON.';
+        'Units: g/kg/ml/l/tsp/tbsp/cup/oz/lb or empty string. Summarise the method in your own words. Return ONLY valid JSON.';
       result = await callGeminiVision([{text:fallbackPrompt}]);
     }
 
     processImport(result);
   }catch(e){
     gr('import-loading').style.display='none';
-    if(e.message!=='No API key')gr('import-result').innerHTML='<div class="rc-warn"><span>⚠</span><span>'+escHtml(e.message)+'</span></div>';
+    if(e.message!=='No API key'){
+      var help=e.code==='RECITATION'
+        ? 'Gemini could not import this page because the recipe text is protected or not published on the page. Try a photo of a recipe you own, or paste recipe text you can access.'
+        : e.message;
+      gr('import-result').innerHTML='<div class="rc-warn"><span>⚠</span><span>'+escHtml(help)+'</span></div>';
+    }
+  }finally{
+    extractBtn.disabled=false;extractBtn.textContent='✨ Extract';
   }
 }
 
@@ -2054,10 +2089,6 @@ async function callGeminiWithURL(parts) {
     });
   }
   var resp = await attempt();
-  if (resp.status === 429 || resp.status === 503) {
-    await new Promise(function(r){ setTimeout(r, 8000); });
-    resp = await attempt();
-  }
   if (!resp.ok) {
     var err = await resp.json().catch(function(){ return {}; });
     var msg = (err.error && err.error.message) || ('API error ' + resp.status);
@@ -2081,7 +2112,9 @@ async function callGeminiWithURL(parts) {
   // Check finish reason — RECITATION or other blocking reasons
   var finishReason = data.candidates && data.candidates[0] && data.candidates[0].finishReason;
   if (!text && finishReason && finishReason !== 'STOP') {
-    throw new Error('Gemini could not fetch this page (reason: ' + finishReason + '). Try copying the recipe text and using the Paste tab instead.');
+    var finishError=new Error('Gemini could not fetch this page (reason: ' + finishReason + ').');
+    finishError.code=finishReason;
+    throw finishError;
   }
   console.log('Gemini URL response — parts:', (textParts||[]).length, 'text length:', text.length);
   return text || '';
@@ -2101,8 +2134,6 @@ async function callGeminiVision(parts) {
     return fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
   }
   var resp = await attempt();
-  if (resp.status === 429 || resp.status === 503)
-  { await new Promise(function(r){setTimeout(r,8000);}); resp = await attempt(); }
   if (!resp.ok) {
     var err = await resp.json().catch(function(){return{};});
     var msg = (err.error && err.error.message) || ('API error ' + resp.status);
@@ -2117,12 +2148,18 @@ async function callGeminiVision(parts) {
   if (textParts && Array.isArray(textParts)) {
     text = textParts.filter(function(p){return p && typeof p.text==='string';}).map(function(p){return p.text;}).join('\n');
   }
+  var finishReason = data.candidates && data.candidates[0] && data.candidates[0].finishReason;
+  if (!text && finishReason && finishReason !== 'STOP') {
+    var finishError=new Error('Gemini could not complete the import (reason: '+finishReason+').');
+    finishError.code=finishReason;
+    throw finishError;
+  }
   return text || '';
 }
 
 // ─── GEMINI API ───────────────────────────────────────────────────────────────
 // Handles both text-only and vision (image) requests.
-// Retries once on 429 after a short delay before surfacing the error.
+// Surfaces quota errors immediately so one tap never consumes multiple requests.
 async function callGemini(parts) {
   if (!API_KEY) { showAPIKeyPrompt(); throw new Error('No API key'); }
   var model = 'gemini-2.5-flash';
@@ -2170,12 +2207,6 @@ async function callGemini(parts) {
     });
   }
   var resp = await attempt();
-  // On 429, wait 8s and retry once automatically
-  if (resp.status === 429) {
-    gr('import-loading').querySelector('div[style]') && null; // no-op
-    await new Promise(function(r){ setTimeout(r, 8000); });
-    resp = await attempt();
-  }
   if (!resp.ok) {
     var err = await resp.json().catch(function(){ return {}; });
     var msg = (err.error && err.error.message) || ('API error ' + resp.status);
@@ -2434,7 +2465,7 @@ handleShareTarget();
 
 // SERVICE WORKER
 (function(){
-  var CACHE_VERSION='v5.8';
+  var CACHE_VERSION='v5.11';
   if(!('serviceWorker' in navigator))return;
   var swCode=[
     'var CACHE="mep-'+CACHE_VERSION+'";',
