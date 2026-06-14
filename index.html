@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v5.11 -->
+<!-- v5.12 -->
 
 <html lang="en">
 <head>
@@ -520,7 +520,7 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
 <script>
 // ── CACHE NUKE v3.0: clears stale SW + caches, one-time reload ─────────────
 (function(){
-  var CURRENT='mep-app-v5.11';
+  var CURRENT='mep-app-v5.12';
   var nuked=sessionStorage.getItem('cache-nuked');
   if(nuked===CURRENT)return; // already done this session
   function doNuke(){
@@ -801,8 +801,17 @@ function persist(changedKey, changedDateKey){
   saveL ('planTs',Date.now());
   push(changedKey, changedDateKey);
 }
+function normaliseRecipe(r){
+  if(!r||typeof r!=='object')return r;
+  r.id=parseInt(r.id,10)||r.id;
+  r.diets=Array.isArray(r.diets)?r.diets:[];
+  r.allergens=Array.isArray(r.allergens)?r.allergens:[];
+  r.ingredients=Array.isArray(r.ingredients)?r.ingredients:[];
+  r.steps=Array.isArray(r.steps)?r.steps:[];
+  return r;
+}
 function normaliseIds(data){
-  if(data.recipes){data.recipes=data.recipes.map(function(r){r.id=parseInt(r.id,10)||r.id;return r;});}
+  if(data.recipes){data.recipes=data.recipes.map(normaliseRecipe);}
   if(data.plan){Object.keys(data.plan).forEach(function(day){data.plan[day]=(data.plan[day]||[]).map(function(m){m.recipeId=parseInt(m.recipeId,10)||m.recipeId;return m;});});}
   return data;
 }
@@ -823,8 +832,8 @@ function loadPersisted(){
 
 // UTILS
 function gr(id){return document.getElementById(id)}
-function rec(id){var nid=typeof id==='string'?parseInt(id,10):id;return recipes.find(function(r){var rid=typeof r.id==='string'?parseInt(r.id,10):r.id;return rid===nid;})}
-function rha(r){return r.allergens.some(function(a){return userAllergens.indexOf(a)>=0})}
+function rec(id){var nid=typeof id==='string'?parseInt(id,10):id;var found=recipes.find(function(r){var rid=typeof r.id==='string'?parseInt(r.id,10):r.id;return rid===nid;});return normaliseRecipe(found);}
+function rha(r){return normaliseRecipe(r).allergens.some(function(a){return userAllergens.indexOf(a)>=0})}
 function frac(v){if(!v||v===0)return'0';var w=Math.floor(v),f=v-w;var m={'0':'','0.25':'¼','0.5':'½','0.75':'¾','0.33':'⅓','0.67':'⅔'};var bk='0',bd=1;for(var k in m){var d=Math.abs(f-parseFloat(k));if(d<bd){bd=d;bk=k;}}var fp=m[bk]||'';if(w===0)return fp||(v%1===0?''+v:v.toFixed(1));return fp?w+fp:''+w;}
 function fmt(q,u){return u?frac(q)+' '+u:frac(q)}
 function showToast(msg){var t=gr('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},2500);}
@@ -2465,7 +2474,7 @@ handleShareTarget();
 
 // SERVICE WORKER
 (function(){
-  var CACHE_VERSION='v5.11';
+  var CACHE_VERSION='v5.12';
   if(!('serviceWorker' in navigator))return;
   var swCode=[
     'var CACHE="mep-'+CACHE_VERSION+'";',
