@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v5.22 -->
+<!-- v5.24 -->
 
 <html lang="en">
 <head>
@@ -520,7 +520,7 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
 <script>
 // ── CACHE NUKE v3.0: clears stale SW + caches, one-time reload ─────────────
 (function(){
-  var CURRENT='mep-app-v5.22';
+  var CURRENT='mep-app-v5.24';
   var nuked=sessionStorage.getItem('cache-nuked');
   if(nuked===CURRENT)return; // already done this session
   function doNuke(){
@@ -860,6 +860,49 @@ function saveSharedLocal(){
   saveL('collections',collections);
   saveL('customMT',customMT);
 }
+function encodeFBKey(k){
+  return String(k).replace(/[%\.#\$\/\[\]]/g,function(ch){return '%'+ch.charCodeAt(0).toString(16).toUpperCase();});
+}
+function decodeFBKey(k){
+  return String(k).replace(/%([0-9A-Fa-f]{2})/g,function(_,hex){return String.fromCharCode(parseInt(hex,16));});
+}
+function checkedForState(map){
+  var out={};
+  if(!map||typeof map!=='object'||Array.isArray(map))return out;
+  Object.keys(map).forEach(function(k){out[encodeFBKey(k)]=!!map[k];});
+  return out;
+}
+function checkedFromState(map){
+  var out={};
+  if(!map||typeof map!=='object'||Array.isArray(map))return out;
+  Object.keys(map).forEach(function(k){out[decodeFBKey(k)]=!!map[k];});
+  return out;
+}
+function stateForFirebase(state){
+  state=state||{};
+  state.checked=checkedForState(state.checked);
+  return state;
+}
+function syncErrorMessage(error,prefix){
+  var msg=(error&&(error.message||error.code||String(error)))||'unknown error';
+  return (prefix||'Sync failed')+': '+msg;
+}
+function cleanCfgText(v){
+  v=String(v||'').trim();
+  var md=v.match(/\]\((https?:\/\/[^)]+)\)/);
+  if(md)v=md[1];
+  v=v.replace(/^['"]|['"]$/g,'').trim();
+  return v;
+}
+function cleanFirebaseURL(v){
+  v=cleanCfgText(v).replace(/\/+$/,'');
+  return v;
+}
+function cleanFirebaseKey(v){return cleanCfgText(v);}
+function normaliseFBCfg(cfg){
+  cfg=cfg||{};
+  return{url:cleanFirebaseURL(cfg.url),key:cleanFirebaseKey(cfg.key),proj:cleanCfgText(cfg.proj),who:cleanCfgText(cfg.who)};
+}
 function publishRecipeImages(){
   if(!fbConn||!fbRef)return;
   recipeImages=Object.assign({},recipeImages,recipeImagesFrom(recipes));
@@ -891,7 +934,7 @@ function applySharedState(state,force){
   plan=normalisePlanObject((state.plan&&typeof state.plan==='object'&&!Array.isArray(state.plan))?state.plan:{});
   planMeta=cleanPlanMeta(state.planMeta);
   planMealDeletes=normaliseStampMap(state.planMealDeletes);
-  checked=state.checked&&typeof state.checked==='object'&&!Array.isArray(state.checked)?state.checked:{};
+  checked=checkedFromState(state.checked);
   extraItems=Array.isArray(state.extraItems)?state.extraItems:extraItems;
   collections=Array.isArray(state.collections)?state.collections:collections;
   customMT=Array.isArray(state.customMT)?state.customMT:customMT;
@@ -913,7 +956,7 @@ function normaliseSharedState(state){
     plan:normalisePlanObject((state.plan&&typeof state.plan==='object'&&!Array.isArray(state.plan))?state.plan:{}),
     planMeta:cleanPlanMeta(state.planMeta),
     planMealDeletes:normaliseStampMap(state.planMealDeletes),
-    checked:state.checked&&typeof state.checked==='object'&&!Array.isArray(state.checked)?state.checked:{},
+    checked:checkedFromState(state.checked),
     extraItems:Array.isArray(state.extraItems)?state.extraItems:[],
     collections:Array.isArray(state.collections)?state.collections:[],
     customMT:Array.isArray(state.customMT)?state.customMT:[],
@@ -978,7 +1021,7 @@ function mergeWholeSharedState(remote,local,ts){
   out.collections=mergeListById(remote.collections,local.collections);
   out.customMT=mergeSimpleList(remote.customMT,local.customMT);
   out.version=2;out.ts=ts;out.clientId=fbClientId;out.who=fbCfg.who||'Someone';
-  return out;
+  return stateForFirebase(out);
 }
 function mergeSharedState(remote, local, changedKey, changedDateKey, ts){
   remote=normaliseSharedState(remote);
@@ -1046,11 +1089,16 @@ function mergeSharedState(remote, local, changedKey, changedDateKey, ts){
   }
   if(changedKey==='recipes'){out.recipes=mergedRecipes.items;out.recipeDeletes=mergedRecipes.deleted;}
   out.version=2;out.ts=ts;out.clientId=fbClientId;out.who=fbCfg.who||'Someone';
-  return out;
+  return stateForFirebase(out);
 }
 function finishSharedWrite(error){
   pendingSharedWrites=Math.max(0,pendingSharedWrites-1);
-  if(error){showToast('Sync failed - tap Refresh');return false;}
+  if(error){
+    var msg=syncErrorMessage(error,'Sync failed');
+    var st=gr('sync-txt');if(st)st.textContent=msg;
+    showToast(msg);
+    return false;
+  }
   if(pendingSharedWrites===0)saveL('sharedDirty',0);
   return true;
 }
@@ -1142,9 +1190,10 @@ function bootstrapSharedState(){
 }
 
 // FIREBASE
-function openFBSetup(){var c=loadL('fbCfg');if(c){fbCfg=c;gr('fb-url').value=c.url||'';gr('fb-key').value=c.key||'';gr('fb-proj').value=c.proj||'';gr('fb-who').value=c.who||'';}openM('modal-fb');}
+function openFBSetup(){var c=normaliseFBCfg(loadL('fbCfg'));if(c){fbCfg=c;gr('fb-url').value=c.url||'';gr('fb-key').value=c.key||'';gr('fb-proj').value=c.proj||'';gr('fb-who').value=c.who||'';}openM('modal-fb');}
 function connectFB(){
-  var url=gr('fb-url').value.trim(),key=gr('fb-key').value.trim(),proj=gr('fb-proj').value.trim(),who=gr('fb-who').value.trim();
+  var cfg=normaliseFBCfg({url:gr('fb-url').value,key:gr('fb-key').value,proj:gr('fb-proj').value,who:gr('fb-who').value});
+  var url=cfg.url,key=cfg.key,proj=cfg.proj,who=cfg.who;
   if(!url||!key||!proj){gr('fb-status').innerHTML='<span style="color:var(--red)">Please fill in Database URL, API Key and Project ID</span>';return;}
   fbCfg={url,key,proj,who};saveL('fbCfg',fbCfg);
   gr('fb-status').innerHTML='<span style="color:var(--sage)">Connecting…</span>';
@@ -1225,6 +1274,7 @@ function listenForRecipeImages(){
 }
 function initFB(){
   try{
+    fbCfg=normaliseFBCfg(fbCfg);saveL('fbCfg',fbCfg);
     if(!firebase.apps.length)firebase.initializeApp({apiKey:fbCfg.key,databaseURL:fbCfg.url,projectId:fbCfg.proj});
     fbRef=firebase.database().ref('mep');fbConn=true;
     fbPlanLoaded = false;
@@ -1241,7 +1291,7 @@ function initFB(){
 }
 function ensureFBReady(){
   if(fbConn&&fbRef)return Promise.resolve(true);
-  var cfg=loadL('fbCfg');
+  var cfg=normaliseFBCfg(loadL('fbCfg'));
   if(!cfg){
     showToast('Connect sync first');
     openFBSetup();
@@ -1277,10 +1327,11 @@ function refreshSyncNow(){
       gr('sync-txt').textContent='Live sync active'+(fbCfg.who?' - '+fbCfg.who+"'s planner":'');
       showToast('Planner refreshed');
     });
-  }).catch(function(){
+  }).catch(function(error){
     gr('sync-bar').className='sync-bar off';
-    gr('sync-txt').textContent='Refresh failed';
-    showToast('Refresh failed');
+    var msg=syncErrorMessage(error,'Refresh failed');
+    gr('sync-txt').textContent=msg;
+    showToast(msg);
   }).finally(function(){
     if(btn){btn.disabled=false;btn.innerHTML='&#8635; Refresh';}
   });
@@ -1416,7 +1467,7 @@ function loadPersisted(){
   if(darkMode)document.body.classList.add('dark');
   var pf=loadL('profile');if(pf){userAllergens=pf.userAllergens||[];userDiet=pf.userDiet||null;weekStart=typeof pf.weekStart==='number'?pf.weekStart:0;userSupermarket=pf.userSupermarket||'tesco';userAppliances=pf.userAppliances||[];}
   var ak=loadL('apiKey');if(ak)API_KEY=ak;
-  var cfg=loadL('fbCfg');if(cfg){fbCfg=cfg;loadFBSDK().then(initFB).catch(function(){});}
+  var cfg=normaliseFBCfg(loadL('fbCfg'));if(cfg&&cfg.url&&cfg.key&&cfg.proj){fbCfg=cfg;saveL('fbCfg',fbCfg);loadFBSDK().then(initFB).catch(function(){});}
 }
 
 // UTILS
@@ -3139,7 +3190,7 @@ handleShareTarget();
 
 // SERVICE WORKER
 (function(){
-  var CACHE_VERSION='v5.22';
+  var CACHE_VERSION='v5.24';
   if(!('serviceWorker' in navigator))return;
   var swCode=[
     'var CACHE="mep-'+CACHE_VERSION+'";',
