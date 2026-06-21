@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v5.16 -->
+<!-- v5.17 -->
 
 <html lang="en">
 <head>
@@ -520,7 +520,7 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
 <script>
 // ── CACHE NUKE v3.0: clears stale SW + caches, one-time reload ─────────────
 (function(){
-  var CURRENT='mep-app-v5.16';
+  var CURRENT='mep-app-v5.17';
   var nuked=sessionStorage.getItem('cache-nuked');
   if(nuked===CURRENT)return; // already done this session
   function doNuke(){
@@ -626,6 +626,7 @@ var fridgeIngs=[];
 var fbConn=false;var fbRef=null;var fbPlanLoaded = false;
 var fbCfg={url:'',key:'',proj:'',who:''};
 var fbClientId='client-'+Date.now()+'-'+Math.random().toString(36).slice(2);
+var fbStateLoaded=false;var fbBootstrappingState=false;
 var API_KEY='';
 
 function recipeKey(r){return r&&r.id!==undefined&&r.id!==null?String(r.id):'';}
@@ -752,6 +753,83 @@ function mergeRemotePlan(planItems, remoteMeta, changedDateKey, remoteTs){
   });
   return needsPush;
 }
+function buildSharedState(ts){
+  return{
+    version:2,
+    recipes:recipes,
+    recipeDeletes:recipeDeletes,
+    plan:plan,
+    planMeta:planMeta,
+    checked:checked,
+    ts:ts||Date.now(),
+    clientId:fbClientId,
+    who:fbCfg.who||'Someone'
+  };
+}
+function saveSharedLocal(){
+  saveL('recipes',recipes);
+  saveL('recipeDeletes',recipeDeletes);
+  saveL('plan',plan);
+  saveL('planMeta',planMeta);
+  saveL('checked',checked);
+}
+function applySharedState(state,force){
+  if(!state||typeof state!=='object')return false;
+  if(!force&&fbStateLoaded&&state.clientId===fbClientId)return false;
+  recipes=normaliseIds({recipes:Array.isArray(state.recipes)?state.recipes:[],plan:{}}).recipes;
+  recipeDeletes=normaliseStampMap(state.recipeDeletes);
+  plan=normaliseIds({recipes:[],plan:(state.plan&&typeof state.plan==='object'&&!Array.isArray(state.plan))?state.plan:{}}).plan;
+  planMeta=cleanPlanMeta(state.planMeta);
+  checked=state.checked&&typeof state.checked==='object'&&!Array.isArray(state.checked)?state.checked:{};
+  saveSharedLocal();
+  if(state.ts)saveL('sharedStateTs',state.ts);
+  fbStateLoaded=true;
+  renderAll();
+  if(state.who&&state.clientId!==fbClientId)showToast(state.who+' updated planner');
+  return true;
+}
+function publishSharedState(){
+  if(!fbConn||!fbRef)return;
+  var ts=Date.now();
+  var shared=buildSharedState(ts);
+  lastLocalPush.state=ts;
+  fbStateLoaded=true;
+  fbRef.update({
+    state:shared,
+    recipes:{items:recipes,deleted:recipeDeletes,who:shared.who,ts:ts,clientId:fbClientId},
+    plan:{items:plan,meta:planMeta,who:shared.who,ts:ts,clientId:fbClientId},
+    checked:{items:checked,who:shared.who,ts:ts,clientId:fbClientId}
+  });
+}
+function bootstrapSharedState(){
+  if(!fbConn||!fbRef||fbBootstrappingState)return Promise.resolve(false);
+  fbBootstrappingState=true;
+  return Promise.all(['recipes','plan','checked'].map(function(key){
+    return fbRef.child(key).once('value').then(function(snap){return{key:key,val:snap.val()};});
+  })).then(function(rows){
+    rows.forEach(function(row){
+      var d=row.val||{};
+      var wrapped=d&&typeof d==='object'&&(Object.prototype.hasOwnProperty.call(d,'items')||Object.prototype.hasOwnProperty.call(d,'ts'));
+      var items=wrapped?d.items:d;
+      if(row.key==='recipes'){
+        recipes=normaliseIds({recipes:Array.isArray(items)?items:[],plan:{}}).recipes;
+        recipeDeletes=normaliseStampMap(d.deleted);
+      }else if(row.key==='plan'){
+        plan=normaliseIds({recipes:[],plan:(items&&typeof items==='object'&&!Array.isArray(items))?items:{}}).plan;
+        planMeta=cleanPlanMeta(d.meta);
+      }else if(row.key==='checked'){
+        checked=items&&typeof items==='object'&&!Array.isArray(items)?items:{};
+      }
+    });
+    migrateLegacyPlan(loadL('currentWeekStartDate')||currentWeekStartKey());
+    saveSharedLocal();
+    publishSharedState();
+    renderAll();
+    return true;
+  }).finally(function(){
+    fbBootstrappingState=false;
+  });
+}
 
 // FIREBASE
 function openFBSetup(){var c=loadL('fbCfg');if(c){fbCfg=c;gr('fb-url').value=c.url||'';gr('fb-key').value=c.key||'';gr('fb-proj').value=c.proj||'';gr('fb-who').value=c.who||'';}openM('modal-fb');}
@@ -818,14 +896,21 @@ function listenForRemoteData(key){
     applyRemoteData(key,snap.val());
   });
 }
+function listenForSharedState(){
+  var stateRef=fbRef.child('state');
+  stateRef.off('value');
+  stateRef.on('value',function(snap){
+    var state=snap.val();
+    if(state)applySharedState(state,false);
+    else bootstrapSharedState();
+  });
+}
 function initFB(){
   try{
     if(!firebase.apps.length)firebase.initializeApp({apiKey:fbCfg.key,databaseURL:fbCfg.url,projectId:fbCfg.proj});
     fbRef=firebase.database().ref('mep');fbConn=true;
     fbPlanLoaded = false;
-    listenForRemoteData('recipes');
-    listenForRemoteData('plan');
-    listenForRemoteData('checked');
+    listenForSharedState();
     gr('sync-bar').className='sync-bar';gr('sync-txt').textContent='Live sync active'+(fbCfg.who?' — '+fbCfg.who+"'s planner":'');
     gr('fb-status').innerHTML='<span style="color:var(--sage)">✓ Connected!</span>';
     setTimeout(function(){closeM('modal-fb');},1200);
@@ -858,19 +943,15 @@ function refreshSyncNow(){
   if(btn){btn.disabled=true;btn.textContent='Refreshing...';}
   ensureFBReady().then(function(ok){
     if(!ok)return;
-    var oldPlanLoaded=fbPlanLoaded;
-    fbPlanLoaded=false;
-    return Promise.all(['recipes','plan','checked'].map(function(key){
-      return fbRef.child(key).once('value').then(function(snap){
-        applyRemoteData(key,snap.val(),true);
-      });
-    })).then(function(){
+    return fbRef.child('state').once('value').then(function(snap){
+      var state=snap.val();
+      if(state)applySharedState(state,true);
+      else return bootstrapSharedState();
+    }).then(function(){
       renderAll();
       gr('sync-bar').className='sync-bar';
       gr('sync-txt').textContent='Live sync active'+(fbCfg.who?' - '+fbCfg.who+"'s planner":'');
       showToast('Planner refreshed');
-    }).finally(function(){
-      fbPlanLoaded=oldPlanLoaded||fbPlanLoaded;
     });
   }).catch(function(){
     gr('sync-bar').className='sync-bar off';
@@ -882,6 +963,7 @@ function refreshSyncNow(){
 }
 
 var lastLocalPush={
+  state: 0,
   recipes: 0,
   plan: 0,
   checked: 0
@@ -931,9 +1013,7 @@ function pushPlan(dateKey) {
   }
 
 function push(changedKey, changedDateKey) {
-  if (changedKey === 'recipes') pushRecipes();
-  if (changedKey === 'plan') pushPlan(changedDateKey);
-  if (changedKey === 'checked') pushChecked();
+  if (fbConn && fbRef) publishSharedState();
 }
 
 // PERSIST
@@ -2701,7 +2781,7 @@ handleShareTarget();
 
 // SERVICE WORKER
 (function(){
-  var CACHE_VERSION='v5.16';
+  var CACHE_VERSION='v5.17';
   if(!('serviceWorker' in navigator))return;
   var swCode=[
     'var CACHE="mep-'+CACHE_VERSION+'";',
