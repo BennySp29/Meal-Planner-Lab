@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v5.21 -->
+<!-- v5.22 -->
 
 <html lang="en">
 <head>
@@ -520,7 +520,7 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
 <script>
 // ── CACHE NUKE v3.0: clears stale SW + caches, one-time reload ─────────────
 (function(){
-  var CURRENT='mep-app-v5.21';
+  var CURRENT='mep-app-v5.22';
   var nuked=sessionStorage.getItem('cache-nuked');
   if(nuked===CURRENT)return; // already done this session
   function doNuke(){
@@ -1048,20 +1048,64 @@ function mergeSharedState(remote, local, changedKey, changedDateKey, ts){
   out.version=2;out.ts=ts;out.clientId=fbClientId;out.who=fbCfg.who||'Someone';
   return out;
 }
+function finishSharedWrite(error){
+  pendingSharedWrites=Math.max(0,pendingSharedWrites-1);
+  if(error){showToast('Sync failed - tap Refresh');return false;}
+  if(pendingSharedWrites===0)saveL('sharedDirty',0);
+  return true;
+}
+function publishPlanDateState(local,dateKey,ts){
+  var localMeals=local.plan[dateKey]||[];
+  return fbRef.child('state/plan').child(dateKey).transaction(function(remoteMeals){
+    var merged=mergePlanMeals(remoteMeals||[],localMeals,{},local.planMealDeletes,dateKey).items;
+    return merged.length?merged:null;
+  }).then(function(result){
+    var mergedMeals=result&&result.snapshot?result.snapshot.val():null;
+    if(mergedMeals&&mergedMeals.length)plan[dateKey]=normalisePlanObject((function(){var p={};p[dateKey]=mergedMeals;return p;})())[dateKey];
+    else delete plan[dateKey];
+    var updates={version:2,ts:ts,clientId:fbClientId,who:fbCfg.who||'Someone'};
+    updates['planMeta/'+dateKey]=local.planMeta[dateKey]||{updatedAt:ts,clientId:fbClientId};
+    Object.keys(local.planMealDeletes).forEach(function(id){updates['planMealDeletes/'+id]=local.planMealDeletes[id];});
+    saveL('plan',plan);saveL('planMeta',planMeta);saveL('planMealDeletes',planMealDeletes);
+    return fbRef.child('state').update(updates);
+  }).then(function(){
+    finishSharedWrite();
+  }).catch(function(error){
+    finishSharedWrite(error);
+  });
+}
+function publishRecipeState(local,ts){
+  publishRecipeImages();
+  return fbRef.child('state/recipes').transaction(function(remoteRecipes){
+    return mergeRecipeLists(local.recipes,Array.isArray(remoteRecipes)?remoteRecipes:[],ts,0,local.recipeDeletes,{}).items;
+  }).then(function(result){
+    var mergedRecipes=result&&result.snapshot&&Array.isArray(result.snapshot.val())?result.snapshot.val():local.recipes;
+    recipes=attachRecipeImages(normaliseIds({recipes:mergedRecipes,plan:{}}).recipes);
+    recipeDeletes=normaliseStampMap(local.recipeDeletes);
+    var updates={version:2,ts:ts,clientId:fbClientId,who:fbCfg.who||'Someone'};
+    Object.keys(local.recipeDeletes).forEach(function(id){updates['recipeDeletes/'+id]=local.recipeDeletes[id];});
+    saveL('recipes',recipes);saveL('recipeDeletes',recipeDeletes);saveL('recipeImages',recipeImages);
+    return fbRef.child('state').update(updates);
+  }).then(function(){
+    finishSharedWrite();
+  }).catch(function(error){
+    finishSharedWrite(error);
+  });
+}
 function publishSharedState(changedKey,changedDateKey){
   if(!fbConn||!fbRef)return;
   var ts=Date.now();
+  saveL('sharedDirty',ts);
   var local=buildSharedState(ts);
   lastLocalPush.state=ts;
   fbStateLoaded=true;
   pendingSharedWrites++;
-  if(changedKey==='recipes')publishRecipeImages();
+  if(changedKey==='plan'&&changedDateKey){publishPlanDateState(local,changedDateKey,ts);return;}
+  if(changedKey==='recipes'){publishRecipeState(local,ts);return;}
   fbRef.child('state').transaction(function(remote){
     return mergeSharedState(remote,local,changedKey,changedDateKey,ts);
   },function(error,committed,snap){
-    pendingSharedWrites=Math.max(0,pendingSharedWrites-1);
-    if(error){showToast('Sync failed - tap Refresh');return;}
-    if(pendingSharedWrites===0)saveL('sharedDirty',0);
+    if(!finishSharedWrite(error))return;
     if(committed&&snap&&snap.val())applySharedState(snap.val(),true);
   });
 }
@@ -1306,6 +1350,8 @@ function push(changedKey, changedDateKey) {
 function saveL(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 function loadL(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}}
 function persist(changedKey, changedDateKey){
+  var sharedKeys=['recipes','plan','checked','extraItems','collections','customMT'];
+  if(sharedKeys.indexOf(changedKey)>=0)saveL('sharedDirty',Date.now());
   if(changedKey==='recipes')saveL('recipesTs',Date.now());
   if(changedKey==='plan'&&changedDateKey)touchPlanDate(changedDateKey);
   if(changedKey==='recipes')recipeImages=recipeImagesFrom(recipes);
@@ -3093,7 +3139,7 @@ handleShareTarget();
 
 // SERVICE WORKER
 (function(){
-  var CACHE_VERSION='v5.21';
+  var CACHE_VERSION='v5.22';
   if(!('serviceWorker' in navigator))return;
   var swCode=[
     'var CACHE="mep-'+CACHE_VERSION+'";',
