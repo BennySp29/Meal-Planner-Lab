@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v5.24 -->
+<!-- v5.25 -->
 
 <html lang="en">
 <head>
@@ -520,7 +520,7 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
 <script>
 // ── CACHE NUKE v3.0: clears stale SW + caches, one-time reload ─────────────
 (function(){
-  var CURRENT='mep-app-v5.24';
+  var CURRENT='mep-app-v5.25';
   var nuked=sessionStorage.getItem('cache-nuked');
   if(nuked===CURRENT)return; // already done this session
   function doNuke(){
@@ -878,10 +878,26 @@ function checkedFromState(map){
   Object.keys(map).forEach(function(k){out[decodeFBKey(k)]=!!map[k];});
   return out;
 }
+function cleanForFirebase(value){
+  if(value===undefined)return undefined;
+  if(value===null||typeof value!=='object')return value;
+  if(Array.isArray(value)){
+    return value.map(function(item){
+      var cleaned=cleanForFirebase(item);
+      return cleaned===undefined?null:cleaned;
+    });
+  }
+  var out={};
+  Object.keys(value).forEach(function(k){
+    var cleaned=cleanForFirebase(value[k]);
+    if(cleaned!==undefined)out[k]=cleaned;
+  });
+  return out;
+}
 function stateForFirebase(state){
   state=state||{};
   state.checked=checkedForState(state.checked);
-  return state;
+  return cleanForFirebase(state);
 }
 function syncErrorMessage(error,prefix){
   var msg=(error&&(error.message||error.code||String(error)))||'unknown error';
@@ -1103,19 +1119,19 @@ function finishSharedWrite(error){
   return true;
 }
 function publishPlanDateState(local,dateKey,ts){
-  var localMeals=local.plan[dateKey]||[];
+  var localMeals=cleanForFirebase(local.plan[dateKey]||[]);
   return fbRef.child('state/plan').child(dateKey).transaction(function(remoteMeals){
-    var merged=mergePlanMeals(remoteMeals||[],localMeals,{},local.planMealDeletes,dateKey).items;
+    var merged=cleanForFirebase(mergePlanMeals(remoteMeals||[],localMeals,{},local.planMealDeletes,dateKey).items);
     return merged.length?merged:null;
   }).then(function(result){
     var mergedMeals=result&&result.snapshot?result.snapshot.val():null;
     if(mergedMeals&&mergedMeals.length)plan[dateKey]=normalisePlanObject((function(){var p={};p[dateKey]=mergedMeals;return p;})())[dateKey];
     else delete plan[dateKey];
     var updates={version:2,ts:ts,clientId:fbClientId,who:fbCfg.who||'Someone'};
-    updates['planMeta/'+dateKey]=local.planMeta[dateKey]||{updatedAt:ts,clientId:fbClientId};
+    updates['planMeta/'+dateKey]=cleanForFirebase(local.planMeta[dateKey]||{updatedAt:ts,clientId:fbClientId});
     Object.keys(local.planMealDeletes).forEach(function(id){updates['planMealDeletes/'+id]=local.planMealDeletes[id];});
     saveL('plan',plan);saveL('planMeta',planMeta);saveL('planMealDeletes',planMealDeletes);
-    return fbRef.child('state').update(updates);
+    return fbRef.child('state').update(cleanForFirebase(updates));
   }).then(function(){
     finishSharedWrite();
   }).catch(function(error){
@@ -1125,7 +1141,7 @@ function publishPlanDateState(local,dateKey,ts){
 function publishRecipeState(local,ts){
   publishRecipeImages();
   return fbRef.child('state/recipes').transaction(function(remoteRecipes){
-    return mergeRecipeLists(local.recipes,Array.isArray(remoteRecipes)?remoteRecipes:[],ts,0,local.recipeDeletes,{}).items;
+    return cleanForFirebase(mergeRecipeLists(local.recipes,Array.isArray(remoteRecipes)?remoteRecipes:[],ts,0,local.recipeDeletes,{}).items);
   }).then(function(result){
     var mergedRecipes=result&&result.snapshot&&Array.isArray(result.snapshot.val())?result.snapshot.val():local.recipes;
     recipes=attachRecipeImages(normaliseIds({recipes:mergedRecipes,plan:{}}).recipes);
@@ -1133,7 +1149,7 @@ function publishRecipeState(local,ts){
     var updates={version:2,ts:ts,clientId:fbClientId,who:fbCfg.who||'Someone'};
     Object.keys(local.recipeDeletes).forEach(function(id){updates['recipeDeletes/'+id]=local.recipeDeletes[id];});
     saveL('recipes',recipes);saveL('recipeDeletes',recipeDeletes);saveL('recipeImages',recipeImages);
-    return fbRef.child('state').update(updates);
+    return fbRef.child('state').update(cleanForFirebase(updates));
   }).then(function(){
     finishSharedWrite();
   }).catch(function(error){
@@ -2274,7 +2290,7 @@ function renderAML(){
   el.innerHTML=f.map(function(r){var ha=rha(r);var sel=amRecipe===r.id;var hits=r.allergens.filter(function(a){return userAllergens.indexOf(a)>=0});return'<div class="rpick'+(sel?' on':'')+'" onclick="selAMR('+r.id+')"><div style="font-size:13px;font-weight:500;margin-bottom:2px">'+r.name+(sel?' ✓':'')+'</div><div style="font-size:11px;color:var(--ink3)">'+r.cuisine+' · '+r.time+' min</div>'+(ha?'<div style="font-size:11px;color:var(--red);margin-top:3px">⚠ '+hits.join(', ')+'</div>':'')+'</div>';}).join('');
 }
 function selAMR(id){amRecipe=id;renderAML();}
-function confirmAM(){if(!amRecipe){showToast('Pick a recipe first');return;}var k=planKey(amDay);if(!plan[k])plan[k]=[];var note=(gr('am-note')?gr('am-note').value.trim():'');plan[k].push({id:newId('meal'),recipeId:typeof amRecipe==='string'?parseInt(amRecipe,10):amRecipe,mealType:amType,note:note||undefined,updatedAt:Date.now()});closeM('modal-am');renderPlanner();persist('plan',k);showToast('Added to '+amDay);}
+function confirmAM(){if(!amRecipe){showToast('Pick a recipe first');return;}var k=planKey(amDay);if(!plan[k])plan[k]=[];var note=(gr('am-note')?gr('am-note').value.trim():'');var meal={id:newId('meal'),recipeId:typeof amRecipe==='string'?parseInt(amRecipe,10):amRecipe,mealType:amType,updatedAt:Date.now()};if(note)meal.note=note;plan[k].push(meal);closeM('modal-am');renderPlanner();persist('plan',k);showToast('Added to '+amDay);}
 
 // ADD/EDIT RECIPE
 function openAddRecipe(pf){
@@ -3190,7 +3206,7 @@ handleShareTarget();
 
 // SERVICE WORKER
 (function(){
-  var CACHE_VERSION='v5.24';
+  var CACHE_VERSION='v5.25';
   if(!('serviceWorker' in navigator))return;
   var swCode=[
     'var CACHE="mep-'+CACHE_VERSION+'";',
