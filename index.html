@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v5.19 -->
+<!-- v5.20 -->
 
 <html lang="en">
 <head>
@@ -520,7 +520,7 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
 <script>
 // ── CACHE NUKE v3.0: clears stale SW + caches, one-time reload ─────────────
 (function(){
-  var CURRENT='mep-app-v5.19';
+  var CURRENT='mep-app-v5.20';
   var nuked=sessionStorage.getItem('cache-nuked');
   if(nuked===CURRENT)return; // already done this session
   function doNuke(){
@@ -862,8 +862,8 @@ function saveSharedLocal(){
 }
 function publishRecipeImages(){
   if(!fbConn||!fbRef)return;
-  recipeImages=recipeImagesFrom(recipes);
-  fbRef.child('recipeImages').set(recipeImages);
+  recipeImages=Object.assign({},recipeImages,recipeImagesFrom(recipes));
+  if(Object.keys(recipeImages).length)fbRef.child('recipeImages').update(recipeImages);
   saveL('recipeImages',recipeImages);
 }
 function applyRecipeImages(imgs){
@@ -1027,17 +1027,18 @@ function bootstrapSharedState(){
     return fbRef.child(key).once('value').then(function(snap){return{key:key,val:snap.val()};});
   })).then(function(rows){
     rows.forEach(function(row){
+      if(row.val===null||row.val===undefined)return;
       var d=row.val||{};
       var wrapped=d&&typeof d==='object'&&(Object.prototype.hasOwnProperty.call(d,'items')||Object.prototype.hasOwnProperty.call(d,'ts'));
       var items=wrapped?d.items:d;
       if(row.key==='recipes'){
-        recipes=normaliseIds({recipes:Array.isArray(items)?items:[],plan:{}}).recipes;
-        recipeDeletes=normaliseStampMap(d.deleted);
+        if(Array.isArray(items)&&items.length)recipes=attachRecipeImages(normaliseIds({recipes:items,plan:{}}).recipes);
+        if(d&&Object.prototype.hasOwnProperty.call(d,'deleted'))recipeDeletes=normaliseStampMap(d.deleted);
       }else if(row.key==='plan'){
-        plan=normaliseIds({recipes:[],plan:(items&&typeof items==='object'&&!Array.isArray(items))?items:{}}).plan;
-        planMeta=cleanPlanMeta(d.meta);
+        if(items&&typeof items==='object'&&!Array.isArray(items)&&Object.keys(items).length)plan=normaliseIds({recipes:[],plan:items}).plan;
+        if(d&&Object.prototype.hasOwnProperty.call(d,'meta'))planMeta=cleanPlanMeta(d.meta);
       }else if(row.key==='checked'){
-        checked=items&&typeof items==='object'&&!Array.isArray(items)?items:{};
+        if(items&&typeof items==='object'&&!Array.isArray(items))checked=items;
       }
     });
     migrateLegacyPlan(loadL('currentWeekStartDate')||currentWeekStartKey());
@@ -2408,7 +2409,7 @@ function initImportButtons(){
       'Allergens: Gluten/Dairy/Nuts/Eggs/Fish/Shellfish/Soya/Sesame/Celery/Mustard\n'+
       'Units: g/kg/ml/l/tsp/tbsp/cup/oz/lb or empty string for whole items.\n'+
       'source_url: set to the original recipe page URL if known, otherwise empty string.\n'+
-      'Include ALL method steps. Respond with JSON only — no other text.';
+      'Rewrite the method as concise original/paraphrased steps. Respond with JSON only — no other text.';
     showPromptBox(prompt);
   });
 
@@ -2527,6 +2528,7 @@ async function extractImg(){
       }
     }
     gr('import-loading').style.display='none';
+    if(e.code==='RECITATION')e.message='Gemini stopped to avoid reproducing protected recipe wording. Try pasting a shorter ingredient list plus your own summary of the method.';
     if(e.message!=='No API key')gr('import-result').innerHTML='<div class="rc-warn"><span>⚠</span><span>'+escHtml(e.message)+'</span></div>';
   }
 }
@@ -2603,11 +2605,12 @@ async function importFromText(){
   var text=cleanSocialText(raw);
   gr('import-loading').style.display='block';gr('import-result').innerHTML='';
   try{
-    var prompt='Extract the recipe from this text. Return ONLY this JSON structure — no markdown, no code fences:\n{"name":"","cuisine":"Italian","diets":[],"allergens":[],"time":30,"servings":4,"desc":"","source_url":"","ingredients":[{"name":"","qty":1,"unit":"g"}],"steps":["Step 1 instruction"]}\n\nCuisine: Italian/Mexican/Asian/Indian/Mediterranean/British/American/Japanese/Thai/French. Diets: Vegan/Vegetarian/Pescatarian/Gluten-free/Dairy-free/Halal. Allergens: Gluten/Dairy/Nuts/Eggs/Fish/Shellfish/Soya/Sesame/Celery/Mustard. Units: g/kg/ml/l/tsp/tbsp/cup/oz/lb or empty string for whole items. Include ALL method steps. Return JSON only — no markdown, no code fences. source_url: include if a URL appears in the text, otherwise empty string.\n\nRecipe text:\n'+text;
+    var prompt='Extract the recipe from this text. Return ONLY this JSON structure — no markdown, no code fences:\n{"name":"","cuisine":"Italian","diets":[],"allergens":[],"time":30,"servings":4,"desc":"","source_url":"","ingredients":[{"name":"","qty":1,"unit":"g"}],"steps":["Step 1 instruction"]}\n\nCuisine: Italian/Mexican/Asian/Indian/Mediterranean/British/American/Japanese/Thai/French. Diets: Vegan/Vegetarian/Pescatarian/Gluten-free/Dairy-free/Halal. Allergens: Gluten/Dairy/Nuts/Eggs/Fish/Shellfish/Soya/Sesame/Celery/Mustard. Units: g/kg/ml/l/tsp/tbsp/cup/oz/lb or empty string for whole items. Extract factual ingredients and rewrite the method as concise original/paraphrased steps. Return JSON only — no markdown, no code fences. source_url: include if a URL appears in the text, otherwise empty string.\n\nRecipe text:\n'+text;
     var result=await callGemini([{text:prompt}]);
     processImport(result);
   }catch(e){
     gr('import-loading').style.display='none';
+    if(e.code==='RECITATION')e.message='Gemini stopped to avoid reproducing protected recipe wording. Try pasting a shorter ingredient list plus your own summary of the method.';
     if(e.message!=='No API key')gr('import-result').innerHTML='<div class="rc-warn"><span>⚠</span><span>'+escHtml(e.message)+'</span></div>';
   }
 }
@@ -3035,7 +3038,7 @@ handleShareTarget();
 
 // SERVICE WORKER
 (function(){
-  var CACHE_VERSION='v5.19';
+  var CACHE_VERSION='v5.20';
   if(!('serviceWorker' in navigator))return;
   var swCode=[
     'var CACHE="mep-'+CACHE_VERSION+'";',
