@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v5.13 -->
+<!-- v5.14 -->
 
 <html lang="en">
 <head>
@@ -520,7 +520,7 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
 <script>
 // ── CACHE NUKE v3.0: clears stale SW + caches, one-time reload ─────────────
 (function(){
-  var CURRENT='mep-app-v5.13';
+  var CURRENT='mep-app-v5.14';
   var nuked=sessionStorage.getItem('cache-nuked');
   if(nuked===CURRENT)return; // already done this session
   function doNuke(){
@@ -614,8 +614,10 @@ var recipes=[
   {id:8,name:'Overnight Oats',cuisine:'British',diets:['Vegan','Vegetarian'],allergens:['Gluten'],time:5,desc:'Easy make-ahead breakfast',ingredients:[{name:'rolled oats',qty:80,unit:'g'},{name:'almond milk',qty:200,unit:'ml'},{name:'banana',qty:1,unit:''},{name:'chia seeds',qty:1,unit:'tbsp'},{name:'honey',qty:1,unit:'tbsp'},{name:'blueberries',qty:50,unit:'g'}]}
 ];
 var plan={Monday:[],Tuesday:[],Wednesday:[],Thursday:[],Friday:[],Saturday:[{recipeId:1,mealType:'Dinner'},{recipeId:3,mealType:'Breakfast'}],Sunday:[{recipeId:5,mealType:'Lunch'}]};
+var planMeta={};
 var checked={};
 var extraItems=[];
+var recipeDeletes={};
 var userAllergens=[];var userDiet=null;
 var aCuisine='Any';var aDiet='Any';
 var amDay=DAYS[0];var amRecipe=null;var amType='Dinner';
@@ -630,25 +632,124 @@ function recipeKey(r){return r&&r.id!==undefined&&r.id!==null?String(r.id):'';}
 function recipeUpdatedAt(r){return parseInt(r&&(r.updatedAt||r.lastCooked||0),10)||0;}
 function cloneRecipe(r){return JSON.parse(JSON.stringify(r));}
 function recipesSame(a,b){return JSON.stringify(a||[])===JSON.stringify(b||[]);}
-function mergeRecipeLists(localItems, remoteItems, localTs, remoteTs){
+function normaliseStampMap(map){
+  var out={};
+  if(!map||typeof map!=='object'||Array.isArray(map))return out;
+  Object.keys(map).forEach(function(k){
+    var v=map[k];
+    var ts=typeof v==='object'&&v?parseInt(v.deletedAt||v.updatedAt||v.ts,10):parseInt(v,10);
+    if(ts)out[String(k)]=ts;
+  });
+  return out;
+}
+function mealSig(m){
+  return [m.recipeId,m.mealType||'',m.note||'',m.servings||''].join('|');
+}
+function mergeMeals(a,b){
+  var out=[],seen={};
+  (Array.isArray(a)?a:[]).concat(Array.isArray(b)?b:[]).forEach(function(m){
+    if(!m)return;
+    var sig=mealSig(m);
+    if(!seen[sig]){seen[sig]=true;out.push(m);}
+  });
+  return out;
+}
+function planMealsSame(a,b){return JSON.stringify(a||[])===JSON.stringify(b||[]);}
+function cleanPlanMeta(meta){
+  var out={};
+  if(!meta||typeof meta!=='object'||Array.isArray(meta))return out;
+  Object.keys(meta).forEach(function(k){
+    var m=meta[k]||{};
+    var updatedAt=parseInt(m.updatedAt||m.ts,10)||0;
+    var deletedAt=parseInt(m.deletedAt,10)||0;
+    if(updatedAt||deletedAt)out[k]={updatedAt:updatedAt||deletedAt,deletedAt:deletedAt||0,clientId:m.clientId||''};
+  });
+  return out;
+}
+function touchPlanDate(dateKey,ts){
+  if(!dateKey)return;
+  ts=ts||Date.now();
+  var meals=plan[dateKey]||[];
+  planMeta[dateKey]={updatedAt:ts,clientId:fbClientId};
+  if(!meals.length)planMeta[dateKey].deletedAt=ts;
+}
+function mergeRecipeLists(localItems, remoteItems, localTs, remoteTs, localDeleted, remoteDeleted){
   localItems=Array.isArray(localItems)?localItems:[];
   remoteItems=Array.isArray(remoteItems)?remoteItems:[];
+  localDeleted=normaliseStampMap(localDeleted);
+  remoteDeleted=normaliseStampMap(remoteDeleted);
+  var mergedDeleted={};
   var localById={},remoteById={},order=[],seenOrder={};
   function remember(id){if(id&&!seenOrder[id]){seenOrder[id]=true;order.push(id);}}
   localItems.forEach(function(r){var id=recipeKey(r);if(id){localById[id]=normaliseRecipe(cloneRecipe(r));remember(id);}});
   remoteItems.forEach(function(r){var id=recipeKey(r);if(id){remoteById[id]=normaliseRecipe(cloneRecipe(r));remember(id);}});
+  Object.keys(localDeleted).forEach(remember);
+  Object.keys(remoteDeleted).forEach(remember);
 
   var needsPush=false;
-  var merged=order.map(function(id){
+  var merged=[];
+  order.forEach(function(id){
     var l=localById[id],r=remoteById[id];
-    if(l&&!r){needsPush=true;return l;}
-    if(!l&&r)return r;
+    var deleteTs=Math.max(localDeleted[id]||0,remoteDeleted[id]||0);
+    var recipeTs=Math.max(recipeUpdatedAt(l),recipeUpdatedAt(r));
+    if(deleteTs&&deleteTs>=recipeTs){
+      mergedDeleted[id]=deleteTs;
+      if((localDeleted[id]||0)>(remoteDeleted[id]||0))needsPush=true;
+      return;
+    }
+    if(l&&!r){needsPush=true;merged.push(l);return;}
+    if(!l&&r){merged.push(r);return;}
     var lu=recipeUpdatedAt(l),ru=recipeUpdatedAt(r);
     var preferRemote=(lu||ru)?ru>=lu:remoteTs>=localTs;
     if(!preferRemote)needsPush=true;
-    return preferRemote?r:l;
+    merged.push(preferRemote?r:l);
   });
-  return{items:merged,needsPush:needsPush,changedLocal:!recipesSame(localItems,merged)};
+  return{items:merged,deleted:mergedDeleted,needsPush:needsPush,changedLocal:!recipesSame(localItems,merged)};
+}
+function mergeRemotePlan(planItems, remoteMeta, changedDateKey, remoteTs){
+  var normalisedPlan=normaliseIds({recipes:[],plan:planItems||{}}).plan;
+  remoteMeta=cleanPlanMeta(remoteMeta);
+  planMeta=cleanPlanMeta(planMeta);
+  var dates={},needsPush=[];
+  if(changedDateKey)dates[changedDateKey]=true;
+  Object.keys(normalisedPlan).forEach(function(k){dates[k]=true;});
+  Object.keys(remoteMeta).forEach(function(k){dates[k]=true;});
+  if(!changedDateKey){
+    Object.keys(plan).forEach(function(k){dates[k]=true;});
+    Object.keys(planMeta).forEach(function(k){dates[k]=true;});
+  }
+  Object.keys(dates).forEach(function(dateKey){
+    var remoteKnown=Object.prototype.hasOwnProperty.call(normalisedPlan,dateKey)||Object.prototype.hasOwnProperty.call(remoteMeta,dateKey)||dateKey===changedDateKey;
+    var localMeals=plan[dateKey]||[];
+    var remoteMeals=normalisedPlan[dateKey]||[];
+    var localM=planMeta[dateKey]||{};
+    var remoteM=remoteMeta[dateKey]||{};
+    var localStamp=parseInt(localM.updatedAt||localM.deletedAt,10)||0;
+    var remoteStamp=parseInt(remoteM.updatedAt||remoteM.deletedAt,10)||(remoteKnown?remoteTs:0)||0;
+
+    if(remoteStamp>localStamp){
+      if(remoteM.deletedAt&&!remoteMeals.length)delete plan[dateKey];
+      else plan[dateKey]=remoteMeals;
+      planMeta[dateKey]=remoteM.updatedAt||remoteM.deletedAt?remoteM:{updatedAt:remoteStamp,clientId:''};
+      return;
+    }
+    if(localStamp>remoteStamp){
+      if(remoteKnown)needsPush.push(dateKey);
+      return;
+    }
+    if(remoteKnown){
+      var merged=mergeMeals(localMeals,remoteMeals);
+      if(merged.length){
+        plan[dateKey]=merged;
+        if(!planMeta[dateKey])planMeta[dateKey]={updatedAt:remoteStamp||Date.now(),clientId:fbClientId};
+      }else if((remoteM.deletedAt||localM.deletedAt)&&!merged.length){
+        delete plan[dateKey];
+        planMeta[dateKey]=remoteM.deletedAt>=localM.deletedAt?remoteM:localM;
+      }
+      if(!planMealsSame(remoteMeals,merged))needsPush.push(dateKey);
+    }
+  });
+  return needsPush;
 }
 
 // FIREBASE
@@ -681,9 +782,11 @@ function applyRemoteData(key,d){
     var localRecipesTs=loadL('recipesTs')||0;
     var remoteRecipesTs=wrapped&&d.ts?d.ts:0;
     var recipeItems=Array.isArray(items)?items:[];
-    var mergedRecipes=mergeRecipeLists(recipes,recipeItems,localRecipesTs,remoteRecipesTs);
+    var mergedRecipes=mergeRecipeLists(recipes,recipeItems,localRecipesTs,remoteRecipesTs,recipeDeletes,d.deleted);
     recipes=normaliseIds({recipes:mergedRecipes.items,plan:{}}).recipes;
+    recipeDeletes=mergedRecipes.deleted;
     saveL('recipes',recipes);
+    saveL('recipeDeletes',recipeDeletes);
     var mergedRecipesTs=Math.max(localRecipesTs,remoteRecipesTs)||Date.now();
     if(mergedRecipes.needsPush)mergedRecipesTs=Date.now();
     saveL('recipesTs',mergedRecipesTs);
@@ -693,33 +796,13 @@ function applyRemoteData(key,d){
     ? items
     : {};
 
-  var normalisedPlan = normaliseIds({
-    recipes: [],
-    plan: planItems
-  }).plan;
-
-  if (!fbPlanLoaded) {
-  Object.keys(normalisedPlan).forEach(function(dateKey) {
-    plan[dateKey] = normalisedPlan[dateKey];
-  });
-
+  var needsPlanPush=mergeRemotePlan(planItems,d.meta||{},fbPlanLoaded?d.changedDateKey:null,wrapped&&d.ts?d.ts:0);
   fbPlanLoaded = true;
-} else if (d.changedDateKey) {
-      if (normalisedPlan[d.changedDateKey]) {
-      plan[d.changedDateKey] = normalisedPlan[d.changedDateKey];
-    } else {
-      delete plan[d.changedDateKey];
-    }
-  } else {
-    Object.keys(normalisedPlan).forEach(function(dateKey) {
-      if (!plan[dateKey]) {
-        plan[dateKey] = normalisedPlan[dateKey];
-      }
-    });
-  }
 
   migrateLegacyPlan(loadL('currentWeekStartDate')||currentWeekStartKey());
   saveL('plan', plan);
+  saveL('planMeta',planMeta);
+  needsPlanPush.forEach(function(dateKey){pushPlan(dateKey);});
   }else if(key==='checked'){
     checked=items&&typeof items==='object'&&!Array.isArray(items)?items:{};
     saveL('checked',checked);
@@ -764,6 +847,7 @@ function pushRecipes(ts){
   //Save recipes
 fbRef.child("recipes").set({
   items: recipes,
+  deleted: recipeDeletes,
   who:fbCfg.who ||"Someone",
   ts: recipesTs,
   clientId:fbClientId
@@ -774,9 +858,11 @@ function pushPlan(dateKey) {
   if (!fbConn || !fbRef || !dateKey) return;
 
   lastLocalPush.plan = Date.now();
+  if(!planMeta[dateKey])touchPlanDate(dateKey,lastLocalPush.plan);
 
   var updates = {};
-  updates['items/' + dateKey] = plan[dateKey] || null;
+  updates['items/' + dateKey] = plan[dateKey]&&plan[dateKey].length ? plan[dateKey] : null;
+  updates['meta/' + dateKey] = planMeta[dateKey];
   updates.who = fbCfg.who || 'Someone';
   updates.ts = lastLocalPush.plan;
   updates.clientId = fbClientId;
@@ -808,8 +894,11 @@ function saveL(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 function loadL(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}}
 function persist(changedKey, changedDateKey){
   if(changedKey==='recipes')saveL('recipesTs',Date.now());
+  if(changedKey==='plan'&&changedDateKey)touchPlanDate(changedDateKey);
   saveL('recipes',recipes);
+  saveL('recipeDeletes',recipeDeletes);
   saveL('plan',plan);
+  saveL('planMeta',planMeta);
   saveL('checked',checked);
   saveL('extraItems',extraItems);
   saveL('aisleOrder',aisleOrder);
@@ -844,7 +933,15 @@ function normaliseIds(data){
 }
 function loadPersisted(){
   var r=loadL('recipes');if(r&&r.length){var nd=normaliseIds({recipes:r,plan:{}});recipes=nd.recipes;}
+  var rd=loadL('recipeDeletes');if(rd)recipeDeletes=normaliseStampMap(rd);
   var p=loadL('plan');if(p){var nd2=normaliseIds({recipes:[],plan:p});plan=nd2.plan;}
+  var pm=loadL('planMeta');if(pm)planMeta=cleanPlanMeta(pm);
+  var oldPlanTs=loadL('planTs')||0;
+  Object.keys(plan).forEach(function(k){
+    if(/^\d{4}-\d{2}-\d{2}$/.test(k)&&plan[k]&&plan[k].length&&!planMeta[k]){
+      planMeta[k]={updatedAt:oldPlanTs||Date.now(),clientId:fbClientId};
+    }
+  });
   var c=loadL('checked');if(c)checked=c;
   var ei=loadL('extraItems');if(ei)extraItems=ei;
   var ao=loadL('aisleOrder');if(ao&&ao.length===6)aisleOrder=ao;
@@ -940,12 +1037,14 @@ function migrateLegacyPlan(anchorWeekStartKey) {
 
     if (!plan[dateKey] && plan[oldKey] && plan[oldKey].length) {
       plan[dateKey] = plan[oldKey].slice();
+      touchPlanDate(dateKey);
       migrated = true;
     }
   });
 
   if (migrated) {
     saveL('plan', plan);
+    saveL('planMeta', planMeta);
   }
 }
 function syncWeekAnchor() {
@@ -1320,6 +1419,7 @@ function renderRGrid(){
 function delR(id) {
   if (!confirm('Delete this recipe?')) return;
 
+  recipeDeletes[String(id)] = Date.now();
   recipes = recipes.filter(function(recipe) {
     return recipe.id !== id;
   });
@@ -2538,7 +2638,7 @@ handleShareTarget();
 
 // SERVICE WORKER
 (function(){
-  var CACHE_VERSION='v5.13';
+  var CACHE_VERSION='v5.14';
   if(!('serviceWorker' in navigator))return;
   var swCode=[
     'var CACHE="mep-'+CACHE_VERSION+'";',
