@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v5.15 -->
+<!-- v5.16 -->
 
 <html lang="en">
 <head>
@@ -520,7 +520,7 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
 <script>
 // ── CACHE NUKE v3.0: clears stale SW + caches, one-time reload ─────────────
 (function(){
-  var CURRENT='mep-app-v5.15';
+  var CURRENT='mep-app-v5.16';
   var nuked=sessionStorage.getItem('cache-nuked');
   if(nuked===CURRENT)return; // already done this session
   function doNuke(){
@@ -662,7 +662,7 @@ function cleanPlanMeta(meta){
     var m=meta[k]||{};
     var updatedAt=parseInt(m.updatedAt||m.ts,10)||0;
     var deletedAt=parseInt(m.deletedAt,10)||0;
-    if(updatedAt||deletedAt)out[k]={updatedAt:updatedAt||deletedAt,deletedAt:deletedAt||0,clientId:m.clientId||''};
+    if(updatedAt||deletedAt)out[k]={updatedAt:updatedAt||deletedAt,deletedAt:deletedAt||0,clientId:m.clientId||'',inferred:!!m.inferred};
   });
   return out;
 }
@@ -726,6 +726,7 @@ function mergeRemotePlan(planItems, remoteMeta, changedDateKey, remoteTs){
     var remoteM=remoteMeta[dateKey]||{};
     var localStamp=parseInt(localM.updatedAt||localM.deletedAt,10)||0;
     var remoteStamp=parseInt(remoteM.updatedAt||remoteM.deletedAt,10)||(remoteKnown?remoteTs:0)||0;
+    if(localM.inferred&&remoteKnown&&remoteStamp)localStamp=0;
 
     if(remoteStamp>localStamp){
       if(remoteM.deletedAt&&!remoteMeals.length)delete plan[dateKey];
@@ -774,8 +775,8 @@ function isOwnEcho(key,d){
   if(d.clientId)return d.clientId===fbClientId;
   return d.ts&&d.ts===lastLocalPush[key];
 }
-function applyRemoteData(key,d){
-  if(!d||isOwnEcho(key,d))return;
+function applyRemoteData(key,d,force){
+  if(!d||(!force&&isOwnEcho(key,d)))return;
   var wrapped=Object.prototype.hasOwnProperty.call(d,'ts')||Object.prototype.hasOwnProperty.call(d,'who');
   var items=wrapped?d.items:d;
   if(key==='recipes'){
@@ -857,15 +858,19 @@ function refreshSyncNow(){
   if(btn){btn.disabled=true;btn.textContent='Refreshing...';}
   ensureFBReady().then(function(ok){
     if(!ok)return;
+    var oldPlanLoaded=fbPlanLoaded;
+    fbPlanLoaded=false;
     return Promise.all(['recipes','plan','checked'].map(function(key){
       return fbRef.child(key).once('value').then(function(snap){
-        applyRemoteData(key,snap.val());
+        applyRemoteData(key,snap.val(),true);
       });
     })).then(function(){
       renderAll();
       gr('sync-bar').className='sync-bar';
       gr('sync-txt').textContent='Live sync active'+(fbCfg.who?' - '+fbCfg.who+"'s planner":'');
       showToast('Planner refreshed');
+    }).finally(function(){
+      fbPlanLoaded=oldPlanLoaded||fbPlanLoaded;
     });
   }).catch(function(){
     gr('sync-bar').className='sync-bar off';
@@ -981,7 +986,7 @@ function loadPersisted(){
   var oldPlanTs=loadL('planTs')||0;
   Object.keys(plan).forEach(function(k){
     if(/^\d{4}-\d{2}-\d{2}$/.test(k)&&plan[k]&&plan[k].length&&!planMeta[k]){
-      planMeta[k]={updatedAt:oldPlanTs||Date.now(),clientId:fbClientId};
+      planMeta[k]={updatedAt:oldPlanTs||1,clientId:fbClientId,inferred:true};
     }
   });
   var c=loadL('checked');if(c)checked=c;
@@ -1061,6 +1066,7 @@ function planKey(day) {
 }
 function migrateLegacyPlan(anchorWeekStartKey) {
   var migrated = false;
+  var removedLegacy = false;
   var anchorWeekStart=parseLocalDateKey(anchorWeekStartKey)||getWeekStartForOffset(0);
 
   Object.keys(plan).forEach(function(oldKey) {
@@ -1082,9 +1088,11 @@ function migrateLegacyPlan(anchorWeekStartKey) {
       touchPlanDate(dateKey);
       migrated = true;
     }
+    delete plan[oldKey];
+    removedLegacy = true;
   });
 
-  if (migrated) {
+  if (migrated||removedLegacy) {
     saveL('plan', plan);
     saveL('planMeta', planMeta);
   }
@@ -1142,7 +1150,20 @@ function renderPlanner(){
       dayDiv.appendChild(emp);
     } else {
       meals.forEach(function(m,i){
-        var r=rec(m.recipeId);if(!r)return;
+        var r=rec(m.recipeId);
+        if(!r){
+          var missingRow=mkEl('div','day-meal-row');
+          var missingInfo=mkEl('div','meal-info');
+          missingInfo.appendChild(mkEl('div','meal-label',m.mealType||'Meal'));
+          missingInfo.appendChild(mkEl('div','meal-title','Recipe not synced yet'));
+          missingInfo.appendChild(mkEl('div','meal-warn','Missing recipe ID '+m.recipeId+' - tap Refresh to pull latest recipes'));
+          var rb=mkEl('button','btn btns','Refresh');rb.style.cssText='flex-shrink:0;font-size:11px;padding:5px 9px';
+          rb.addEventListener('click',function(e){e.stopPropagation();refreshSyncNow();});
+          var rmMissing=mkEl('div','rm-btn','x');
+          (function(d2,idx){rmMissing.addEventListener('click',function(){rmMeal(d2,idx);});})(day,i);
+          missingRow.appendChild(missingInfo);missingRow.appendChild(rb);missingRow.appendChild(rmMissing);dayDiv.appendChild(missingRow);
+          return;
+        }
         var ha=rha(r);var hits=r.allergens.filter(function(a){return userAllergens.indexOf(a)>=0;});
         var row=mkEl('div','day-meal-row');
         var info=mkEl('div','meal-info');info.style.cursor='pointer';
@@ -2680,7 +2701,7 @@ handleShareTarget();
 
 // SERVICE WORKER
 (function(){
-  var CACHE_VERSION='v5.15';
+  var CACHE_VERSION='v5.16';
   if(!('serviceWorker' in navigator))return;
   var swCode=[
     'var CACHE="mep-'+CACHE_VERSION+'";',
