@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v5.14 -->
+<!-- v5.15 -->
 
 <html lang="en">
 <head>
@@ -260,7 +260,7 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
     <div id="panel-planner" class="panel active">
       <div class="week-nav"><button class="week-nav-btn" onclick="changeWeek(-1)">&#8249;</button><div class="week-label" id="week-label">This week</div><button class="week-nav-btn" onclick="changeWeek(1)">&#8250;</button></div>
       <div class="stats-grid" id="stats-grid"></div>
-      <div class="sec-hdr"><div class="sec-title" id="week-sec-title">This week</div><div style="display:flex;gap:6px"><button class="btn btns" id="random-btn">&#127922; Random</button><button class="btn btns" onclick="openAM(null)">+ Add meal</button></div></div>
+      <div class="sec-hdr"><div class="sec-title" id="week-sec-title">This week</div><div style="display:flex;gap:6px"><button class="btn btns" id="refresh-sync-btn" onclick="refreshSyncNow()">&#8635; Refresh</button><button class="btn btns" id="random-btn">&#127922; Random</button><button class="btn btns" onclick="openAM(null)">+ Add meal</button></div></div>
       <div id="planner-content"></div>
     </div>
     <div id="panel-shopping" class="panel">
@@ -520,7 +520,7 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
 <script>
 // ── CACHE NUKE v3.0: clears stale SW + caches, one-time reload ─────────────
 (function(){
-  var CURRENT='mep-app-v5.14';
+  var CURRENT='mep-app-v5.15';
   var nuked=sessionStorage.getItem('cache-nuked');
   if(nuked===CURRENT)return; // already done this session
   function doNuke(){
@@ -832,6 +832,48 @@ function initFB(){
     gr('sync-bar').className = 'sync-bar off';
     gr('sync-txt').textContent = 'Sync error';
   }
+}
+function ensureFBReady(){
+  if(fbConn&&fbRef)return Promise.resolve(true);
+  var cfg=loadL('fbCfg');
+  if(!cfg){
+    showToast('Connect sync first');
+    openFBSetup();
+    return Promise.resolve(false);
+  }
+  fbCfg=cfg;
+  return loadFBSDK().then(function(){
+    initFB();
+    return !!fbRef;
+  }).catch(function(){
+    gr('sync-bar').className='sync-bar off';
+    gr('sync-txt').textContent='Sync error';
+    showToast('Could not connect to sync');
+    return false;
+  });
+}
+function refreshSyncNow(){
+  var btn=gr('refresh-sync-btn');
+  if(btn){btn.disabled=true;btn.textContent='Refreshing...';}
+  ensureFBReady().then(function(ok){
+    if(!ok)return;
+    return Promise.all(['recipes','plan','checked'].map(function(key){
+      return fbRef.child(key).once('value').then(function(snap){
+        applyRemoteData(key,snap.val());
+      });
+    })).then(function(){
+      renderAll();
+      gr('sync-bar').className='sync-bar';
+      gr('sync-txt').textContent='Live sync active'+(fbCfg.who?' - '+fbCfg.who+"'s planner":'');
+      showToast('Planner refreshed');
+    });
+  }).catch(function(){
+    gr('sync-bar').className='sync-bar off';
+    gr('sync-txt').textContent='Refresh failed';
+    showToast('Refresh failed');
+  }).finally(function(){
+    if(btn){btn.disabled=false;btn.innerHTML='&#8635; Refresh';}
+  });
 }
 
 var lastLocalPush={
@@ -2638,7 +2680,7 @@ handleShareTarget();
 
 // SERVICE WORKER
 (function(){
-  var CACHE_VERSION='v5.14';
+  var CACHE_VERSION='v5.15';
   if(!('serviceWorker' in navigator))return;
   var swCode=[
     'var CACHE="mep-'+CACHE_VERSION+'";',
