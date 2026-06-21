@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v5.17 -->
+<!-- v5.18 -->
 
 <html lang="en">
 <head>
@@ -520,7 +520,7 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
 <script>
 // ── CACHE NUKE v3.0: clears stale SW + caches, one-time reload ─────────────
 (function(){
-  var CURRENT='mep-app-v5.17';
+  var CURRENT='mep-app-v5.18';
   var nuked=sessionStorage.getItem('cache-nuked');
   if(nuked===CURRENT)return; // already done this session
   function doNuke(){
@@ -761,6 +761,9 @@ function buildSharedState(ts){
     plan:plan,
     planMeta:planMeta,
     checked:checked,
+    extraItems:extraItems,
+    collections:collections,
+    customMT:customMT,
     ts:ts||Date.now(),
     clientId:fbClientId,
     who:fbCfg.who||'Someone'
@@ -772,6 +775,9 @@ function saveSharedLocal(){
   saveL('plan',plan);
   saveL('planMeta',planMeta);
   saveL('checked',checked);
+  saveL('extraItems',extraItems);
+  saveL('collections',collections);
+  saveL('customMT',customMT);
 }
 function applySharedState(state,force){
   if(!state||typeof state!=='object')return false;
@@ -781,6 +787,10 @@ function applySharedState(state,force){
   plan=normaliseIds({recipes:[],plan:(state.plan&&typeof state.plan==='object'&&!Array.isArray(state.plan))?state.plan:{}}).plan;
   planMeta=cleanPlanMeta(state.planMeta);
   checked=state.checked&&typeof state.checked==='object'&&!Array.isArray(state.checked)?state.checked:{};
+  extraItems=Array.isArray(state.extraItems)?state.extraItems:[];
+  collections=Array.isArray(state.collections)?state.collections:[];
+  customMT=Array.isArray(state.customMT)?state.customMT:[];
+  refreshMT();
   saveSharedLocal();
   if(state.ts)saveL('sharedStateTs',state.ts);
   fbStateLoaded=true;
@@ -788,17 +798,94 @@ function applySharedState(state,force){
   if(state.who&&state.clientId!==fbClientId)showToast(state.who+' updated planner');
   return true;
 }
-function publishSharedState(){
+function normaliseSharedState(state){
+  state=state&&typeof state==='object'?state:{};
+  return{
+    version:2,
+    recipes:normaliseIds({recipes:Array.isArray(state.recipes)?state.recipes:[],plan:{}}).recipes,
+    recipeDeletes:normaliseStampMap(state.recipeDeletes),
+    plan:normaliseIds({recipes:[],plan:(state.plan&&typeof state.plan==='object'&&!Array.isArray(state.plan))?state.plan:{}}).plan,
+    planMeta:cleanPlanMeta(state.planMeta),
+    checked:state.checked&&typeof state.checked==='object'&&!Array.isArray(state.checked)?state.checked:{},
+    extraItems:Array.isArray(state.extraItems)?state.extraItems:[],
+    collections:Array.isArray(state.collections)?state.collections:[],
+    customMT:Array.isArray(state.customMT)?state.customMT:[],
+    ts:parseInt(state.ts,10)||0,
+    clientId:state.clientId||'',
+    who:state.who||''
+  };
+}
+function mergeListById(remoteItems, localItems){
+  var out=[],byId={},order=[];
+  function idFor(item){return item&&item.id!==undefined&&item.id!==null?String(item.id):JSON.stringify(item);}
+  function add(item){var id=idFor(item);if(!byId[id])order.push(id);byId[id]=item;}
+  (Array.isArray(remoteItems)?remoteItems:[]).forEach(add);
+  (Array.isArray(localItems)?localItems:[]).forEach(add);
+  order.forEach(function(id){out.push(byId[id]);});
+  return out;
+}
+function mergeSimpleList(remoteItems,localItems){
+  var out=[],seen={};
+  (Array.isArray(remoteItems)?remoteItems:[]).concat(Array.isArray(localItems)?localItems:[]).forEach(function(item){
+    var key=JSON.stringify(item);
+    if(!seen[key]){seen[key]=true;out.push(item);}
+  });
+  return out;
+}
+function mergeSharedState(remote, local, changedKey, changedDateKey, ts){
+  remote=normaliseSharedState(remote);
+  local=normaliseSharedState(local);
+  if(!changedKey){
+    local.version=2;local.ts=ts;local.clientId=fbClientId;local.who=fbCfg.who||'Someone';
+    return local;
+  }
+  var out=normaliseSharedState(remote);
+  var mergedRecipes=mergeRecipeLists(remote.recipes,local.recipes,remote.ts,ts,remote.recipeDeletes,local.recipeDeletes);
+  out.recipes=mergedRecipes.items;
+  out.recipeDeletes=mergedRecipes.deleted;
+
+  if(changedKey==='plan'&&changedDateKey){
+    out.plan=remote.plan;out.planMeta=remote.planMeta;
+    var remoteMeals=remote.plan[changedDateKey]||[];
+    var localMeals=local.plan[changedDateKey]||[];
+    var localMeta=local.planMeta[changedDateKey]||{updatedAt:ts,clientId:fbClientId};
+    if(localMeta.deletedAt&&!localMeals.length){
+      delete out.plan[changedDateKey];
+    }else{
+      out.plan[changedDateKey]=mergeMeals(remoteMeals,localMeals);
+    }
+    out.planMeta[changedDateKey]={updatedAt:ts,deletedAt:localMeta.deletedAt&&!localMeals.length?ts:0,clientId:fbClientId};
+  }else if(changedKey==='plan'){
+    out.plan=local.plan;out.planMeta=local.planMeta;
+  }else{
+    out.plan=remote.plan;out.planMeta=remote.planMeta;
+  }
+
+  if(changedKey==='checked'){
+    if(changedDateKey==='__clear__')out.checked=local.checked;
+    else if(changedDateKey){
+      out.checked=remote.checked;
+      out.checked[changedDateKey]=local.checked[changedDateKey];
+    }else out.checked=local.checked;
+  }
+  if(changedKey==='extraItems')out.extraItems=mergeSimpleList(remote.extraItems,local.extraItems);
+  if(changedKey==='collections')out.collections=mergeListById(remote.collections,local.collections);
+  if(changedKey==='customMT')out.customMT=mergeSimpleList(remote.customMT,local.customMT);
+  if(changedKey==='recipes'){out.recipes=mergedRecipes.items;out.recipeDeletes=mergedRecipes.deleted;}
+  out.version=2;out.ts=ts;out.clientId=fbClientId;out.who=fbCfg.who||'Someone';
+  return out;
+}
+function publishSharedState(changedKey,changedDateKey){
   if(!fbConn||!fbRef)return;
   var ts=Date.now();
-  var shared=buildSharedState(ts);
+  var local=buildSharedState(ts);
   lastLocalPush.state=ts;
   fbStateLoaded=true;
-  fbRef.update({
-    state:shared,
-    recipes:{items:recipes,deleted:recipeDeletes,who:shared.who,ts:ts,clientId:fbClientId},
-    plan:{items:plan,meta:planMeta,who:shared.who,ts:ts,clientId:fbClientId},
-    checked:{items:checked,who:shared.who,ts:ts,clientId:fbClientId}
+  fbRef.child('state').transaction(function(remote){
+    return mergeSharedState(remote,local,changedKey,changedDateKey,ts);
+  },function(error,committed,snap){
+    if(error){showToast('Sync failed - tap Refresh');return;}
+    if(committed&&snap&&snap.val())applySharedState(snap.val(),true);
   });
 }
 function bootstrapSharedState(){
@@ -1013,7 +1100,8 @@ function pushPlan(dateKey) {
   }
 
 function push(changedKey, changedDateKey) {
-  if (fbConn && fbRef) publishSharedState();
+  var sharedKeys=['recipes','plan','checked','extraItems','collections','customMT'];
+  if (fbConn && fbRef && sharedKeys.indexOf(changedKey)>=0) publishSharedState(changedKey, changedDateKey);
 }
 
 // PERSIST
@@ -1459,12 +1547,12 @@ function renderExtras(){
 function addExtra(){
   var inp=gr('extra-input');var val=inp.value.trim();if(!val)return;
   val.split(',').map(function(v){return v.trim();}).filter(Boolean).forEach(function(v){extraItems.push(v);});
-  inp.value='';persist();renderExtras();
+  inp.value='';persist('extraItems');renderExtras();
 }
-function removeExtra(i){extraItems.splice(i,1);persist();renderExtras();}
+function removeExtra(i){extraItems.splice(i,1);persist('extraItems');renderExtras();}
 function extraKD(e){if(e.key==='Enter'){e.preventDefault();addExtra();}}
-function toggleChk(k){checked[k]=!checked[k];persist();var el=gr('si-'+k);if(el){el.className='shop-item'+(checked[k]?' done':'');var chk=el.querySelector('.chk');chk.className='chk'+(checked[k]?' on':'');}}
-function clearChecks(){checked={};persist();renderShop();}
+function toggleChk(k){checked[k]=!checked[k];persist('checked',k);var el=gr('si-'+k);if(el){el.className='shop-item'+(checked[k]?' done':'');var chk=el.querySelector('.chk');chk.className='chk'+(checked[k]?' on':'');}}
+function clearChecks(){checked={};persist('checked','__clear__');renderShop();}
 
 // RECIPES
 function renderCF(){gr('c-filters').innerHTML=CUISINES.map(function(c){return'<button class="fchip'+(aCuisine===c?' on':'')+'" onclick="setC(\''+c+'\')">'+c+'</button>'}).join('');}
@@ -1691,20 +1779,20 @@ function addColl(){
   var inp=gr('coll-new-input');var name=inp.value.trim();if(!name)return;
   if(collections.find(function(c){return c.name===name;})){showToast('Already exists');return;}
   collections.push({id:Date.now(),name:name,recipes:[]});
-  inp.value='';persist();renderCollManageList();renderCollFilters();showToast('Collection added');
+  inp.value='';persist('collections');renderCollManageList();renderCollFilters();showToast('Collection added');
 }
 function collKD(e){if(e.key==='Enter'){e.preventDefault();addColl();}}
 function deleteColl(id){
   collections=collections.filter(function(c){return c.id!==id;});
   if(aCollection!=='All'){aCollection='All';}
-  persist();renderCollManageList();renderCollFilters();renderRGrid();
+  persist('collections');renderCollManageList();renderCollFilters();renderRGrid();
 }
 function toggleRecipeColl(collId,recipeId){
   var c=collections.find(function(x){return x.id===collId;});if(!c)return;
   c.recipes=c.recipes||[];
   var idx=c.recipes.indexOf(recipeId);
   if(idx>=0)c.recipes.splice(idx,1);else c.recipes.push(recipeId);
-  persist();
+  persist('collections');
 }
 function renderCollManageList(){
   var el=gr('coll-manage-list');if(!el)return;
@@ -1744,12 +1832,12 @@ function openMTManager(){renderMTChips();openM('modal-mttypes');}
 function addMT(){
   var inp=gr('mt-new-input');var name=inp.value.trim();if(!name)return;
   if(MT.indexOf(name)>=0){showToast('Already exists');return;}
-  customMT.push(name);refreshMT();inp.value='';persist();renderMTChips();renderAMT();showToast('Meal type added');
+  customMT.push(name);refreshMT();inp.value='';persist('customMT');renderMTChips();renderAMT();showToast('Meal type added');
 }
 function mtKD(e){if(e.key==='Enter'){e.preventDefault();addMT();}}
 function removeMT(name){
   customMT=customMT.filter(function(t){return t!==name;});
-  refreshMT();persist();renderMTChips();renderAMT();
+  refreshMT();persist('customMT');renderMTChips();renderAMT();
 }
 function renderMTChips(){
   var el=gr('mt-chips');if(!el)return;el.innerHTML='';
@@ -1784,7 +1872,7 @@ function addMTInline(){
   var inp=gr('mt-new-inline');if(!inp)return;
   var name=inp.value.trim();if(!name)return;
   if(MT.indexOf(name)>=0){showToast('Already exists');return;}
-  customMT.push(name);refreshMT();inp.value='';persist();renderMTChipsInline();renderAMT();showToast('Added: '+name);
+  customMT.push(name);refreshMT();inp.value='';persist('customMT');renderMTChipsInline();renderAMT();showToast('Added: '+name);
 }
 function mtKDInline(e){if(e.key==='Enter'){e.preventDefault();addMTInline();}}
 // ──────────────────────────────────────────────────────────────────────────────
@@ -2781,7 +2869,7 @@ handleShareTarget();
 
 // SERVICE WORKER
 (function(){
-  var CACHE_VERSION='v5.17';
+  var CACHE_VERSION='v5.18';
   if(!('serviceWorker' in navigator))return;
   var swCode=[
     'var CACHE="mep-'+CACHE_VERSION+'";',
