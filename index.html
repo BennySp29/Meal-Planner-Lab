@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v5.20 -->
+<!-- v5.21 -->
 
 <html lang="en">
 <head>
@@ -520,7 +520,7 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
 <script>
 // ── CACHE NUKE v3.0: clears stale SW + caches, one-time reload ─────────────
 (function(){
-  var CURRENT='mep-app-v5.20';
+  var CURRENT='mep-app-v5.21';
   var nuked=sessionStorage.getItem('cache-nuked');
   if(nuked===CURRENT)return; // already done this session
   function doNuke(){
@@ -628,7 +628,7 @@ var fridgeIngs=[];
 var fbConn=false;var fbRef=null;var fbPlanLoaded = false;
 var fbCfg={url:'',key:'',proj:'',who:''};
 var fbClientId='client-'+Date.now()+'-'+Math.random().toString(36).slice(2);
-var fbStateLoaded=false;var fbBootstrappingState=false;
+var fbStateLoaded=false;var fbBootstrappingState=false;var pendingSharedWrites=0;
 var API_KEY='';
 
 function recipeKey(r){return r&&r.id!==undefined&&r.id!==null?String(r.id):'';}
@@ -884,6 +884,8 @@ function loadRemoteRecipeImages(){
 function applySharedState(state,force){
   if(!state||typeof state!=='object')return false;
   if(!force&&fbStateLoaded&&state.clientId===fbClientId)return false;
+  if(!force&&pendingSharedWrites>0&&state.clientId!==fbClientId)return false;
+  if(!force&&loadL('sharedDirty')&&state.clientId!==fbClientId)return false;
   recipes=attachRecipeImages(normaliseIds({recipes:Array.isArray(state.recipes)?state.recipes:[],plan:{}}).recipes);
   recipeDeletes=normaliseStampMap(state.recipeDeletes);
   plan=normalisePlanObject((state.plan&&typeof state.plan==='object'&&!Array.isArray(state.plan))?state.plan:{});
@@ -937,12 +939,52 @@ function mergeSimpleList(remoteItems,localItems){
   });
   return out;
 }
+function mergeAllPlans(remote,local,ts){
+  var outPlan={},outMeta={},outDeletes=Object.assign({},remote.planMealDeletes);
+  Object.keys(local.planMealDeletes).forEach(function(id){
+    outDeletes[id]=Math.max(outDeletes[id]||0,local.planMealDeletes[id]);
+  });
+  var dates={};
+  [remote.plan,local.plan,remote.planMeta,local.planMeta].forEach(function(src){
+    Object.keys(src||{}).forEach(function(k){dates[k]=true;});
+  });
+  Object.keys(dates).forEach(function(dateKey){
+    var mergedPlan=mergePlanMeals(remote.plan[dateKey]||[],local.plan[dateKey]||[],remote.planMealDeletes,local.planMealDeletes,dateKey);
+    outDeletes=Object.assign(outDeletes,mergedPlan.deletes);
+    var rm=remote.planMeta[dateKey]||{},lm=local.planMeta[dateKey]||{};
+    var rts=parseInt(rm.updatedAt||rm.deletedAt,10)||0;
+    var lts=parseInt(lm.updatedAt||lm.deletedAt,10)||0;
+    var chosen=lts>=rts?lm:rm;
+    if(mergedPlan.items.length){
+      outPlan[dateKey]=mergedPlan.items;
+      outMeta[dateKey]={updatedAt:Math.max(rts,lts,ts||0),deletedAt:0,clientId:fbClientId};
+    }else if((rm.deletedAt||lm.deletedAt)&&!mergedPlan.items.length){
+      outMeta[dateKey]=chosen;
+    }
+  });
+  return{plan:outPlan,meta:outMeta,deletes:outDeletes};
+}
+function mergeWholeSharedState(remote,local,ts){
+  var out=normaliseSharedState(remote);
+  var mergedRecipes=mergeRecipeLists(remote.recipes,local.recipes,remote.ts,ts,remote.recipeDeletes,local.recipeDeletes);
+  var mergedPlan=mergeAllPlans(remote,local,ts);
+  out.recipes=mergedRecipes.items;
+  out.recipeDeletes=mergedRecipes.deleted;
+  out.plan=mergedPlan.plan;
+  out.planMeta=mergedPlan.meta;
+  out.planMealDeletes=mergedPlan.deletes;
+  out.checked=Object.assign({},remote.checked,local.checked);
+  out.extraItems=mergeSimpleList(remote.extraItems,local.extraItems);
+  out.collections=mergeListById(remote.collections,local.collections);
+  out.customMT=mergeSimpleList(remote.customMT,local.customMT);
+  out.version=2;out.ts=ts;out.clientId=fbClientId;out.who=fbCfg.who||'Someone';
+  return out;
+}
 function mergeSharedState(remote, local, changedKey, changedDateKey, ts){
   remote=normaliseSharedState(remote);
   local=normaliseSharedState(local);
   if(!changedKey){
-    local.version=2;local.ts=ts;local.clientId=fbClientId;local.who=fbCfg.who||'Someone';
-    return local;
+    return mergeWholeSharedState(remote,local,ts);
   }
   var out=normaliseSharedState(remote);
   if(!out.extraItems.length&&local.extraItems.length)out.extraItems=local.extraItems;
@@ -1012,11 +1054,14 @@ function publishSharedState(changedKey,changedDateKey){
   var local=buildSharedState(ts);
   lastLocalPush.state=ts;
   fbStateLoaded=true;
+  pendingSharedWrites++;
   if(changedKey==='recipes')publishRecipeImages();
   fbRef.child('state').transaction(function(remote){
     return mergeSharedState(remote,local,changedKey,changedDateKey,ts);
   },function(error,committed,snap){
+    pendingSharedWrites=Math.max(0,pendingSharedWrites-1);
     if(error){showToast('Sync failed - tap Refresh');return;}
+    if(pendingSharedWrites===0)saveL('sharedDirty',0);
     if(committed&&snap&&snap.val())applySharedState(snap.val(),true);
   });
 }
@@ -1141,6 +1186,7 @@ function initFB(){
     fbPlanLoaded = false;
     listenForSharedState();
     listenForRecipeImages();
+    if(loadL('sharedDirty'))setTimeout(function(){publishSharedState();},600);
     gr('sync-bar').className='sync-bar';gr('sync-txt').textContent='Live sync active'+(fbCfg.who?' — '+fbCfg.who+"'s planner":'');
     gr('fb-status').innerHTML='<span style="color:var(--sage)">✓ Connected!</span>';
     setTimeout(function(){closeM('modal-fb');},1200);
@@ -1173,10 +1219,14 @@ function refreshSyncNow(){
   if(btn){btn.disabled=true;btn.textContent='Refreshing...';}
   ensureFBReady().then(function(ok){
     if(!ok)return;
-    return fbRef.child('state').once('value').then(function(snap){
-      var state=snap.val();
-      if(state)applySharedState(state,true);
-      else return bootstrapSharedState();
+    var ts=Date.now();
+    var local=buildSharedState(ts);
+    publishRecipeImages();
+    return fbRef.child('state').transaction(function(remote){
+      return mergeSharedState(remote,local,null,null,ts);
+    }).then(function(result){
+      if(result&&result.committed&&result.snapshot&&result.snapshot.val())applySharedState(result.snapshot.val(),true);
+      saveL('sharedDirty',0);
     }).then(function(){
       renderAll();
       gr('sync-bar').className='sync-bar';
@@ -1244,7 +1294,12 @@ function pushPlan(dateKey) {
 
 function push(changedKey, changedDateKey) {
   var sharedKeys=['recipes','plan','checked','extraItems','collections','customMT'];
-  if (fbConn && fbRef && sharedKeys.indexOf(changedKey)>=0) publishSharedState(changedKey, changedDateKey);
+  if(sharedKeys.indexOf(changedKey)<0)return;
+  if(fbConn&&fbRef){publishSharedState(changedKey,changedDateKey);return;}
+  saveL('sharedDirty',Date.now());
+  ensureFBReady().then(function(ok){
+    if(ok)publishSharedState(changedKey,changedDateKey);
+  });
 }
 
 // PERSIST
@@ -3038,7 +3093,7 @@ handleShareTarget();
 
 // SERVICE WORKER
 (function(){
-  var CACHE_VERSION='v5.20';
+  var CACHE_VERSION='v5.21';
   if(!('serviceWorker' in navigator))return;
   var swCode=[
     'var CACHE="mep-'+CACHE_VERSION+'";',
