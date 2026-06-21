@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v5.18 -->
+<!-- v5.19 -->
 
 <html lang="en">
 <head>
@@ -520,7 +520,7 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
 <script>
 // ── CACHE NUKE v3.0: clears stale SW + caches, one-time reload ─────────────
 (function(){
-  var CURRENT='mep-app-v5.18';
+  var CURRENT='mep-app-v5.19';
   var nuked=sessionStorage.getItem('cache-nuked');
   if(nuked===CURRENT)return; // already done this session
   function doNuke(){
@@ -615,9 +615,11 @@ var recipes=[
 ];
 var plan={Monday:[],Tuesday:[],Wednesday:[],Thursday:[],Friday:[],Saturday:[{recipeId:1,mealType:'Dinner'},{recipeId:3,mealType:'Breakfast'}],Sunday:[{recipeId:5,mealType:'Lunch'}]};
 var planMeta={};
+var planMealDeletes={};
 var checked={};
 var extraItems=[];
 var recipeDeletes={};
+var recipeImages={};
 var userAllergens=[];var userDiet=null;
 var aCuisine='Any';var aDiet='Any';
 var amDay=DAYS[0];var amRecipe=null;var amType='Dinner';
@@ -633,6 +635,13 @@ function recipeKey(r){return r&&r.id!==undefined&&r.id!==null?String(r.id):'';}
 function recipeUpdatedAt(r){return parseInt(r&&(r.updatedAt||r.lastCooked||0),10)||0;}
 function cloneRecipe(r){return JSON.parse(JSON.stringify(r));}
 function recipesSame(a,b){return JSON.stringify(a||[])===JSON.stringify(b||[]);}
+function simpleHash(s){
+  s=String(s||'');
+  var h=0;
+  for(var i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0;}
+  return Math.abs(h).toString(36);
+}
+function newId(prefix){return prefix+'-'+Date.now()+'-'+Math.random().toString(36).slice(2,8);}
 function normaliseStampMap(map){
   var out={};
   if(!map||typeof map!=='object'||Array.isArray(map))return out;
@@ -646,14 +655,76 @@ function normaliseStampMap(map){
 function mealSig(m){
   return [m.recipeId,m.mealType||'',m.note||'',m.servings||''].join('|');
 }
-function mergeMeals(a,b){
-  var out=[],seen={};
-  (Array.isArray(a)?a:[]).concat(Array.isArray(b)?b:[]).forEach(function(m){
-    if(!m)return;
-    var sig=mealSig(m);
-    if(!seen[sig]){seen[sig]=true;out.push(m);}
+function legacyMealId(dateKey,m,index){
+  return 'legacy-'+dateKey+'-'+index+'-'+simpleHash(mealSig(m));
+}
+function normaliseMeal(m,dateKey,index){
+  if(!m||typeof m!=='object')return null;
+  var out=Object.assign({},m);
+  out.recipeId=parseInt(out.recipeId,10)||out.recipeId;
+  out.id=out.id||legacyMealId(dateKey,out,index||0);
+  out.updatedAt=parseInt(out.updatedAt,10)||0;
+  return out;
+}
+function normalisePlanObject(planData){
+  var out={};
+  if(!planData||typeof planData!=='object'||Array.isArray(planData))return out;
+  Object.keys(planData).forEach(function(dateKey){
+    out[dateKey]=(Array.isArray(planData[dateKey])?planData[dateKey]:[]).map(function(m,i){
+      return normaliseMeal(m,dateKey,i);
+    }).filter(Boolean);
   });
   return out;
+}
+function recipeImagesFrom(list){
+  var imgs={};
+  (Array.isArray(list)?list:[]).forEach(function(r){
+    var id=recipeKey(r);
+    if(id&&r.image)imgs[id]=r.image;
+  });
+  return imgs;
+}
+function recipesForState(list){
+  return (Array.isArray(list)?list:[]).map(function(r){
+    var copy=cloneRecipe(normaliseRecipe(r));
+    var id=recipeKey(copy);
+    if(id&&copy.image)recipeImages[id]=copy.image;
+    delete copy.image;
+    return copy;
+  });
+}
+function attachRecipeImages(list,preserveExisting){
+  preserveExisting=preserveExisting!==false;
+  return (Array.isArray(list)?list:[]).map(function(r){
+    var copy=cloneRecipe(r);
+    var id=recipeKey(copy);
+    copy.image=(id&&recipeImages[id])||(preserveExisting?copy.image:'')||'';
+    return copy;
+  });
+}
+function mergePlanMeals(remoteMeals,localMeals,remoteDeletes,localDeletes,dateKey){
+  remoteDeletes=normaliseStampMap(remoteDeletes);
+  localDeletes=normaliseStampMap(localDeletes);
+  var deletes={},byId={},order=[],mergedDeletes={};
+  Object.keys(remoteDeletes).forEach(function(id){deletes[id]=Math.max(deletes[id]||0,remoteDeletes[id]);});
+  Object.keys(localDeletes).forEach(function(id){deletes[id]=Math.max(deletes[id]||0,localDeletes[id]);});
+  function remember(m){
+    if(!m)return;
+    if(!byId[m.id])order.push(m.id);
+    var existing=byId[m.id];
+    if(!existing||(m.updatedAt||0)>=(existing.updatedAt||0))byId[m.id]=m;
+  }
+  (Array.isArray(remoteMeals)?remoteMeals:[]).map(function(m,i){return normaliseMeal(m,dateKey,i);}).forEach(remember);
+  (Array.isArray(localMeals)?localMeals:[]).map(function(m,i){return normaliseMeal(m,dateKey,i);}).forEach(remember);
+  var items=[];
+  order.forEach(function(id){
+    var meal=byId[id];
+    var deleteTs=deletes[id]||0;
+    if(deleteTs&&deleteTs>=(meal.updatedAt||0)){mergedDeletes[id]=deleteTs;return;}
+    items.push(meal);
+  });
+  Object.keys(deletes).forEach(function(id){if(!byId[id])mergedDeletes[id]=deletes[id];});
+  return{items:items,deletes:mergedDeletes};
 }
 function planMealsSame(a,b){return JSON.stringify(a||[])===JSON.stringify(b||[]);}
 function cleanPlanMeta(meta){
@@ -673,6 +744,12 @@ function touchPlanDate(dateKey,ts){
   var meals=plan[dateKey]||[];
   planMeta[dateKey]={updatedAt:ts,clientId:fbClientId};
   if(!meals.length)planMeta[dateKey].deletedAt=ts;
+}
+function deletePlanMeal(dateKey,meal,ts){
+  if(!meal)return;
+  ts=ts||Date.now();
+  var norm=normaliseMeal(meal,dateKey,0);
+  if(norm&&norm.id)planMealDeletes[norm.id]=ts;
 }
 function mergeRecipeLists(localItems, remoteItems, localTs, remoteTs, localDeleted, remoteDeleted){
   localItems=Array.isArray(localItems)?localItems:[];
@@ -740,15 +817,16 @@ function mergeRemotePlan(planItems, remoteMeta, changedDateKey, remoteTs){
       return;
     }
     if(remoteKnown){
-      var merged=mergeMeals(localMeals,remoteMeals);
-      if(merged.length){
-        plan[dateKey]=merged;
+      var mergedPlan=mergePlanMeals(remoteMeals,localMeals,{},planMealDeletes,dateKey);
+      planMealDeletes=Object.assign(planMealDeletes,mergedPlan.deletes);
+      if(mergedPlan.items.length){
+        plan[dateKey]=mergedPlan.items;
         if(!planMeta[dateKey])planMeta[dateKey]={updatedAt:remoteStamp||Date.now(),clientId:fbClientId};
-      }else if((remoteM.deletedAt||localM.deletedAt)&&!merged.length){
+      }else if((remoteM.deletedAt||localM.deletedAt)&&!mergedPlan.items.length){
         delete plan[dateKey];
         planMeta[dateKey]=remoteM.deletedAt>=localM.deletedAt?remoteM:localM;
       }
-      if(!planMealsSame(remoteMeals,merged))needsPush.push(dateKey);
+      if(!planMealsSame(remoteMeals,mergedPlan.items))needsPush.push(dateKey);
     }
   });
   return needsPush;
@@ -756,10 +834,11 @@ function mergeRemotePlan(planItems, remoteMeta, changedDateKey, remoteTs){
 function buildSharedState(ts){
   return{
     version:2,
-    recipes:recipes,
+    recipes:recipesForState(recipes),
     recipeDeletes:recipeDeletes,
     plan:plan,
     planMeta:planMeta,
+    planMealDeletes:planMealDeletes,
     checked:checked,
     extraItems:extraItems,
     collections:collections,
@@ -772,26 +851,51 @@ function buildSharedState(ts){
 function saveSharedLocal(){
   saveL('recipes',recipes);
   saveL('recipeDeletes',recipeDeletes);
+  saveL('recipeImages',recipeImages);
   saveL('plan',plan);
   saveL('planMeta',planMeta);
+  saveL('planMealDeletes',planMealDeletes);
   saveL('checked',checked);
   saveL('extraItems',extraItems);
   saveL('collections',collections);
   saveL('customMT',customMT);
 }
+function publishRecipeImages(){
+  if(!fbConn||!fbRef)return;
+  recipeImages=recipeImagesFrom(recipes);
+  fbRef.child('recipeImages').set(recipeImages);
+  saveL('recipeImages',recipeImages);
+}
+function applyRecipeImages(imgs){
+  imgs=imgs&&typeof imgs==='object'&&!Array.isArray(imgs)?imgs:{};
+  recipeImages=imgs;
+  recipes=attachRecipeImages(recipes,false);
+  saveL('recipeImages',recipeImages);
+  saveL('recipes',recipes);
+  renderAll();
+}
+function loadRemoteRecipeImages(){
+  if(!fbConn||!fbRef)return;
+  fbRef.child('recipeImages').once('value').then(function(snap){
+    if(!snap.exists())return;
+    applyRecipeImages(snap.val());
+  }).catch(function(){});
+}
 function applySharedState(state,force){
   if(!state||typeof state!=='object')return false;
   if(!force&&fbStateLoaded&&state.clientId===fbClientId)return false;
-  recipes=normaliseIds({recipes:Array.isArray(state.recipes)?state.recipes:[],plan:{}}).recipes;
+  recipes=attachRecipeImages(normaliseIds({recipes:Array.isArray(state.recipes)?state.recipes:[],plan:{}}).recipes);
   recipeDeletes=normaliseStampMap(state.recipeDeletes);
-  plan=normaliseIds({recipes:[],plan:(state.plan&&typeof state.plan==='object'&&!Array.isArray(state.plan))?state.plan:{}}).plan;
+  plan=normalisePlanObject((state.plan&&typeof state.plan==='object'&&!Array.isArray(state.plan))?state.plan:{});
   planMeta=cleanPlanMeta(state.planMeta);
+  planMealDeletes=normaliseStampMap(state.planMealDeletes);
   checked=state.checked&&typeof state.checked==='object'&&!Array.isArray(state.checked)?state.checked:{};
-  extraItems=Array.isArray(state.extraItems)?state.extraItems:[];
-  collections=Array.isArray(state.collections)?state.collections:[];
-  customMT=Array.isArray(state.customMT)?state.customMT:[];
+  extraItems=Array.isArray(state.extraItems)?state.extraItems:extraItems;
+  collections=Array.isArray(state.collections)?state.collections:collections;
+  customMT=Array.isArray(state.customMT)?state.customMT:customMT;
   refreshMT();
   saveSharedLocal();
+  if(state.clientId!==fbClientId)loadRemoteRecipeImages();
   if(state.ts)saveL('sharedStateTs',state.ts);
   fbStateLoaded=true;
   renderAll();
@@ -804,8 +908,9 @@ function normaliseSharedState(state){
     version:2,
     recipes:normaliseIds({recipes:Array.isArray(state.recipes)?state.recipes:[],plan:{}}).recipes,
     recipeDeletes:normaliseStampMap(state.recipeDeletes),
-    plan:normaliseIds({recipes:[],plan:(state.plan&&typeof state.plan==='object'&&!Array.isArray(state.plan))?state.plan:{}}).plan,
+    plan:normalisePlanObject((state.plan&&typeof state.plan==='object'&&!Array.isArray(state.plan))?state.plan:{}),
     planMeta:cleanPlanMeta(state.planMeta),
+    planMealDeletes:normaliseStampMap(state.planMealDeletes),
     checked:state.checked&&typeof state.checked==='object'&&!Array.isArray(state.checked)?state.checked:{},
     extraItems:Array.isArray(state.extraItems)?state.extraItems:[],
     collections:Array.isArray(state.collections)?state.collections:[],
@@ -840,23 +945,33 @@ function mergeSharedState(remote, local, changedKey, changedDateKey, ts){
     return local;
   }
   var out=normaliseSharedState(remote);
+  if(!out.extraItems.length&&local.extraItems.length)out.extraItems=local.extraItems;
+  if(!out.collections.length&&local.collections.length)out.collections=local.collections;
+  if(!out.customMT.length&&local.customMT.length)out.customMT=local.customMT;
   var mergedRecipes=mergeRecipeLists(remote.recipes,local.recipes,remote.ts,ts,remote.recipeDeletes,local.recipeDeletes);
   out.recipes=mergedRecipes.items;
   out.recipeDeletes=mergedRecipes.deleted;
+  out.planMealDeletes=Object.assign({},remote.planMealDeletes);
+  Object.keys(local.planMealDeletes).forEach(function(id){
+    out.planMealDeletes[id]=Math.max(out.planMealDeletes[id]||0,local.planMealDeletes[id]);
+  });
 
   if(changedKey==='plan'&&changedDateKey){
     out.plan=remote.plan;out.planMeta=remote.planMeta;
     var remoteMeals=remote.plan[changedDateKey]||[];
     var localMeals=local.plan[changedDateKey]||[];
     var localMeta=local.planMeta[changedDateKey]||{updatedAt:ts,clientId:fbClientId};
-    if(localMeta.deletedAt&&!localMeals.length){
+    var mergedPlan=mergePlanMeals(remoteMeals,localMeals,remote.planMealDeletes,local.planMealDeletes,changedDateKey);
+    out.planMealDeletes=Object.assign(out.planMealDeletes,mergedPlan.deletes);
+    if(localMeta.deletedAt&&!mergedPlan.items.length){
       delete out.plan[changedDateKey];
     }else{
-      out.plan[changedDateKey]=mergeMeals(remoteMeals,localMeals);
+      out.plan[changedDateKey]=mergedPlan.items;
     }
-    out.planMeta[changedDateKey]={updatedAt:ts,deletedAt:localMeta.deletedAt&&!localMeals.length?ts:0,clientId:fbClientId};
+    out.planMeta[changedDateKey]={updatedAt:ts,deletedAt:localMeta.deletedAt&&!mergedPlan.items.length?ts:0,clientId:fbClientId};
   }else if(changedKey==='plan'){
     out.plan=local.plan;out.planMeta=local.planMeta;
+    out.planMealDeletes=local.planMealDeletes;
   }else{
     out.plan=remote.plan;out.planMeta=remote.planMeta;
   }
@@ -868,9 +983,25 @@ function mergeSharedState(remote, local, changedKey, changedDateKey, ts){
       out.checked[changedDateKey]=local.checked[changedDateKey];
     }else out.checked=local.checked;
   }
-  if(changedKey==='extraItems')out.extraItems=mergeSimpleList(remote.extraItems,local.extraItems);
-  if(changedKey==='collections')out.collections=mergeListById(remote.collections,local.collections);
-  if(changedKey==='customMT')out.customMT=mergeSimpleList(remote.customMT,local.customMT);
+  if(changedKey==='extraItems'){
+    var exOp=changedDateKey||{};
+    if(exOp.type==='add')out.extraItems=mergeSimpleList(remote.extraItems,exOp.items||[]);
+    else if(exOp.type==='remove')out.extraItems=remote.extraItems.filter(function(item){return item!==exOp.item;});
+    else out.extraItems=local.extraItems;
+  }
+  if(changedKey==='collections'){
+    var collOp=changedDateKey||{};
+    if(collOp.type==='add')out.collections=mergeListById(remote.collections,[collOp.item]);
+    else if(collOp.type==='remove')out.collections=remote.collections.filter(function(c){return String(c.id)!==String(collOp.id);});
+    else if(collOp.type==='update')out.collections=mergeListById(remote.collections,[collOp.item]);
+    else out.collections=mergeListById(remote.collections,local.collections);
+  }
+  if(changedKey==='customMT'){
+    var mtOp=changedDateKey||{};
+    if(mtOp.type==='add')out.customMT=mergeSimpleList(remote.customMT,[mtOp.item]);
+    else if(mtOp.type==='remove')out.customMT=remote.customMT.filter(function(item){return item!==mtOp.item;});
+    else out.customMT=mergeSimpleList(remote.customMT,local.customMT);
+  }
   if(changedKey==='recipes'){out.recipes=mergedRecipes.items;out.recipeDeletes=mergedRecipes.deleted;}
   out.version=2;out.ts=ts;out.clientId=fbClientId;out.who=fbCfg.who||'Someone';
   return out;
@@ -881,6 +1012,7 @@ function publishSharedState(changedKey,changedDateKey){
   var local=buildSharedState(ts);
   lastLocalPush.state=ts;
   fbStateLoaded=true;
+  if(changedKey==='recipes')publishRecipeImages();
   fbRef.child('state').transaction(function(remote){
     return mergeSharedState(remote,local,changedKey,changedDateKey,ts);
   },function(error,committed,snap){
@@ -911,6 +1043,7 @@ function bootstrapSharedState(){
     migrateLegacyPlan(loadL('currentWeekStartDate')||currentWeekStartKey());
     saveSharedLocal();
     publishSharedState();
+    publishRecipeImages();
     renderAll();
     return true;
   }).finally(function(){
@@ -992,12 +1125,21 @@ function listenForSharedState(){
     else bootstrapSharedState();
   });
 }
+function listenForRecipeImages(){
+  var imgRef=fbRef.child('recipeImages');
+  imgRef.off('value');
+  imgRef.on('value',function(snap){
+    if(!snap.exists())return;
+    applyRecipeImages(snap.val());
+  });
+}
 function initFB(){
   try{
     if(!firebase.apps.length)firebase.initializeApp({apiKey:fbCfg.key,databaseURL:fbCfg.url,projectId:fbCfg.proj});
     fbRef=firebase.database().ref('mep');fbConn=true;
     fbPlanLoaded = false;
     listenForSharedState();
+    listenForRecipeImages();
     gr('sync-bar').className='sync-bar';gr('sync-txt').textContent='Live sync active'+(fbCfg.who?' — '+fbCfg.who+"'s planner":'');
     gr('fb-status').innerHTML='<span style="color:var(--sage)">✓ Connected!</span>';
     setTimeout(function(){closeM('modal-fb');},1200);
@@ -1110,10 +1252,13 @@ function loadL(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null;
 function persist(changedKey, changedDateKey){
   if(changedKey==='recipes')saveL('recipesTs',Date.now());
   if(changedKey==='plan'&&changedDateKey)touchPlanDate(changedDateKey);
+  if(changedKey==='recipes')recipeImages=recipeImagesFrom(recipes);
   saveL('recipes',recipes);
   saveL('recipeDeletes',recipeDeletes);
+  saveL('recipeImages',recipeImages);
   saveL('plan',plan);
   saveL('planMeta',planMeta);
+  saveL('planMealDeletes',planMealDeletes);
   saveL('checked',checked);
   saveL('extraItems',extraItems);
   saveL('aisleOrder',aisleOrder);
@@ -1143,14 +1288,17 @@ function normaliseRecipe(r){
 }
 function normaliseIds(data){
   if(data.recipes){data.recipes=data.recipes.map(normaliseRecipe);}
-  if(data.plan){Object.keys(data.plan).forEach(function(day){data.plan[day]=(data.plan[day]||[]).map(function(m){m.recipeId=parseInt(m.recipeId,10)||m.recipeId;return m;});});}
+  if(data.plan){data.plan=normalisePlanObject(data.plan);}
   return data;
 }
 function loadPersisted(){
   var r=loadL('recipes');if(r&&r.length){var nd=normaliseIds({recipes:r,plan:{}});recipes=nd.recipes;}
+  var ri=loadL('recipeImages');if(ri&&typeof ri==='object'&&!Array.isArray(ri))recipeImages=ri;
+  recipes=attachRecipeImages(recipes);
   var rd=loadL('recipeDeletes');if(rd)recipeDeletes=normaliseStampMap(rd);
   var p=loadL('plan');if(p){var nd2=normaliseIds({recipes:[],plan:p});plan=nd2.plan;}
   var pm=loadL('planMeta');if(pm)planMeta=cleanPlanMeta(pm);
+  var pmd=loadL('planMealDeletes');if(pmd)planMealDeletes=normaliseStampMap(pmd);
   var oldPlanTs=loadL('planTs')||0;
   Object.keys(plan).forEach(function(k){
     if(/^\d{4}-\d{2}-\d{2}$/.test(k)&&plan[k]&&plan[k].length&&!planMeta[k]){
@@ -1252,7 +1400,7 @@ function migrateLegacyPlan(anchorWeekStartKey) {
     var dateKey = planKeyFromWeekStart(day, oldWeekOffset, anchorWeekStart);
 
     if (!plan[dateKey] && plan[oldKey] && plan[oldKey].length) {
-      plan[dateKey] = plan[oldKey].slice();
+      plan[dateKey] = plan[oldKey].map(function(m,i){return normaliseMeal(m,dateKey,i);});
       touchPlanDate(dateKey);
       migrated = true;
     }
@@ -1358,6 +1506,7 @@ function renderPlanner(){
     var current = plan[k][index].servings || base;
 
     plan[k][index].servings = Math.max(1, current - 1);
+    plan[k][index].updatedAt = Date.now();
 
     persist('plan', k);
     renderPlanner();
@@ -1371,6 +1520,7 @@ function renderPlanner(){
     var current = plan[k][index].servings || base;
 
     plan[k][index].servings = current + 1;
+    plan[k][index].updatedAt = Date.now();
 
     persist('plan', k);
     renderPlanner();
@@ -1388,7 +1538,7 @@ function renderPlanner(){
     pc.appendChild(dayDiv);
   });
 }
-function rmMeal(day,i){var k=planKey(day);if(plan[k])plan[k].splice(i,1);renderPlanner();persist('plan',k);showToast('Meal removed');}
+function rmMeal(day,i){var k=planKey(day);if(plan[k]){deletePlanMeal(k,plan[k][i]);plan[k].splice(i,1);}renderPlanner();persist('plan',k);showToast('Meal removed');}
 
 // ─── v5.5 COST ESTIMATION ────────────────────────────────────────────────────
 function estimateCost(){
@@ -1518,6 +1668,9 @@ function removeShopItem(ev, name) {
     });
 
     if (remainingMeals.length !== existingMeals.length) {
+      existingMeals.forEach(function(meal){
+        if(remainingMeals.indexOf(meal)<0)deletePlanMeal(k,meal);
+      });
       plan[k] = remainingMeals;
       changedDates.push(k);
     }
@@ -1546,10 +1699,11 @@ function renderExtras(){
 }
 function addExtra(){
   var inp=gr('extra-input');var val=inp.value.trim();if(!val)return;
-  val.split(',').map(function(v){return v.trim();}).filter(Boolean).forEach(function(v){extraItems.push(v);});
-  inp.value='';persist('extraItems');renderExtras();
+  var added=val.split(',').map(function(v){return v.trim();}).filter(Boolean);
+  added.forEach(function(v){extraItems.push(v);});
+  inp.value='';persist('extraItems',{type:'add',items:added});renderExtras();
 }
-function removeExtra(i){extraItems.splice(i,1);persist('extraItems');renderExtras();}
+function removeExtra(i){var item=extraItems[i];extraItems.splice(i,1);persist('extraItems',{type:'remove',item:item});renderExtras();}
 function extraKD(e){if(e.key==='Enter'){e.preventDefault();addExtra();}}
 function toggleChk(k){checked[k]=!checked[k];persist('checked',k);var el=gr('si-'+k);if(el){el.className='shop-item'+(checked[k]?' done':'');var chk=el.querySelector('.chk');chk.className='chk'+(checked[k]?' on':'');}}
 function clearChecks(){checked={};persist('checked','__clear__');renderShop();}
@@ -1665,6 +1819,9 @@ function delR(id) {
     });
 
     if (remainingMeals.length !== existingMeals.length) {
+      existingMeals.forEach(function(meal){
+        if(remainingMeals.indexOf(meal)<0)deletePlanMeal(dateKey,meal);
+      });
       plan[dateKey] = remainingMeals;
       changedDates.push(dateKey);
     }
@@ -1778,21 +1935,22 @@ function openCollManager(){renderCollManageList();openM('modal-colls');}
 function addColl(){
   var inp=gr('coll-new-input');var name=inp.value.trim();if(!name)return;
   if(collections.find(function(c){return c.name===name;})){showToast('Already exists');return;}
-  collections.push({id:Date.now(),name:name,recipes:[]});
-  inp.value='';persist('collections');renderCollManageList();renderCollFilters();showToast('Collection added');
+  var coll={id:Date.now(),name:name,recipes:[]};
+  collections.push(coll);
+  inp.value='';persist('collections',{type:'add',item:coll});renderCollManageList();renderCollFilters();showToast('Collection added');
 }
 function collKD(e){if(e.key==='Enter'){e.preventDefault();addColl();}}
 function deleteColl(id){
   collections=collections.filter(function(c){return c.id!==id;});
   if(aCollection!=='All'){aCollection='All';}
-  persist('collections');renderCollManageList();renderCollFilters();renderRGrid();
+  persist('collections',{type:'remove',id:id});renderCollManageList();renderCollFilters();renderRGrid();
 }
 function toggleRecipeColl(collId,recipeId){
   var c=collections.find(function(x){return x.id===collId;});if(!c)return;
   c.recipes=c.recipes||[];
   var idx=c.recipes.indexOf(recipeId);
   if(idx>=0)c.recipes.splice(idx,1);else c.recipes.push(recipeId);
-  persist('collections');
+  persist('collections',{type:'update',item:c});
 }
 function renderCollManageList(){
   var el=gr('coll-manage-list');if(!el)return;
@@ -1832,12 +1990,12 @@ function openMTManager(){renderMTChips();openM('modal-mttypes');}
 function addMT(){
   var inp=gr('mt-new-input');var name=inp.value.trim();if(!name)return;
   if(MT.indexOf(name)>=0){showToast('Already exists');return;}
-  customMT.push(name);refreshMT();inp.value='';persist('customMT');renderMTChips();renderAMT();showToast('Meal type added');
+  customMT.push(name);refreshMT();inp.value='';persist('customMT',{type:'add',item:name});renderMTChips();renderAMT();showToast('Meal type added');
 }
 function mtKD(e){if(e.key==='Enter'){e.preventDefault();addMT();}}
 function removeMT(name){
   customMT=customMT.filter(function(t){return t!==name;});
-  refreshMT();persist('customMT');renderMTChips();renderAMT();
+  refreshMT();persist('customMT',{type:'remove',item:name});renderMTChips();renderAMT();
 }
 function renderMTChips(){
   var el=gr('mt-chips');if(!el)return;el.innerHTML='';
@@ -1872,7 +2030,7 @@ function addMTInline(){
   var inp=gr('mt-new-inline');if(!inp)return;
   var name=inp.value.trim();if(!name)return;
   if(MT.indexOf(name)>=0){showToast('Already exists');return;}
-  customMT.push(name);refreshMT();inp.value='';persist('customMT');renderMTChipsInline();renderAMT();showToast('Added: '+name);
+  customMT.push(name);refreshMT();inp.value='';persist('customMT',{type:'add',item:name});renderMTChipsInline();renderAMT();showToast('Added: '+name);
 }
 function mtKDInline(e){if(e.key==='Enter'){e.preventDefault();addMTInline();}}
 // ──────────────────────────────────────────────────────────────────────────────
@@ -1963,7 +2121,7 @@ function renderAML(){
   el.innerHTML=f.map(function(r){var ha=rha(r);var sel=amRecipe===r.id;var hits=r.allergens.filter(function(a){return userAllergens.indexOf(a)>=0});return'<div class="rpick'+(sel?' on':'')+'" onclick="selAMR('+r.id+')"><div style="font-size:13px;font-weight:500;margin-bottom:2px">'+r.name+(sel?' ✓':'')+'</div><div style="font-size:11px;color:var(--ink3)">'+r.cuisine+' · '+r.time+' min</div>'+(ha?'<div style="font-size:11px;color:var(--red);margin-top:3px">⚠ '+hits.join(', ')+'</div>':'')+'</div>';}).join('');
 }
 function selAMR(id){amRecipe=id;renderAML();}
-function confirmAM(){if(!amRecipe){showToast('Pick a recipe first');return;}var k=planKey(amDay);if(!plan[k])plan[k]=[];var note=(gr('am-note')?gr('am-note').value.trim():'');plan[k].push({recipeId:typeof amRecipe==='string'?parseInt(amRecipe,10):amRecipe,mealType:amType,note:note||undefined});closeM('modal-am');renderPlanner();persist('plan',k);showToast('Added to '+amDay);}
+function confirmAM(){if(!amRecipe){showToast('Pick a recipe first');return;}var k=planKey(amDay);if(!plan[k])plan[k]=[];var note=(gr('am-note')?gr('am-note').value.trim():'');plan[k].push({id:newId('meal'),recipeId:typeof amRecipe==='string'?parseInt(amRecipe,10):amRecipe,mealType:amType,note:note||undefined,updatedAt:Date.now()});closeM('modal-am');renderPlanner();persist('plan',k);showToast('Added to '+amDay);}
 
 // ADD/EDIT RECIPE
 function openAddRecipe(pf){
@@ -2622,6 +2780,12 @@ async function callGemini(parts) {
   var text = data.candidates && data.candidates[0] &&
              data.candidates[0].content && data.candidates[0].content.parts &&
              data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text;
+  var finishReason = data.candidates && data.candidates[0] && data.candidates[0].finishReason;
+  if (finishReason === 'RECITATION' || (!text && finishReason && finishReason !== 'STOP')) {
+    var finishError=new Error('Gemini could not complete the import (reason: '+finishReason+').');
+    finishError.code=finishReason;
+    throw finishError;
+  }
   return text || '';
 }
 
@@ -2801,8 +2965,10 @@ function applyRandom() {
 
     meals.forEach(function(meal) {
       plan[k].push({
+        id: newId('meal'),
         recipeId: meal.recipeId,
-        mealType: meal.mealType
+        mealType: meal.mealType,
+        updatedAt: Date.now()
       });
     });
 
@@ -2869,7 +3035,7 @@ handleShareTarget();
 
 // SERVICE WORKER
 (function(){
-  var CACHE_VERSION='v5.18';
+  var CACHE_VERSION='v5.19';
   if(!('serviceWorker' in navigator))return;
   var swCode=[
     'var CACHE="mep-'+CACHE_VERSION+'";',
