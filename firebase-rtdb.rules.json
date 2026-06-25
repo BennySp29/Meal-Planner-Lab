@@ -1,0 +1,31 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "mep": {
+      "$workspaceId": {
+        ".read": "auth != null && $workspaceId === 'PASTE_YOUR_PRIVATE_WORKSPACE_ID_HERE'",
+        ".write": "auth != null && $workspaceId === 'PASTE_YOUR_PRIVATE_WORKSPACE_ID_HERE'",
+        ".validate": "newData.hasChildren(['state']) || newData.hasChildren(['recipeImages']) || newData.hasChildren(['recipes']) || newData.hasChildren(['plan']) || newData.hasChildren(['checked'])",
+        "state": {
+          ".validate": "!newData.isString()"
+        },
+        "recipeImages": {
+          ".validate": "!newData.isString()"
+        },
+        "recipes": {
+          ".validate": "!newData.isString()"
+        },
+        "plan": {
+          ".validate": "!newData.isString()"
+        },
+        "checked": {
+          ".validate": "!newData.isString()"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    }
+  }
+}

@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v5.26 -->
+<!-- v5.27 -->
 
 <html lang="en">
 <head>
@@ -503,13 +503,14 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
       <p style="font-size:13px;color:var(--ink2);margin-bottom:14px;line-height:1.6">Connect a free Firebase Realtime Database so you and your partner see updates instantly.</p>
       <div class="setup-card">
         <div class="setup-step"><div class="setup-num">1</div><div style="font-size:13px;color:var(--ink2);line-height:1.5">Go to <a href="https://console.firebase.google.com" target="_blank" style="color:var(--sage);font-weight:500">console.firebase.google.com</a> and create a free project</div></div>
-        <div class="setup-step"><div class="setup-num">2</div><div style="font-size:13px;color:var(--ink2);line-height:1.5">Click <strong>Build → Realtime Database → Create database</strong> and choose "Start in test mode"</div></div>
+        <div class="setup-step"><div class="setup-num">2</div><div style="font-size:13px;color:var(--ink2);line-height:1.5">Enable <strong>Authentication → Anonymous</strong>, then create your Realtime Database and publish the secure rules from <strong>firebase-rtdb.rules.json</strong></div></div>
         <div class="setup-step"><div class="setup-num">3</div><div style="font-size:13px;color:var(--ink2);line-height:1.5">Go to <strong>Project Settings (⚙️) → General → Your apps → Add web app</strong> and copy the config values below</div></div>
-        <div class="setup-step" style="margin-bottom:0"><div class="setup-num">4</div><div style="font-size:13px;color:var(--ink2);line-height:1.5">Share this HTML file with your partner — you'll both enter the same Firebase config to sync</div></div>
+        <div class="setup-step" style="margin-bottom:0"><div class="setup-num">4</div><div style="font-size:13px;color:var(--ink2);line-height:1.5">Share this HTML file and the same private workspace ID with your partner</div></div>
       </div>
       <div class="fg"><label class="fl">Database URL</label><input class="fi" id="fb-url" placeholder="https://your-project-default-rtdb.firebaseio.com"/></div>
       <div class="fg"><label class="fl">API Key</label><input class="fi" id="fb-key" placeholder="AIzaSy…"/></div>
       <div class="fg"><label class="fl">Project ID</label><input class="fi" id="fb-proj" placeholder="your-project-id"/></div>
+      <div class="fg"><label class="fl">Private workspace ID</label><input class="fi" id="fb-workspace" placeholder="meal-planner-private-id"/><div style="font-size:12px;color:var(--ink3);margin-top:8px;line-height:1.5">Use this same value in your Firebase rules and on each device that should sync.</div></div>
       <div class="fg"><label class="fl">Your name (shown on updates)</label><input class="fi" id="fb-who" placeholder="e.g. Alex"/></div>
       <div id="fb-status" style="font-size:13px;min-height:20px"></div>
     </div>
@@ -520,7 +521,7 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
 <script>
 // ── CACHE NUKE v3.0: clears stale SW + caches, one-time reload ─────────────
 (function(){
-  var CURRENT='mep-app-v5.26';
+  var CURRENT='mep-app-v5.27';
   var nuked=sessionStorage.getItem('cache-nuked');
   if(nuked===CURRENT)return; // already done this session
   function doNuke(){
@@ -626,7 +627,7 @@ var amDay=DAYS[0];var amRecipe=null;var amType='Dinner';
 var nrDiets=[];var nrAllergens=[];var ingN=0;var stepN=0;var editId=null;
 var fridgeIngs=[];
 var fbConn=false;var fbRef=null;var fbPlanLoaded = false;
-var fbCfg={url:'',key:'',proj:'',who:''};
+var fbCfg={url:'',key:'',proj:'',who:'',workspace:''};
 var fbClientId='client-'+Date.now()+'-'+Math.random().toString(36).slice(2);
 var fbStateLoaded=false;var fbBootstrappingState=false;var pendingSharedWrites=0;
 var API_KEY='';
@@ -922,9 +923,36 @@ function cleanFirebaseURL(v){
   return v;
 }
 function cleanFirebaseKey(v){return cleanCfgText(v);}
+function cleanFirebaseWorkspace(v){
+  v=cleanCfgText(v).replace(/[.#$\[\]\/\s]+/g,'-').replace(/[^A-Za-z0-9_-]/g,'');
+  return v.replace(/^-+|-+$/g,'').slice(0,80);
+}
+function generateWorkspaceId(){
+  var chars='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  var out='mep-';
+  if(window.crypto&&window.crypto.getRandomValues){
+    var bytes=new Uint8Array(24);
+    window.crypto.getRandomValues(bytes);
+    for(var i=0;i<bytes.length;i++)out+=chars[bytes[i]%chars.length];
+  }else{
+    out+=Date.now().toString(36)+Math.random().toString(36).slice(2,18);
+  }
+  return out;
+}
 function normaliseFBCfg(cfg){
-  cfg=cfg||{};
-  return{url:cleanFirebaseURL(cfg.url),key:cleanFirebaseKey(cfg.key),proj:cleanCfgText(cfg.proj),who:cleanCfgText(cfg.who)};
+  if(!cfg)return null;
+  return{
+    url:cleanFirebaseURL(cfg.url),
+    key:cleanFirebaseKey(cfg.key),
+    proj:cleanCfgText(cfg.proj),
+    who:cleanCfgText(cfg.who),
+    workspace:cleanFirebaseWorkspace(cfg.workspace||cfg.space||cfg.syncId||'')
+  };
+}
+function ensureFBCfgWorkspace(cfg){
+  if(!cfg)return null;
+  if(!cfg.workspace)cfg.workspace=generateWorkspaceId();
+  return cfg;
 }
 function publishRecipeImages(){
   if(!fbConn||!fbRef)return;
@@ -1214,22 +1242,39 @@ function bootstrapSharedState(){
 }
 
 // FIREBASE
-function openFBSetup(){var c=normaliseFBCfg(loadL('fbCfg'));if(c){fbCfg=c;gr('fb-url').value=c.url||'';gr('fb-key').value=c.key||'';gr('fb-proj').value=c.proj||'';gr('fb-who').value=c.who||'';}openM('modal-fb');}
+function openFBSetup(){var c=ensureFBCfgWorkspace(normaliseFBCfg(loadL('fbCfg')))||{url:'',key:'',proj:'',who:'',workspace:generateWorkspaceId()};fbCfg=c;gr('fb-url').value=c.url||'';gr('fb-key').value=c.key||'';gr('fb-proj').value=c.proj||'';gr('fb-workspace').value=c.workspace||'';gr('fb-who').value=c.who||'';openM('modal-fb');}
 function connectFB(){
-  var cfg=normaliseFBCfg({url:gr('fb-url').value,key:gr('fb-key').value,proj:gr('fb-proj').value,who:gr('fb-who').value});
-  var url=cfg.url,key=cfg.key,proj=cfg.proj,who=cfg.who;
-  if(!url||!key||!proj){gr('fb-status').innerHTML='<span style="color:var(--red)">Please fill in Database URL, API Key and Project ID</span>';return;}
-  fbCfg={url,key,proj,who};saveL('fbCfg',fbCfg);
-  gr('fb-status').innerHTML='<span style="color:var(--sage)">Connecting…</span>';
-  loadFBSDK().then(function(){initFB();}).catch(function(){gr('fb-status').innerHTML='<span style="color:var(--red)">Connection failed — check your config values</span>';});
+  var cfg=ensureFBCfgWorkspace(normaliseFBCfg({url:gr('fb-url').value,key:gr('fb-key').value,proj:gr('fb-proj').value,workspace:gr('fb-workspace').value,who:gr('fb-who').value}));
+  var url=cfg.url,key=cfg.key,proj=cfg.proj,workspace=cfg.workspace,who=cfg.who;
+  if(!url||!key||!proj||!workspace){gr('fb-status').innerHTML='<span style="color:var(--red)">Please fill in Database URL, API Key, Project ID and workspace ID</span>';return;}
+  fbCfg={url,key,proj,workspace,who};gr('fb-workspace').value=workspace;saveL('fbCfg',fbCfg);
+  gr('fb-status').innerHTML='<span style="color:var(--sage)">Connecting...</span>';
+  loadFBSDK().then(function(){return initFB();}).then(function(ok){
+    if(!ok)gr('fb-status').innerHTML='<span style="color:var(--red)">Connection failed - check your config values and enable Anonymous Auth</span>';
+  }).catch(function(){gr('fb-status').innerHTML='<span style="color:var(--red)">Connection failed - check your config values and enable Anonymous Auth</span>';});
 }
 function loadFBSDK(){
-  return new Promise(function(res,rej){
-    if(window.firebase){res();return;}
-    var s1=document.createElement('script');s1.src='https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js';
-    s1.onload=function(){var s2=document.createElement('script');s2.src='https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js';s2.onload=res;s2.onerror=rej;document.head.appendChild(s2);};
-    s1.onerror=rej;document.head.appendChild(s1);
+  function loadScript(src){
+    return new Promise(function(res,rej){
+      var s=document.createElement('script');
+      s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);
+    });
+  }
+  var ready=Promise.resolve();
+  if(!window.firebase)ready=ready.then(function(){return loadScript('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');});
+  ready=ready.then(function(){
+    if(!firebase.database)return loadScript('https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js');
   });
+  ready=ready.then(function(){
+    if(!firebase.auth)return loadScript('https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js');
+  });
+  return ready;
+}
+function ensureFirebaseSignedIn(){
+  if(!firebase.auth)return Promise.resolve(true);
+  var auth=firebase.auth();
+  if(auth.currentUser)return Promise.resolve(auth.currentUser);
+  return auth.signInAnonymously();
 }
 function isOwnEcho(key,d){
   if(!d)return false;
@@ -1298,32 +1343,44 @@ function listenForRecipeImages(){
 }
 function initFB(){
   try{
-    fbCfg=normaliseFBCfg(fbCfg);saveL('fbCfg',fbCfg);
+    fbCfg=ensureFBCfgWorkspace(normaliseFBCfg(fbCfg));
+    if(!fbCfg||!fbCfg.url||!fbCfg.key||!fbCfg.proj||!fbCfg.workspace)throw new Error('Missing Firebase config');
+    saveL('fbCfg',fbCfg);
     if(!firebase.apps.length)firebase.initializeApp({apiKey:fbCfg.key,databaseURL:fbCfg.url,projectId:fbCfg.proj});
-    fbRef=firebase.database().ref('mep');fbConn=true;
-    fbPlanLoaded = false;
-    listenForSharedState();
-    listenForRecipeImages();
-    if(loadL('sharedDirty'))setTimeout(function(){publishSharedState();},600);
-    gr('sync-bar').className='sync-bar';gr('sync-txt').textContent='Live sync active'+(fbCfg.who?' — '+fbCfg.who+"'s planner":'');
-    gr('fb-status').innerHTML='<span style="color:var(--sage)">✓ Connected!</span>';
-    setTimeout(function(){closeM('modal-fb');},1200);
+    return ensureFirebaseSignedIn().then(function(){
+      fbRef=firebase.database().ref('mep').child(fbCfg.workspace);fbConn=true;
+      fbPlanLoaded = false;
+      listenForSharedState();
+      listenForRecipeImages();
+      if(loadL('sharedDirty'))setTimeout(function(){publishSharedState();},600);
+      gr('sync-bar').className='sync-bar';gr('sync-txt').textContent='Live sync active'+(fbCfg.who?' — '+fbCfg.who+"'s planner":'');
+      gr('fb-status').innerHTML='<span style="color:var(--sage)">✓ Connected!</span>';
+      setTimeout(function(){closeM('modal-fb');},1200);
+      return true;
+    }).catch(function(){
+      fbConn=false;fbRef=null;
+      gr('sync-bar').className='sync-bar off';
+      gr('sync-txt').textContent='Sync auth error';
+      return false;
+    });
   } catch(e) {
     gr('sync-bar').className = 'sync-bar off';
     gr('sync-txt').textContent = 'Sync error';
+    return Promise.resolve(false);
   }
 }
 function ensureFBReady(){
   if(fbConn&&fbRef)return Promise.resolve(true);
-  var cfg=normaliseFBCfg(loadL('fbCfg'));
-  if(!cfg){
+  var cfg=ensureFBCfgWorkspace(normaliseFBCfg(loadL('fbCfg')));
+  if(!cfg||!cfg.url||!cfg.key||!cfg.proj||!cfg.workspace){
     showToast('Connect sync first');
     openFBSetup();
     return Promise.resolve(false);
   }
   fbCfg=cfg;
   return loadFBSDK().then(function(){
-    initFB();
+    return initFB();
+  }).then(function(){
     return !!fbRef;
   }).catch(function(){
     gr('sync-bar').className='sync-bar off';
@@ -1504,7 +1561,7 @@ function loadPersisted(){
   if(darkMode)document.body.classList.add('dark');
   var pf=loadL('profile');if(pf){userAllergens=pf.userAllergens||[];userDiet=pf.userDiet||null;weekStart=typeof pf.weekStart==='number'?pf.weekStart:0;userSupermarket=pf.userSupermarket||'tesco';userAppliances=pf.userAppliances||[];}
   var ak=loadL('apiKey');if(ak)API_KEY=ak;
-  var cfg=normaliseFBCfg(loadL('fbCfg'));if(cfg&&cfg.url&&cfg.key&&cfg.proj){fbCfg=cfg;saveL('fbCfg',fbCfg);loadFBSDK().then(initFB).catch(function(){});}
+  var cfg=ensureFBCfgWorkspace(normaliseFBCfg(loadL('fbCfg')));if(cfg&&cfg.url&&cfg.key&&cfg.proj&&cfg.workspace){fbCfg=cfg;saveL('fbCfg',fbCfg);loadFBSDK().then(initFB).catch(function(){});}
 }
 
 // UTILS
@@ -3227,7 +3284,7 @@ handleShareTarget();
 
 // SERVICE WORKER
 (function(){
-  var CACHE_VERSION='v5.26';
+  var CACHE_VERSION='v5.27';
   if(!('serviceWorker' in navigator))return;
   var swCode=[
     'var CACHE="mep-'+CACHE_VERSION+'";',
