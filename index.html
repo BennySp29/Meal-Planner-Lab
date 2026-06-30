@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v5.27 -->
+<!-- v5.29 -->
 
 <html lang="en">
 <head>
@@ -92,11 +92,8 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);overscroll-behavior:none}
 .tgr{background:var(--paper2);color:var(--ink2)}
 .rc-warn{background:var(--red-p);border:1px solid var(--red-b);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--red);display:flex;gap:6px;margin-top:6px}
 .rc-actions{display:flex;gap:8px;margin-top:10px}
-.fridge-wrap{background:var(--cream);border:1.5px solid var(--paper3);border-radius:var(--r);padding:14px;margin-bottom:16px}
-.fridge-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;min-height:28px}
 .ing-chip{display:flex;align-items:center;gap:5px;background:var(--sage-p);color:var(--sage);border-radius:20px;padding:5px 10px;font-size:13px;font-weight:500}
 .ing-chip button{background:none;border:none;cursor:pointer;color:var(--sage);font-size:14px;line-height:1;padding:0 2px}
-.fridge-row{display:flex;gap:8px}
 .sug-card{background:var(--cream);border:1.5px solid var(--paper3);border-radius:var(--r);padding:16px;margin-bottom:10px}
 .sug-bar-wrap{flex:1;height:6px;background:var(--paper2);border-radius:3px;overflow:hidden}
 .sug-bar{height:100%;background:var(--sage);border-radius:3px}
@@ -243,6 +240,29 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
 .app-chip{padding:7px 11px;border-radius:20px;border:1.5px solid var(--paper3);background:var(--cream);color:var(--ink2);font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif}
 .app-chip.on{background:var(--warm-p);color:#5a3a10;border-color:var(--warm)}
 .app-warn{background:var(--warm-p);border:1px solid var(--warm);border-radius:8px;padding:7px 10px;font-size:12px;color:#5a3a10;display:flex;gap:6px;margin-top:5px;align-items:flex-start}
+.dash-quick{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px}
+.dash-btn{background:var(--cream);border:1.5px solid var(--paper3);border-radius:var(--rs);padding:12px;text-align:left;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--ink)}
+.dash-btn strong{display:block;font-size:13px;margin-bottom:3px}
+.dash-btn span{display:block;font-size:11px;color:var(--ink3);line-height:1.35}
+.dash-section{margin-bottom:18px}
+.stock-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px}
+.stock-card{background:var(--cream);border:1.5px solid var(--paper3);border-radius:var(--r);padding:13px;margin-bottom:8px}
+.stock-card.low{border-color:var(--warm);background:var(--warm-p)}
+.stock-name{font-family:'Playfair Display',serif;font-size:17px;margin-bottom:3px}
+.stock-meta{font-size:12px;color:var(--ink3);line-height:1.45;margin-bottom:8px}
+.stock-note{font-size:12px;color:var(--ink2);line-height:1.45;margin-bottom:8px}
+.stock-alert{display:inline-flex;align-items:center;background:var(--red-p);color:var(--red);border:1px solid var(--red-b);border-radius:20px;padding:3px 8px;font-size:11px;font-weight:600;margin-bottom:8px}
+.qty-step{display:flex;align-items:center;gap:8px}
+.qty-pill{min-width:38px;text-align:center;background:var(--paper2);border-radius:20px;padding:5px 10px;font-size:13px;font-weight:600}
+.alpha-layout{display:grid;grid-template-columns:minmax(0,1fr) 24px;gap:8px;align-items:start}
+.alpha-rail{position:sticky;top:8px;display:flex;flex-direction:column;gap:1px;align-items:center;z-index:1}
+.alpha-rail button{width:22px;height:18px;border:none;background:transparent;color:var(--sage);font-size:10px;font-weight:700;cursor:pointer;border-radius:9px;font-family:'DM Sans',sans-serif}
+.alpha-rail button:active{background:var(--sage-p)}
+.letter-anchor{height:0;overflow:hidden}
+.mini-stock-list{display:flex;flex-direction:column;gap:6px}
+.mini-stock-row{display:flex;align-items:center;gap:8px;background:var(--cream);border:1.5px solid var(--paper3);border-radius:var(--rs);padding:9px 10px}
+.mini-stock-row.low{border-color:var(--warm);background:var(--warm-p)}
+.mini-stock-name{flex:1;font-size:13px;font-weight:500}
 </style>
 </head>
 <body>
@@ -257,7 +277,30 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
   </div>
   <div class="sync-bar off" id="sync-bar"><div class="sync-dot"></div><span id="sync-txt">Not synced — tap ☁️ to connect</span></div>
   <div class="content" id="main-content">
-    <div id="panel-planner" class="panel active">
+    <div id="panel-dashboard" class="panel active">
+      <div class="sec-title" style="margin-bottom:6px">Dashboard</div>
+      <div class="sec-sub">Quick checks for the week and the cupboards.</div>
+      <div class="stats-grid" id="dash-stats"></div>
+      <div class="dash-quick">
+        <button class="dash-btn" onclick="showTab('stock')"><strong>Stock check</strong><span>Adjust snacks, meals and freezer food fast.</span></button>
+        <button class="dash-btn" onclick="openStockModal(null)"><strong>Add stock</strong><span>Log a new cupboard or freezer item.</span></button>
+        <button class="dash-btn" onclick="showTab('planner')"><strong>Meal plan</strong><span>See this week and add meals.</span></button>
+        <button class="dash-btn" onclick="showTab('shopping')"><strong>Shopping</strong><span>Open the generated list.</span></button>
+      </div>
+      <div class="dash-section">
+        <div class="sec-hdr"><div class="sec-title">Needs Restocking</div><button class="btn btns" onclick="showTab('stock')">View all</button></div>
+        <div id="dash-low-stock"></div>
+      </div>
+      <div class="dash-section">
+        <div class="sec-hdr"><div class="sec-title">Recent Stock</div></div>
+        <div id="dash-recent-stock"></div>
+      </div>
+      <div class="dash-section">
+        <div class="sec-hdr"><div class="sec-title">Today</div><button class="btn btns" onclick="showTab('planner')">Planner</button></div>
+        <div id="dash-today"></div>
+      </div>
+    </div>
+    <div id="panel-planner" class="panel">
       <div class="week-nav"><button class="week-nav-btn" onclick="changeWeek(-1)">&#8249;</button><div class="week-label" id="week-label">This week</div><button class="week-nav-btn" onclick="changeWeek(1)">&#8250;</button></div>
       <div class="stats-grid" id="stats-grid"></div>
       <div class="sec-hdr"><div class="sec-title" id="week-sec-title">This week</div><div style="display:flex;gap:6px"><button class="btn btns" id="refresh-sync-btn" onclick="refreshSyncNow()">&#8635; Refresh</button><button class="btn btns" id="random-btn">&#127922; Random</button><button class="btn btns" onclick="openAM(null)">+ Add meal</button></div></div>
@@ -277,23 +320,23 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
       <div id="extras-list"></div>
     </div>
     <div id="panel-recipes" class="panel">
-      <div class="sec-hdr"><div class="sec-title">Recipes</div><button class="btn btns btnp" onclick="openAddRecipe(null)">＋ New</button></div>
+      <div class="sec-hdr"><div class="sec-title">Recipes</div><button class="btn btns btnp" onclick="openRecipeAddChoice()">＋ Add</button></div>
       <div class="filter-scroll" style="margin-bottom:8px"><div class="filter-strip" id="c-filters"></div></div>
       <div class="filter-scroll" style="margin-bottom:8px"><div class="filter-strip" id="d-filters"></div></div>
       <div class="filter-scroll" style="margin-bottom:12px"><div class="filter-strip" id="coll-filters"></div></div>
       <input class="fi" id="rsearch" placeholder="🔍 Search recipes…" oninput="renderRGrid()" style="margin-bottom:12px"/>
       <div id="rgrid"></div>
     </div>
-    <div id="panel-fridge" class="panel">
-      <div class="sec-title" style="margin-bottom:6px">What's in the fridge?</div>
-      <div class="sec-sub">Add ingredients you have and we'll suggest what to cook</div>
-      <div class="fridge-wrap"><div class="fridge-chips" id="fridge-chips"></div><div class="fridge-row"><input class="fi" id="fridge-input" placeholder="e.g. chicken, onion, pasta…" onkeydown="fridgeKD(event)" style="flex:1"/><button class="btn btns btnp" onclick="addFI()" style="flex-shrink:0">Add</button></div></div>
-      <button class="btn btnf btnw" onclick="getSugg()" id="sugg-btn" style="margin-bottom:16px">✨ Suggest meals with these ingredients</button>
-      <div id="suggestions"></div>
+    <div id="panel-stock" class="panel">
+      <div class="sec-hdr"><div><div class="sec-title">Stock</div><div class="sec-sub" style="margin-bottom:0">Snack cupboard, meal cupboard and freezer, built for 3am taps.</div></div><button class="btn btns btnp" onclick="openStockModal(null)">+ Add</button></div>
+      <div class="stock-tabs" id="stock-tabs"></div>
+      <input class="fi" id="stock-search" placeholder="Search stock..." oninput="renderStock()" style="margin-bottom:12px"/>
+      <div id="stock-list"></div>
     </div>
-    <div id="panel-import" class="panel">
-      <div class="sec-title" style="margin-bottom:6px">Import Recipe</div>
-      <div class="sec-sub">Import from a URL, photo, or paste text — powered by Gemini AI</div>
+    <div class="overlay" id="modal-import">
+      <div class="sheet">
+      <div class="sh"></div><div class="s-title">Import Recipe</div>
+      <div class="s-body"><div class="sec-sub">Import from a URL, photo, or paste text — powered by Gemini AI</div>
       <div class="itab-row">
         <button class="itab on" id="itab-url" onclick="switchIT('url')">🔗 URL</button>
         <button class="itab" id="itab-img" onclick="switchIT('image')">📷 Photo</button>
@@ -333,18 +376,32 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
         <div style="display:none"><textarea id="json-paste-text"></textarea><button id="text-json-btn"></button></div>
       </div>
       <div id="import-loading" style="display:none;margin-top:16px"><div class="ai-thinking"><div class="ai-spin">🤖</div><div style="font-size:14px;font-weight:500;margin-bottom:4px">Reading recipe…</div><div style="font-size:12px;color:var(--ink2)">Extracting ingredients and steps</div></div></div>
-      <div id="import-result" style="margin-top:16px"></div>
+      <div id="import-result" style="margin-top:16px"></div></div>
+      <div class="s-foot"><button class="btn" onclick="closeM('modal-import')">Close</button></div>
+      </div>
     </div>
   </div>
   <nav class="bottom-nav">
-    <button class="nav-item active" id="nav-planner" onclick="showTab('planner')"><span class="nav-icon">📅</span>Planner</button>
+    <button class="nav-item active" id="nav-dashboard" onclick="showTab('dashboard')"><span class="nav-icon">⌂</span>Home</button>
+    <button class="nav-item" id="nav-planner" onclick="showTab('planner')"><span class="nav-icon">📅</span>Planner</button>
     <button class="nav-item" id="nav-shopping" onclick="showTab('shopping')"><span class="nav-icon">🛒</span>Shopping</button>
     <button class="nav-item" id="nav-recipes" onclick="showTab('recipes')"><span class="nav-icon">📖</span>Recipes</button>
-    <button class="nav-item" id="nav-fridge" onclick="showTab('fridge')"><span class="nav-icon">🥦</span>Fridge</button>
-    <button class="nav-item" id="nav-import" onclick="showTab('import')"><span class="nav-icon">⬇️</span>Import</button>
+    <button class="nav-item" id="nav-stock" onclick="showTab('stock')"><span class="nav-icon">▣</span>Stock</button>
   </nav>
 </div>
 <div class="toast" id="toast"></div>
+
+<!-- RECIPE ADD CHOICE -->
+<div class="overlay" id="modal-recipe-add">
+  <div class="sheet">
+    <div class="sh"></div><div class="s-title">Add Recipe</div>
+    <div class="s-body">
+      <button class="dash-btn" style="width:100%;margin-bottom:8px" onclick="startManualRecipe()"><strong>Manual entry</strong><span>Add the recipe yourself with ingredients, method, appliances and notes.</span></button>
+      <button class="dash-btn" style="width:100%" onclick="startImportRecipe('url')"><strong>Import recipe</strong><span>Use a URL, photo, or pasted recipe text.</span></button>
+    </div>
+    <div class="s-foot"><button class="btn" onclick="closeM('modal-recipe-add')">Cancel</button></div>
+  </div>
+</div>
 
 <!-- COLLECTIONS -->
 <div class="overlay" id="modal-colls">
@@ -432,10 +489,29 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
       <div class="fg"><label class="fl">Personal notes <span style="font-weight:300;text-transform:none;letter-spacing:0">(tips, tweaks, memories)</span></label><textarea class="fi" id="nr-notes" placeholder="e.g. add extra garlic, great for batch cooking…" style="height:72px;resize:none"></textarea></div>
       <div class="fg"><label class="fl">Dietary labels</label><div class="cwrap" id="nr-diets"></div></div>
       <div class="fg"><label class="fl">Contains allergens</label><div class="cwrap" id="nr-allergens"></div></div>
+      <div class="fg"><label class="fl">Kitchen appliances</label><div class="cwrap" id="nr-appliances"></div></div>
       <div class="fg"><label class="fl">Ingredients</label><div id="nr-ings"></div><button class="btn btns" onclick="addIR()" style="margin-top:6px">＋ Ingredient</button></div>
       <div class="fg"><label class="fl">Method / Instructions</label><div style="font-size:11px;color:var(--ink3);margin-bottom:8px">Add each step separately — one action per step works best</div><div id="nr-steps"></div><button class="btn btns" onclick="addSR()" style="margin-top:6px">＋ Step</button></div>
     </div>
     <div class="s-foot"><button class="btn" onclick="closeM('modal-ar')">Cancel</button><button class="btn btnp" onclick="saveRecipe()">Save Recipe</button></div>
+  </div>
+</div>
+
+<!-- STOCK ITEM -->
+<div class="overlay" id="modal-stock">
+  <div class="sheet">
+    <div class="sh"></div><div class="s-title" id="stock-title">Stock item</div>
+    <div class="s-body">
+      <div class="fg"><label class="fl">Name</label><input class="fi" id="st-name" placeholder="e.g. oat bars, chilli, lasagne"/></div>
+      <div class="fg"><label class="fl">Section</label><div class="cwrap" id="st-section"></div></div>
+      <div class="fg"><label class="fl">Type</label><input class="fi" id="st-type" placeholder="e.g. snack, dinner, breakfast"/></div>
+      <div class="frow" style="margin-bottom:14px"><div><label class="fl">Quantity</label><input class="fi" type="number" id="st-qty" min="0" value="1"/></div><div><label class="fl">Make time (freezer)</label><input class="fi" id="st-time" placeholder="e.g. 45 min"/></div></div>
+      <div class="frow" style="margin-bottom:14px"><div><label class="fl">1st alert at</label><input class="fi" type="number" id="st-alert1" min="0" placeholder="e.g. 5"/></div><div><label class="fl">2nd alert at</label><input class="fi" type="number" id="st-alert2" min="0" placeholder="e.g. 2"/></div></div>
+      <div class="fg"><label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer"><input type="checkbox" id="st-notify" style="width:18px;height:18px;cursor:pointer"/> Notify when this runs low</label></div>
+      <div class="fg"><label class="fl">Kitchen items needed</label><input class="fi" id="st-kit" placeholder="e.g. microwave, pan, bottle warmer"/></div>
+      <div class="fg"><label class="fl">Notes</label><textarea class="fi" id="st-notes" placeholder="Anything useful when tired..." style="height:86px;resize:none"></textarea></div>
+    </div>
+    <div class="s-foot"><button class="btn" onclick="closeM('modal-stock')">Cancel</button><button class="btn btnp" onclick="saveStockItem()">Save</button></div>
   </div>
 </div>
 
@@ -512,6 +588,7 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
       <div class="fg"><label class="fl">Project ID</label><input class="fi" id="fb-proj" placeholder="your-project-id"/></div>
       <div class="fg"><label class="fl">Private workspace ID</label><input class="fi" id="fb-workspace" placeholder="meal-planner-private-id"/><div style="font-size:12px;color:var(--ink3);margin-top:8px;line-height:1.5">Use this same value in your Firebase rules and on each device that should sync.</div></div>
       <div class="fg"><label class="fl">Your name (shown on updates)</label><input class="fi" id="fb-who" placeholder="e.g. Alex"/></div>
+      <div class="fg"><label class="fl">Web Push public key <span style="font-weight:300;text-transform:none;letter-spacing:0">(for closed-app stock alerts)</span></label><input class="fi" id="fb-vapid" placeholder="VAPID public key"/><div style="font-size:12px;color:var(--ink3);margin-top:8px;line-height:1.5">Required for notifications when the home-screen app is closed. The matching private key is used only by the Firebase Function.</div></div>
       <div id="fb-status" style="font-size:13px;min-height:20px"></div>
     </div>
     <div class="s-foot"><button class="btn" onclick="closeM('modal-fb')">Cancel</button><button class="btn btnp" onclick="connectFB()">Connect</button></div>
@@ -521,7 +598,7 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
 <script>
 // ── CACHE NUKE v3.0: clears stale SW + caches, one-time reload ─────────────
 (function(){
-  var CURRENT='mep-app-v5.27';
+  var CURRENT='mep-app-v5.29';
   var nuked=sessionStorage.getItem('cache-nuked');
   if(nuked===CURRENT)return; // already done this session
   function doNuke(){
@@ -560,6 +637,16 @@ var weekOffset=0;
 var DEFAULT_AISLE_ORDER=['Produce','Protein','Dairy','Pantry','Spices','Other'];
 var aisleOrder=DEFAULT_AISLE_ORDER.slice();
 var nrRating=0;
+var STOCK_SECTIONS=[
+  {id:'snack',name:'Snack cupboard'},
+  {id:'meal',name:'Meal cupboard'},
+  {id:'freezer',name:'Freezer'}
+];
+var stockItems=[];
+var stockDeletes={};
+var stockAlertState={};
+var stockFilter='all';
+var stockEditId=null;
 
 // ── v5.5: SUPERMARKETS ────────────────────────────────────────────────────────
 var SUPERMARKETS=[
@@ -624,10 +711,9 @@ var recipeImages={};
 var userAllergens=[];var userDiet=null;
 var aCuisine='Any';var aDiet='Any';
 var amDay=DAYS[0];var amRecipe=null;var amType='Dinner';
-var nrDiets=[];var nrAllergens=[];var ingN=0;var stepN=0;var editId=null;
-var fridgeIngs=[];
+var nrDiets=[];var nrAllergens=[];var nrAppliances=[];var ingN=0;var stepN=0;var editId=null;
 var fbConn=false;var fbRef=null;var fbPlanLoaded = false;
-var fbCfg={url:'',key:'',proj:'',who:'',workspace:''};
+var fbCfg={url:'',key:'',proj:'',who:'',workspace:'',vapid:''};
 var fbClientId='client-'+Date.now()+'-'+Math.random().toString(36).slice(2);
 var fbStateLoaded=false;var fbBootstrappingState=false;var pendingSharedWrites=0;
 var API_KEY='';
@@ -792,6 +878,38 @@ function mergeRecipeLists(localItems, remoteItems, localTs, remoteTs, localDelet
   });
   return{items:merged,deleted:mergedDeleted,needsPush:needsPush,changedLocal:!recipesSame(localItems,merged)};
 }
+function stockKey(item){return item&&item.id!==undefined&&item.id!==null?String(item.id):'';}
+function stockUpdatedAt(item){return parseInt(item&&(item.updatedAt||0),10)||0;}
+function stockSame(a,b){return JSON.stringify(a||[])===JSON.stringify(b||[]);}
+function mergeStockLists(localItems,remoteItems,localDeleted,remoteDeleted){
+  localItems=Array.isArray(localItems)?localItems:[];
+  remoteItems=Array.isArray(remoteItems)?remoteItems:[];
+  localDeleted=normaliseStampMap(localDeleted);
+  remoteDeleted=normaliseStampMap(remoteDeleted);
+  var mergedDeleted={},localById={},remoteById={},order=[],seen={};
+  function remember(id){if(id&&!seen[id]){seen[id]=true;order.push(id);}}
+  localItems.forEach(function(item){var copy=normaliseStockItem(item);var id=stockKey(copy);if(id){localById[id]=copy;remember(id);}});
+  remoteItems.forEach(function(item){var copy=normaliseStockItem(item);var id=stockKey(copy);if(id){remoteById[id]=copy;remember(id);}});
+  Object.keys(localDeleted).forEach(remember);
+  Object.keys(remoteDeleted).forEach(remember);
+  var needsPush=false,merged=[];
+  order.forEach(function(id){
+    var l=localById[id],r=remoteById[id];
+    var deleteTs=Math.max(localDeleted[id]||0,remoteDeleted[id]||0);
+    var itemTs=Math.max(stockUpdatedAt(l),stockUpdatedAt(r));
+    if(deleteTs&&deleteTs>=itemTs){
+      mergedDeleted[id]=deleteTs;
+      if((localDeleted[id]||0)>(remoteDeleted[id]||0))needsPush=true;
+      return;
+    }
+    if(l&&!r){needsPush=true;merged.push(l);return;}
+    if(!l&&r){merged.push(r);return;}
+    var preferRemote=stockUpdatedAt(r)>=stockUpdatedAt(l);
+    if(!preferRemote)needsPush=true;
+    merged.push(preferRemote?r:l);
+  });
+  return{items:merged,deleted:mergedDeleted,needsPush:needsPush,changedLocal:!stockSame(localItems,merged)};
+}
 function mergeRemotePlan(planItems, remoteMeta, changedDateKey, remoteTs){
   var normalisedPlan=normaliseIds({recipes:[],plan:planItems||{}}).plan;
   remoteMeta=cleanPlanMeta(remoteMeta);
@@ -849,6 +967,8 @@ function buildSharedState(ts){
     planMealDeletes:planMealDeletes,
     checked:checked,
     extraItems:extraItems,
+    stockItems:stockItems.map(normaliseStockItem),
+    stockDeletes:stockDeletes,
     collections:collections,
     customMT:customMT,
     ts:ts||Date.now(),
@@ -865,6 +985,8 @@ function saveSharedLocal(){
   saveL('planMealDeletes',planMealDeletes);
   saveL('checked',checked);
   saveL('extraItems',extraItems);
+  saveL('stockItems',stockItems);
+  saveL('stockDeletes',stockDeletes);
   saveL('collections',collections);
   saveL('customMT',customMT);
 }
@@ -946,6 +1068,7 @@ function normaliseFBCfg(cfg){
     key:cleanFirebaseKey(cfg.key),
     proj:cleanCfgText(cfg.proj),
     who:cleanCfgText(cfg.who),
+    vapid:cleanCfgText(cfg.vapid||cfg.vapidKey||cfg.webPushPublicKey),
     workspace:cleanFirebaseWorkspace(cfg.workspace||cfg.space||cfg.syncId||'')
   };
 }
@@ -975,11 +1098,16 @@ function loadRemoteRecipeImages(){
     applyRecipeImages(snap.val());
   }).catch(function(){});
 }
+function registerAppServiceWorker(){
+  if(!('serviceWorker' in navigator))return Promise.resolve(null);
+  return navigator.serviceWorker.register('sw.js',{scope:'./'}).catch(function(){return null;});
+}
 function applySharedState(state,force){
   if(!state||typeof state!=='object')return false;
   if(!force&&fbStateLoaded&&state.clientId===fbClientId)return false;
   if(!force&&pendingSharedWrites>0&&state.clientId!==fbClientId)return false;
   if(!force&&loadL('sharedDirty')&&state.clientId!==fbClientId)return false;
+  var shouldCheckStockAlerts=fbStateLoaded&&state.clientId!==fbClientId;
   recipes=attachRecipeImages(normaliseIds({recipes:Array.isArray(state.recipes)?state.recipes:[],plan:{}}).recipes);
   recipeDeletes=normaliseStampMap(state.recipeDeletes);
   plan=normalisePlanObject((state.plan&&typeof state.plan==='object'&&!Array.isArray(state.plan))?state.plan:{});
@@ -987,6 +1115,8 @@ function applySharedState(state,force){
   planMealDeletes=normaliseStampMap(state.planMealDeletes);
   checked=checkedFromState(state.checked);
   extraItems=Array.isArray(state.extraItems)?state.extraItems:extraItems;
+  stockItems=Array.isArray(state.stockItems)?state.stockItems.map(normaliseStockItem):stockItems;
+  stockDeletes=normaliseStampMap(state.stockDeletes);
   collections=Array.isArray(state.collections)?state.collections:collections;
   customMT=Array.isArray(state.customMT)?state.customMT:customMT;
   refreshMT();
@@ -996,6 +1126,7 @@ function applySharedState(state,force){
   fbStateLoaded=true;
   renderAll();
   if(state.who&&state.clientId!==fbClientId)showToast(state.who+' updated planner');
+  if(shouldCheckStockAlerts)checkAllStockAlerts();
   return true;
 }
 function normaliseSharedState(state){
@@ -1009,6 +1140,8 @@ function normaliseSharedState(state){
     planMealDeletes:normaliseStampMap(state.planMealDeletes),
     checked:checkedFromState(state.checked),
     extraItems:Array.isArray(state.extraItems)?state.extraItems:[],
+    stockItems:Array.isArray(state.stockItems)?state.stockItems.map(normaliseStockItem):[],
+    stockDeletes:normaliseStampMap(state.stockDeletes),
     collections:Array.isArray(state.collections)?state.collections:[],
     customMT:Array.isArray(state.customMT)?state.customMT:[],
     ts:parseInt(state.ts,10)||0,
@@ -1061,6 +1194,7 @@ function mergeAllPlans(remote,local,ts){
 function mergeWholeSharedState(remote,local,ts){
   var out=normaliseSharedState(remote);
   var mergedRecipes=mergeRecipeLists(remote.recipes,local.recipes,remote.ts,ts,remote.recipeDeletes,local.recipeDeletes);
+  var mergedStock=mergeStockLists(local.stockItems,remote.stockItems,local.stockDeletes,remote.stockDeletes);
   var mergedPlan=mergeAllPlans(remote,local,ts);
   out.recipes=mergedRecipes.items;
   out.recipeDeletes=mergedRecipes.deleted;
@@ -1069,6 +1203,8 @@ function mergeWholeSharedState(remote,local,ts){
   out.planMealDeletes=mergedPlan.deletes;
   out.checked=Object.assign({},remote.checked,local.checked);
   out.extraItems=mergeSimpleList(remote.extraItems,local.extraItems);
+  out.stockItems=mergedStock.items;
+  out.stockDeletes=mergedStock.deleted;
   out.collections=mergeListById(remote.collections,local.collections);
   out.customMT=mergeSimpleList(remote.customMT,local.customMT);
   out.version=2;out.ts=ts;out.clientId=fbClientId;out.who=fbCfg.who||'Someone';
@@ -1085,6 +1221,7 @@ function mergeSharedState(remote, local, changedKey, changedDateKey, ts){
   if(!out.collections.length&&local.collections.length)out.collections=local.collections;
   if(!out.customMT.length&&local.customMT.length)out.customMT=local.customMT;
   var mergedRecipes=mergeRecipeLists(remote.recipes,local.recipes,remote.ts,ts,remote.recipeDeletes,local.recipeDeletes);
+  var mergedStock=mergeStockLists(local.stockItems,remote.stockItems,local.stockDeletes,remote.stockDeletes);
   out.recipes=mergedRecipes.items;
   out.recipeDeletes=mergedRecipes.deleted;
   out.planMealDeletes=Object.assign({},remote.planMealDeletes);
@@ -1124,6 +1261,12 @@ function mergeSharedState(remote, local, changedKey, changedDateKey, ts){
     if(exOp.type==='add')out.extraItems=mergeSimpleList(remote.extraItems,exOp.items||[]);
     else if(exOp.type==='remove')out.extraItems=remote.extraItems.filter(function(item){return item!==exOp.item;});
     else out.extraItems=local.extraItems;
+  }
+  if(changedKey==='stockItems'){
+    var stOp=changedDateKey||{};
+    out.stockItems=mergedStock.items;
+    out.stockDeletes=mergedStock.deleted;
+    if(stOp.type==='remove'&&stOp.id)out.stockDeletes[String(stOp.id)]=Math.max(out.stockDeletes[String(stOp.id)]||0,stOp.deletedAt||ts);
   }
   if(changedKey==='collections'){
     var collOp=changedDateKey||{};
@@ -1242,9 +1385,9 @@ function bootstrapSharedState(){
 }
 
 // FIREBASE
-function openFBSetup(){var c=ensureFBCfgWorkspace(normaliseFBCfg(loadL('fbCfg')))||{url:'',key:'',proj:'',who:'',workspace:generateWorkspaceId()};fbCfg=c;gr('fb-url').value=c.url||'';gr('fb-key').value=c.key||'';gr('fb-proj').value=c.proj||'';gr('fb-workspace').value=c.workspace||'';gr('fb-who').value=c.who||'';openM('modal-fb');}
+function openFBSetup(){var c=ensureFBCfgWorkspace(normaliseFBCfg(loadL('fbCfg')))||{url:'',key:'',proj:'',who:'',workspace:generateWorkspaceId(),vapid:''};fbCfg=c;gr('fb-url').value=c.url||'';gr('fb-key').value=c.key||'';gr('fb-proj').value=c.proj||'';gr('fb-workspace').value=c.workspace||'';gr('fb-who').value=c.who||'';if(gr('fb-vapid'))gr('fb-vapid').value=c.vapid||'';openM('modal-fb');}
 function connectFB(){
-  var cfg=ensureFBCfgWorkspace(normaliseFBCfg({url:gr('fb-url').value,key:gr('fb-key').value,proj:gr('fb-proj').value,workspace:gr('fb-workspace').value,who:gr('fb-who').value}));
+  var cfg=ensureFBCfgWorkspace(normaliseFBCfg({url:gr('fb-url').value,key:gr('fb-key').value,proj:gr('fb-proj').value,workspace:gr('fb-workspace').value,who:gr('fb-who').value,vapid:gr('fb-vapid')?gr('fb-vapid').value:''}));
   var url=cfg.url,key=cfg.key,proj=cfg.proj,workspace=cfg.workspace,who=cfg.who;
   if(!url||!key||!proj||!workspace){gr('fb-status').innerHTML='<span style="color:var(--red)">Please fill in Database URL, API Key, Project ID and workspace ID</span>';return;}
   fbCfg={url,key,proj,workspace,who};gr('fb-workspace').value=workspace;saveL('fbCfg',fbCfg);
@@ -1275,6 +1418,43 @@ function ensureFirebaseSignedIn(){
   var auth=firebase.auth();
   if(auth.currentUser)return Promise.resolve(auth.currentUser);
   return auth.signInAnonymously();
+}
+function urlBase64ToUint8Array(base64String){
+  var padding='='.repeat((4-base64String.length%4)%4);
+  var base64=(base64String+padding).replace(/-/g,'+').replace(/_/g,'/');
+  var raw=window.atob(base64);
+  var out=new Uint8Array(raw.length);
+  for(var i=0;i<raw.length;i++)out[i]=raw.charCodeAt(i);
+  return out;
+}
+function supportsClosedNotifications(){
+  return 'Notification' in window&&'serviceWorker' in navigator&&'PushManager' in window;
+}
+function setupClosedStockNotifications(silent){
+  if(!supportsClosedNotifications()){if(!silent)showToast('Closed notifications are not supported in this browser');return Promise.resolve(false);}
+  if(!fbConn||!fbRef){if(!silent)showToast('Connect sync first');return Promise.resolve(false);}
+  if(!fbCfg.vapid){if(!silent)showToast('Add the Web Push public key in sync setup');return Promise.resolve(false);}
+  if(silent&&Notification.permission!=='granted')return Promise.resolve(false);
+  return requestStockNotificationPermission().then(function(ok){
+    if(!ok){if(!silent)showToast('Notifications are blocked');return false;}
+    return registerAppServiceWorker().then(function(reg){
+      if(!reg){if(!silent)showToast('Could not register notifications');return false;}
+      return reg.pushManager.getSubscription().then(function(existing){
+        return existing||reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(fbCfg.vapid)});
+      }).then(function(sub){
+        var key='sub-'+simpleHash(sub.endpoint);
+        var data={subscription:sub.toJSON(),clientId:fbClientId,who:fbCfg.who||'',updatedAt:Date.now()};
+        return fbRef.child('pushSubscriptions').child(encodeFBKey(key)).set(cleanForFirebase(data)).then(function(){
+          saveL('pushSubscriptionKey',key);
+          if(!silent)showToast('Closed-app stock alerts enabled');
+          return true;
+        });
+      });
+    });
+  }).catch(function(error){
+    if(!silent)showToast(syncErrorMessage(error,'Notification setup failed'));
+    return false;
+  });
 }
 function isOwnEcho(key,d){
   if(!d)return false;
@@ -1353,6 +1533,7 @@ function initFB(){
       listenForSharedState();
       listenForRecipeImages();
       if(loadL('sharedDirty'))setTimeout(function(){publishSharedState();},600);
+      if(fbCfg.vapid)setupClosedStockNotifications(true);
       gr('sync-bar').className='sync-bar';gr('sync-txt').textContent='Live sync active'+(fbCfg.who?' — '+fbCfg.who+"'s planner":'');
       gr('fb-status').innerHTML='<span style="color:var(--sage)">✓ Connected!</span>';
       setTimeout(function(){closeM('modal-fb');},1200);
@@ -1472,7 +1653,7 @@ function pushPlan(dateKey) {
   }
 
 function push(changedKey, changedDateKey) {
-  var sharedKeys=['recipes','plan','checked','extraItems','collections','customMT'];
+  var sharedKeys=['recipes','plan','checked','extraItems','stockItems','collections','customMT'];
   if(sharedKeys.indexOf(changedKey)<0)return;
   if(fbConn&&fbRef){publishSharedState(changedKey,changedDateKey);return;}
   saveL('sharedDirty',Date.now());
@@ -1485,7 +1666,7 @@ function push(changedKey, changedDateKey) {
 function saveL(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 function loadL(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}}
 function persist(changedKey, changedDateKey){
-  var sharedKeys=['recipes','plan','checked','extraItems','collections','customMT'];
+  var sharedKeys=['recipes','plan','checked','extraItems','stockItems','collections','customMT'];
   if(sharedKeys.indexOf(changedKey)>=0)saveL('sharedDirty',Date.now());
   if(changedKey==='recipes')saveL('recipesTs',Date.now());
   if(changedKey==='plan'&&changedDateKey)touchPlanDate(changedDateKey);
@@ -1508,6 +1689,8 @@ function persist(changedKey, changedDateKey){
   saveL('planMealDeletes',planMealDeletes);
   saveL('checked',checked);
   saveL('extraItems',extraItems);
+  saveL('stockItems',stockItems);
+  saveL('stockDeletes',stockDeletes);
   saveL('aisleOrder',aisleOrder);
   saveL('collections',collections);
   saveL('customMT',customMT);
@@ -1527,6 +1710,7 @@ function normaliseRecipe(r){
   r.id=parseInt(r.id,10)||r.id;
   r.diets=Array.isArray(r.diets)?r.diets:[];
   r.allergens=Array.isArray(r.allergens)?r.allergens:[];
+  r.appliances=Array.isArray(r.appliances)?r.appliances:[];
   r.ingredients=Array.isArray(r.ingredients)?r.ingredients:[];
   r.steps=Array.isArray(r.steps)?r.steps:[];
   if(r.updatedAt)r.updatedAt=parseInt(r.updatedAt,10)||0;
@@ -1554,6 +1738,9 @@ function loadPersisted(){
   });
   var c=loadL('checked');if(c)checked=c;
   var ei=loadL('extraItems');if(ei)extraItems=ei;
+  var si=loadL('stockItems');if(si)stockItems=si;
+  var sd=loadL('stockDeletes');if(sd)stockDeletes=normaliseStampMap(sd);
+  var sas=loadL('stockAlertState');if(sas&&typeof sas==='object'&&!Array.isArray(sas))stockAlertState=sas;
   var ao=loadL('aisleOrder');if(ao&&ao.length===6)aisleOrder=ao;
   var co=loadL('collections');if(co)collections=co;
   var cmt=loadL('customMT');if(cmt)customMT=cmt;
@@ -1581,8 +1768,10 @@ function showTab(n){
   document.querySelectorAll('.nav-item').forEach(function(b){b.classList.remove('active')});
   gr('panel-'+n).classList.add('active');var nb=gr('nav-'+n);if(nb)nb.classList.add('active');
   gr('main-content').scrollTop=0;
+  if(n==='dashboard')renderDashboard();
   if(n==='shopping')renderShop();
   if(n==='recipes'){renderCF();renderDF();renderRGrid();}
+  if(n==='stock')renderStock();
 }
 
 // ─── WEEK HELPERS ─────────────────────────────────────────────────────────────
@@ -1835,6 +2024,9 @@ function renderCostBanner(){
 }
 // ─── v5.5 APPLIANCE HELPERS ───────────────────────────────────────────────────
 function getRecipeAppliances(r){
+  r=normaliseRecipe(r);
+  if(r&&r.appliancesManual)return r.appliances.slice();
+  if(r&&Array.isArray(r.appliances)&&r.appliances.length)return r.appliances.slice();
   var text=((r.name||'')+' '+(r.desc||'')+' '+(r.steps||[]).join(' ')).toLowerCase();
   var needed=[];
   Object.keys(APPLIANCE_KEYWORDS).forEach(function(id){
@@ -2022,6 +2214,17 @@ function renderCollFilters(){
   el.appendChild(mgr);
 }
 function setCollFilter(c){aCollection=c;renderCollFilters();renderRGrid();}
+function firstLetter(name){var ch=String(name||'#').trim().charAt(0).toUpperCase();return /^[A-Z]$/.test(ch)?ch:'#';}
+function addAlphaRail(layout,letters,prefix){
+  prefix=prefix||'letter-';
+  var rail=document.createElement('div');rail.className='alpha-rail';
+  letters.forEach(function(l){
+    var b=document.createElement('button');b.textContent=l;
+    b.addEventListener('click',function(){var a=gr(prefix+l);if(a)a.scrollIntoView({block:'start'});});
+    rail.appendChild(b);
+  });
+  layout.appendChild(rail);
+}
 function renderRGrid(){
   renderCollFilters();
   var s=gr('rsearch')?gr('rsearch').value.toLowerCase():'';
@@ -2035,18 +2238,15 @@ function renderRGrid(){
   var rg=gr('rgrid');if(!rg)return;
   rg.innerHTML='';
   if(!filtered.length){var empty=document.createElement('div');empty.className='empty';var ei=document.createElement('div');ei.className='empty-icon';ei.textContent='No recipes match';rg.appendChild(ei);return;}
-  var usedIds={};
-  Object.values(plan).forEach(function(meals){(meals||[]).forEach(function(m){usedIds[String(m.recipeId)]=true;});});
-  var unused=filtered.filter(function(r){return!usedIds[String(r.id)];});
-  var used=filtered.filter(function(r){return!!usedIds[String(r.id)];});
-  var isFiltered=(aCuisine!=='Any'||aDiet!=='Any'||s.length>0);
-  if(!isFiltered&&unused.length>0){
-    var suggLabel=document.createElement('div');suggLabel.className='sub-label green';suggLabel.textContent='Not yet on your planner ('+unused.length+')';rg.appendChild(suggLabel);
-    unused.forEach(function(r){try{rg.appendChild(makeRCard(r));}catch(e){}});
-    if(used.length>0){var allLabel=document.createElement('div');allLabel.className='sub-label';allLabel.textContent='Already planned ('+used.length+')';rg.appendChild(allLabel);used.forEach(function(r){try{rg.appendChild(makeRCard(r));}catch(e){}});}
-  } else {
-    filtered.forEach(function(r){try{rg.appendChild(makeRCard(r));}catch(e){}});
-  }
+  filtered.sort(function(a,b){return String(a.name||'').localeCompare(String(b.name||''));});
+  var layout=document.createElement('div');layout.className='alpha-layout';
+  var list=document.createElement('div');var letters=[];
+  filtered.forEach(function(r){
+    var l=firstLetter(r.name);
+    if(letters.indexOf(l)<0){letters.push(l);var anchor=document.createElement('div');anchor.id='recipe-letter-'+l;anchor.className='letter-anchor';list.appendChild(anchor);}
+    try{list.appendChild(makeRCard(r));}catch(e){}
+  });
+  layout.appendChild(list);addAlphaRail(layout,letters,'recipe-letter-');rg.appendChild(layout);
 }
 function delR(id) {
   if (!confirm('Delete this recipe?')) return;
@@ -2371,8 +2571,18 @@ function selAMR(id){amRecipe=id;renderAML();}
 function confirmAM(){if(!amRecipe){showToast('Pick a recipe first');return;}var k=planKey(amDay);if(!plan[k])plan[k]=[];var note=(gr('am-note')?gr('am-note').value.trim():'');var meal={id:newId('meal'),recipeId:typeof amRecipe==='string'?parseInt(amRecipe,10):amRecipe,mealType:amType,updatedAt:Date.now()};if(note)meal.note=note;plan[k].push(meal);closeM('modal-am');renderPlanner();persist('plan',k);showToast('Added to '+amDay);}
 
 // ADD/EDIT RECIPE
+function openRecipeAddChoice(){openM('modal-recipe-add');}
+function startManualRecipe(){closeM('modal-recipe-add');openAddRecipe(null);}
+function openImportModal(mode){
+  closeM('modal-recipe-add');
+  switchIT(mode||'url');
+  gr('import-result').innerHTML='';
+  gr('import-loading').style.display='none';
+  openM('modal-import');
+}
+function startImportRecipe(mode){openImportModal(mode||'url');}
 function openAddRecipe(pf){
-  editId=null;nrDiets=[];nrAllergens=[];ingN=0;stepN=0;nrImgB64='';
+  editId=null;nrDiets=[];nrAllergens=[];nrAppliances=[];ingN=0;stepN=0;nrImgB64='';
   gr('ar-title').textContent='New Recipe';
   gr('nr-name').value=pf?pf.name||'':'';gr('nr-desc').value=pf?pf.desc||'':'';gr('nr-time').value=pf?pf.time||30:30;
   gr('nr-servings').value=pf&&pf.servings?pf.servings:4;
@@ -2381,8 +2591,8 @@ function openAddRecipe(pf){
   if(gr('nr-notes'))gr('nr-notes').value=pf&&pf.notes?pf.notes:'';
   var sel=gr('nr-cuisine');sel.innerHTML=CUISINES.filter(function(c){return c!=='Any'}).map(function(c){return'<option>'+c+'</option>'}).join('');
   if(pf&&pf.cuisine)try{sel.value=pf.cuisine;}catch(e){}
-  nrDiets=pf&&pf.diets?pf.diets.slice():[];nrAllergens=pf&&pf.allergens?pf.allergens.slice():[];
-  renderNRD();renderNRA();renderNRStars();gr('nr-ings').innerHTML='';gr('nr-steps').innerHTML='';
+  nrDiets=pf&&pf.diets?pf.diets.slice():[];nrAllergens=pf&&pf.allergens?pf.allergens.slice():[];nrAppliances=pf&&pf.appliances?pf.appliances.slice():[];
+  renderNRD();renderNRA();renderNRApps();renderNRStars();gr('nr-ings').innerHTML='';gr('nr-steps').innerHTML='';
   renderNRImg(pf&&pf.image?pf.image:'');
   if(pf&&pf.ingredients&&pf.ingredients.length)pf.ingredients.forEach(function(i){addIR(i.name,i.qty,i.unit);});
   else{addIR();addIR();addIR();}
@@ -2391,7 +2601,7 @@ function openAddRecipe(pf){
   openM('modal-ar');
 }
 function openEditR(id){
-  var r=rec(id);if(!r)return;editId=id;nrDiets=r.diets.slice();nrAllergens=r.allergens.slice();ingN=0;stepN=0;nrImgB64=r.image||'';
+  var r=rec(id);if(!r)return;editId=id;nrDiets=r.diets.slice();nrAllergens=r.allergens.slice();nrAppliances=(r.appliances&&r.appliances.length?r.appliances:getRecipeAppliances(r)).slice();ingN=0;stepN=0;nrImgB64=r.image||'';
   gr('ar-title').textContent='Edit Recipe';
   gr('nr-name').value=r.name;gr('nr-desc').value=r.desc||'';gr('nr-time').value=r.time||30;
   gr('nr-servings').value=r.servings||4;
@@ -2400,7 +2610,7 @@ function openEditR(id){
   if(gr('nr-notes'))gr('nr-notes').value=r.notes||'';
   var sel=gr('nr-cuisine');sel.innerHTML=CUISINES.filter(function(c){return c!=='Any'}).map(function(c){return'<option>'+c+'</option>'}).join('');
   try{sel.value=r.cuisine;}catch(e){}
-  renderNRD();renderNRA();renderNRStars();gr('nr-ings').innerHTML='';gr('nr-steps').innerHTML='';
+  renderNRD();renderNRA();renderNRApps();renderNRStars();gr('nr-ings').innerHTML='';gr('nr-steps').innerHTML='';
   renderNRImg(r.image||'');
   r.ingredients.forEach(function(i){addIR(i.name,i.qty,i.unit);});
   if(r.steps&&r.steps.length)r.steps.forEach(function(s){addSR(s);});
@@ -2409,8 +2619,10 @@ function openEditR(id){
 }
 function renderNRD(){gr('nr-diets').innerHTML=DIETS.map(function(d){return'<button class="tchip'+(nrDiets.indexOf(d)>=0?' on':'')+'" onclick="togND(\''+d+'\')">'+d+'</button>'}).join('');}
 function renderNRA(){gr('nr-allergens').innerHTML=ALLERGENS.map(function(a){return'<button class="tchip al'+(nrAllergens.indexOf(a)>=0?' on':'')+'" onclick="togNA(\''+a+'\')">'+a+'</button>'}).join('');}
+function renderNRApps(){var el=gr('nr-appliances');if(!el)return;el.innerHTML=ALL_APPLIANCES.map(function(ap){return'<button class="app-chip'+(nrAppliances.indexOf(ap.id)>=0?' on':'')+'" onclick="togNApp(\''+ap.id+'\')">'+ap.emoji+' '+ap.name+'</button>'}).join('');}
 function togND(d){nrDiets=nrDiets.indexOf(d)>=0?nrDiets.filter(function(x){return x!==d}):nrDiets.concat(d);renderNRD();}
 function togNA(a){nrAllergens=nrAllergens.indexOf(a)>=0?nrAllergens.filter(function(x){return x!==a}):nrAllergens.concat(a);renderNRA();}
+function togNApp(id){nrAppliances=nrAppliances.indexOf(id)>=0?nrAppliances.filter(function(x){return x!==id}):nrAppliances.concat(id);renderNRApps();}
 function renderNRStars(){
   var el=gr('nr-stars');if(!el)return;
   el.innerHTML='';
@@ -2477,34 +2689,123 @@ function saveRecipe(){
   var ings=[].slice.call(gr('nr-ings').querySelectorAll('.ingrow')).map(function(row){var inp=row.querySelectorAll('input,select');return{name:inp[0].value.trim(),qty:parseFloat(inp[1].value)||1,unit:inp[2].value};}).filter(function(i){return i.name;});
   var steps=[].slice.call(gr('nr-steps').querySelectorAll('textarea')).map(function(t){return t.value.trim();}).filter(Boolean);
   var oldR=editId?rec(editId):null;
-  var obj={id:editId?parseInt(editId,10):Date.now(),name:name,cuisine:gr('nr-cuisine').value,diets:nrDiets.slice(),allergens:nrAllergens.slice(),time:parseInt(gr('nr-time').value)||30,servings:parseInt(gr('nr-servings').value)||4,desc:gr('nr-desc').value.trim(),ingredients:ings,steps:steps,image:nrImgB64||'',source_url:gr('nr-url').value.trim(),rating:nrRating||0,notes:gr('nr-notes')?gr('nr-notes').value.trim():'',cookCount:oldR?oldR.cookCount||0:0,updatedAt:Date.now()};
+  var obj={id:editId?parseInt(editId,10):Date.now(),name:name,cuisine:gr('nr-cuisine').value,diets:nrDiets.slice(),allergens:nrAllergens.slice(),appliances:nrAppliances.slice(),appliancesManual:true,time:parseInt(gr('nr-time').value)||30,servings:parseInt(gr('nr-servings').value)||4,desc:gr('nr-desc').value.trim(),ingredients:ings,steps:steps,image:nrImgB64||'',source_url:gr('nr-url').value.trim(),rating:nrRating||0,notes:gr('nr-notes')?gr('nr-notes').value.trim():'',cookCount:oldR?oldR.cookCount||0:0,updatedAt:Date.now()};
   if(editId){var idx=recipes.findIndex(function(r){return r.id===editId});if(idx>=0)recipes[idx]=obj;else recipes.push(obj);}
   else recipes.push(obj);
   closeM('modal-ar');persist('recipes');renderAll();showToast(editId?'Recipe updated':'Recipe saved');
 }
 
-// FRIDGE
-function fridgeKD(e){if(e.key==='Enter'||e.key===','){e.preventDefault();addFI();}}
-function addFI(){var v=gr('fridge-input').value.trim().replace(/,+$/,'');if(!v)return;v.split(/,|;/).map(function(x){return x.trim();}).filter(Boolean).forEach(function(p){if(fridgeIngs.indexOf(p.toLowerCase())<0)fridgeIngs.push(p.toLowerCase());});gr('fridge-input').value='';renderFC();}
-function removeFI(i){fridgeIngs=fridgeIngs.filter(function(x){return x!==i});renderFC();}
-function renderFC(){gr('fridge-chips').innerHTML=fridgeIngs.map(function(i){return'<div class="ing-chip">'+i+'<button onclick="removeFI(\''+i.replace(/'/g,"\\'")+'\')" >✕</button></div>';}).join('')+(fridgeIngs.length?'':'<span style="font-size:13px;color:var(--ink3)">Add ingredients you have…</span>');}
-function getSugg(){
-  if(!fridgeIngs.length){showToast('Add some ingredients first');return;}
-  var scored=recipes.map(function(r){
-    var ri=r.ingredients.map(function(i){return i.name.toLowerCase();});
-    var matches=fridgeIngs.filter(function(fi){return ri.some(function(rin){return rin.indexOf(fi)>=0||fi.indexOf(rin)>=0;});});
-    var missing=ri.filter(function(rin){return!fridgeIngs.some(function(fi){return rin.indexOf(fi)>=0||fi.indexOf(rin)>=0;});});
-    var pct=Math.round((matches.length/Math.max(ri.length,1))*100);
-    return{r:r,pct:pct,matches:matches.length,missing:missing.slice(0,5),total:ri.length};
-  }).filter(function(x){return x.matches>0;}).sort(function(a,b){return b.pct-a.pct;});
-  if(!scored.length){gr('suggestions').innerHTML='<div class="empty"><div class="empty-icon">🤔</div><div class="empty-text">No matches. Try adding more ingredients!</div></div>';return;}
-  gr('suggestions').innerHTML='<div style="font-family:\'Playfair Display\',serif;font-size:16px;margin-bottom:12px">'+scored.length+' suggestion'+(scored.length!==1?'s':'')+'</div>'+scored.map(function(x){
-    var ha=rha(x.r);var hits=x.r.allergens.filter(function(a){return userAllergens.indexOf(a)>=0;});
-    return'<div class="sug-card"><div style="font-family:\'Playfair Display\',serif;font-size:16px;margin-bottom:8px">'+x.r.name+'</div><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-size:12px;color:var(--ink3)">Match</span><div class="sug-bar-wrap"><div class="sug-bar" style="width:'+x.pct+'%"></div></div><span style="font-size:11px;font-weight:500;color:var(--sage)">'+x.pct+'%</span></div><div style="font-size:12px;color:var(--ink3);margin-bottom:8px">'+x.matches+' of '+x.total+' ingredients covered</div>'+(x.missing.length?'<div style="font-size:12px;color:var(--ink3)">Still need: <strong style="color:var(--ink)">'+x.missing.join(', ')+'</strong></div>':'')+(ha?'<div class="rc-warn" style="margin-top:8px"><span>⚠</span><span>Contains '+hits.join(', ')+'</span></div>':'')+'<button class="btn btns btnp" onclick="openAMForR('+x.r.id+')" style="width:100%;margin-top:10px">＋ Add to planner</button></div>';
-  }).join('');
-}
-
 // ─── IMPORT ───────────────────────────────────────────────────────────────────
+
+// STOCK
+function stockSectionName(id){var s=STOCK_SECTIONS.find(function(x){return x.id===id;});return s?s.name:id;}
+function normaliseStockItem(item){
+  item=item&&typeof item==='object'?item:{};
+  function alertVal(v){if(v===undefined||v===null||v==='')return null;var n=parseInt(v,10);return isNaN(n)||n<0?null:n;}
+  var a1=alertVal(item.alert1),a2=alertVal(item.alert2);
+  if(a1!==null&&a2!==null&&a2>a1){var tmp=a1;a1=a2;a2=tmp;}
+  return{id:item.id||newId('stock'),name:String(item.name||'').trim(),section:item.section||'snack',type:String(item.type||'').trim(),qty:Math.max(0,parseInt(item.qty,10)||0),notes:String(item.notes||'').trim(),kit:String(item.kit||item.kitchenItems||'').trim(),makeTime:String(item.makeTime||'').trim(),alert1:a1,alert2:a2,notify:!!item.notify,updatedAt:parseInt(item.updatedAt,10)||Date.now()};
+}
+function sortedStockItems(){return stockItems.map(normaliseStockItem).filter(function(i){return i.name;}).sort(function(a,b){return a.name.localeCompare(b.name);});}
+function stockAlertLevel(item){
+  item=normaliseStockItem(item);
+  if(item.alert2!==null&&item.qty<=item.alert2)return 2;
+  if(item.alert1!==null&&item.qty<=item.alert1)return 1;
+  return 0;
+}
+function isStockLow(item){item=normaliseStockItem(item);return stockAlertLevel(item)>0||item.qty<=1;}
+function requestStockNotificationPermission(){
+  if(!('Notification' in window))return Promise.resolve(false);
+  if(Notification.permission==='granted')return Promise.resolve(true);
+  if(Notification.permission==='denied')return Promise.resolve(false);
+  return Notification.requestPermission().then(function(p){return p==='granted';}).catch(function(){return false;});
+}
+function showStockNotification(item,level){
+  item=normaliseStockItem(item);
+  var title=level===2?'Urgent stock alert':'Stock running low';
+  var body=item.name+' has '+item.qty+' left'+(level===2?' (2nd alert)':' (1st alert)');
+  showToast(body);
+  if(!item.notify||!('Notification' in window)||Notification.permission!=='granted')return;
+  try{new Notification(title,{body:body,tag:'stock-'+item.id+'-'+level});}catch(e){}
+}
+function checkStockAlert(item){
+  item=normaliseStockItem(item);
+  var level=stockAlertLevel(item);
+  var prev=stockAlertState[item.id]||0;
+  if(level>prev)showStockNotification(item,level);
+  stockAlertState[item.id]=level;
+  saveL('stockAlertState',stockAlertState);
+}
+function checkAllStockAlerts(){stockItems.map(normaliseStockItem).forEach(checkStockAlert);}
+function renderStockTabs(){var el=gr('stock-tabs');if(!el)return;var tabs=[{id:'all',name:'All'}].concat(STOCK_SECTIONS);el.innerHTML=tabs.map(function(t){return'<button class="tchip'+(stockFilter===t.id?' on':'')+'" onclick="setStockFilter(\''+t.id+'\')">'+t.name+'</button>';}).join('');}
+function setStockFilter(id){stockFilter=id;renderStock();}
+function stockQty(id,delta){var item=stockItems.find(function(x){return String(x.id)===String(id);});if(!item)return;item.qty=Math.max(0,(parseInt(item.qty,10)||0)+delta);item.updatedAt=Date.now();var norm=normaliseStockItem(item);persist('stockItems',{type:'update',item:norm});checkStockAlert(norm);renderStock();renderDashboard();}
+function stockCard(item){
+  item=normaliseStockItem(item);
+  var card=document.createElement('div');card.className='stock-card'+(isStockLow(item)?' low':'');
+  var name=document.createElement('div');name.className='stock-name';name.textContent=item.name;card.appendChild(name);
+  var meta=document.createElement('div');meta.className='stock-meta';var bits=[stockSectionName(item.section)];if(item.type)bits.push(item.type);if(item.section==='freezer'&&item.makeTime)bits.push(item.makeTime);meta.textContent=bits.join(' - ');card.appendChild(meta);
+  var level=stockAlertLevel(item);
+  if(level){var alert=document.createElement('div');alert.className='stock-alert';alert.textContent=(level===2?'2nd alert':'1st alert')+' - '+item.qty+' left';card.appendChild(alert);}
+  if(item.kit){var kit=document.createElement('div');kit.className='stock-note';kit.textContent='Needs: '+item.kit;card.appendChild(kit);}
+  if(item.notes){var notes=document.createElement('div');notes.className='stock-note';notes.textContent=item.notes;card.appendChild(notes);}
+  var row=document.createElement('div');row.style.cssText='display:flex;align-items:center;gap:8px;justify-content:space-between';
+  var qty=document.createElement('div');qty.className='qty-step';
+  var dn=document.createElement('button');dn.className='srv-btn';dn.textContent='-';dn.addEventListener('click',function(){stockQty(item.id,-1);});
+  var pill=document.createElement('div');pill.className='qty-pill';pill.textContent=item.qty;
+  var up=document.createElement('button');up.className='srv-btn';up.textContent='+';up.addEventListener('click',function(){stockQty(item.id,1);});
+  qty.appendChild(dn);qty.appendChild(pill);qty.appendChild(up);
+  var acts=document.createElement('div');acts.style.cssText='display:flex;gap:6px';
+  var edit=document.createElement('button');edit.className='btn btns';edit.textContent='Edit';edit.addEventListener('click',function(){openStockModal(item.id);});
+  var del=document.createElement('button');del.className='btn btns btnd';del.textContent='Delete';del.addEventListener('click',function(){deleteStock(item.id);});
+  acts.appendChild(edit);acts.appendChild(del);row.appendChild(qty);row.appendChild(acts);card.appendChild(row);
+  return card;
+}
+function renderStock(){
+  renderStockTabs();
+  var el=gr('stock-list');if(!el)return;
+  var s=gr('stock-search')?gr('stock-search').value.toLowerCase():'';
+  var items=sortedStockItems().filter(function(i){if(stockFilter!=='all'&&i.section!==stockFilter)return false;if(s&&[i.name,i.type,i.notes,i.kit].join(' ').toLowerCase().indexOf(s)<0)return false;return true;});
+  el.innerHTML='';
+  if(!items.length){el.innerHTML='<div class="empty"><div class="empty-icon">Stock</div><div class="empty-text">No stock items yet</div></div>';return;}
+  var layout=document.createElement('div');layout.className='alpha-layout';var list=document.createElement('div');var letters=[];
+  items.forEach(function(item){var l=firstLetter(item.name);if(letters.indexOf(l)<0){letters.push(l);var a=document.createElement('div');a.id='stock-letter-'+l;a.className='letter-anchor';list.appendChild(a);}list.appendChild(stockCard(item));});
+  layout.appendChild(list);addAlphaRail(layout,letters,'stock-letter-');el.appendChild(layout);
+}
+function renderStockSectionPicker(section){var el=gr('st-section');if(!el)return;el.innerHTML=STOCK_SECTIONS.map(function(s){return'<button class="tchip'+(section===s.id?' on':'')+'" onclick="pickStockSection(\''+s.id+'\')">'+s.name+'</button>';}).join('');el.setAttribute('data-value',section);}
+function pickStockSection(id){renderStockSectionPicker(id);}
+function openStockModal(id){
+  stockEditId=id||null;
+  var item=id?stockItems.find(function(x){return String(x.id)===String(id);}):null;
+  item=item?normaliseStockItem(item):{section:stockFilter==='all'?'snack':stockFilter,qty:1};
+  gr('stock-title').textContent=id?'Edit stock item':'New stock item';
+  gr('st-name').value=item.name||'';gr('st-type').value=item.type||'';gr('st-qty').value=item.qty===0?0:(item.qty||1);gr('st-time').value=item.makeTime||'';gr('st-alert1').value=item.alert1!==null&&item.alert1!==undefined?item.alert1:'';gr('st-alert2').value=item.alert2!==null&&item.alert2!==undefined?item.alert2:'';gr('st-notify').checked=!!item.notify;gr('st-kit').value=item.kit||'';gr('st-notes').value=item.notes||'';
+  renderStockSectionPicker(item.section||'snack');openM('modal-stock');
+}
+function saveStockItem(){
+  var name=gr('st-name').value.trim();if(!name){showToast('Add a stock name');return;}
+  var item=normaliseStockItem({id:stockEditId||newId('stock'),name:name,section:gr('st-section').getAttribute('data-value')||'snack',type:gr('st-type').value,qty:gr('st-qty').value,makeTime:gr('st-time').value,alert1:gr('st-alert1').value,alert2:gr('st-alert2').value,notify:gr('st-notify').checked,kit:gr('st-kit').value,notes:gr('st-notes').value,updatedAt:Date.now()});
+  var idx=stockItems.findIndex(function(x){return String(x.id)===String(item.id);});
+  if(idx>=0)stockItems[idx]=item;else stockItems.push(item);
+  function finish(){closeM('modal-stock');persist('stockItems',{type:'update',item:item});checkStockAlert(item);renderStock();renderDashboard();showToast('Stock saved');}
+  if(item.notify&&(item.alert1!==null||item.alert2!==null))setupClosedStockNotifications(false).then(finish);else finish();
+}
+function deleteStock(id){if(!confirm('Delete this stock item?'))return;var ts=Date.now();stockItems=stockItems.filter(function(x){return String(x.id)!==String(id);});stockDeletes[String(id)]=ts;delete stockAlertState[String(id)];saveL('stockAlertState',stockAlertState);persist('stockItems',{type:'remove',id:id,deletedAt:ts});renderStock();renderDashboard();showToast('Stock deleted');}
+function renderMiniStock(el,items,emptyText){
+  if(!el)return;
+  if(!items.length){el.innerHTML='<div style="font-size:13px;color:var(--ink3);padding:4px 0">'+emptyText+'</div>';return;}
+  el.innerHTML='';var wrap=document.createElement('div');wrap.className='mini-stock-list';
+  items.forEach(function(item){item=normaliseStockItem(item);var row=document.createElement('div');row.className='mini-stock-row'+(isStockLow(item)?' low':'');var name=document.createElement('div');name.className='mini-stock-name';name.textContent=item.name+' · '+stockSectionName(item.section);var dn=document.createElement('button');dn.className='srv-btn';dn.textContent='-';dn.addEventListener('click',function(){stockQty(item.id,-1);});var pill=document.createElement('div');pill.className='qty-pill';pill.textContent=item.qty;var up=document.createElement('button');up.className='srv-btn';up.textContent='+';up.addEventListener('click',function(){stockQty(item.id,1);});row.appendChild(name);row.appendChild(dn);row.appendChild(pill);row.appendChild(up);wrap.appendChild(row);});
+  el.appendChild(wrap);
+}
+function renderDashboard(){
+  var stats=gr('dash-stats');if(!stats)return;
+  var wp=getWeekPlan();var meals=Object.values(wp).reduce(function(s,a){return s+(a?a.length:0);},0);var low=stockItems.filter(isStockLow).length;var freezer=stockItems.filter(function(i){return normaliseStockItem(i).section==='freezer';}).length;
+  stats.innerHTML='';[[meals,'Meals'],[stockItems.length,'Stock'],[low,'Low'],[freezer,'Freezer']].forEach(function(x){var c=mkEl('div','stat-card');c.appendChild(mkEl('div','stat-n',String(x[0])));c.appendChild(mkEl('div','stat-l',x[1]));stats.appendChild(c);});
+  renderMiniStock(gr('dash-low-stock'),sortedStockItems().filter(isStockLow).slice(0,5),'Nothing low right now');
+  renderMiniStock(gr('dash-recent-stock'),stockItems.map(normaliseStockItem).sort(function(a,b){return b.updatedAt-a.updatedAt;}).slice(0,5),'No stock added yet');
+  var today=gr('dash-today');if(today){var day=DAYS[todayIdx()];var mealsToday=wp[day]||[];if(!mealsToday.length)today.innerHTML='<div style="font-size:13px;color:var(--ink3);padding:4px 0">No meals planned today</div>';else today.innerHTML=mealsToday.map(function(m){var r=rec(m.recipeId);return'<div class="mini-stock-row"><div class="mini-stock-name">'+escHtml(m.mealType||'Meal')+' · '+escHtml(r?r.name:'Missing recipe')+'</div></div>';}).join('');}
+}
 
 var iMode='url';var imgB64='';var imgMime='';var importedData=null;
 
@@ -2637,7 +2938,7 @@ function escHtml(s) {
 
 function saveImported(){
   if(!importedData){showToast('No recipe to save');return;}
-  openAddRecipe(importedData);importedData=null;
+  closeM('modal-import');openAddRecipe(importedData);importedData=null;
   gr('import-result').innerHTML='';
   gr('img-preview').innerHTML='';gr('img-preview').style.display='none';
   imgB64='';imgMime='';
@@ -3124,7 +3425,7 @@ var rprev=gr('rand-preview-btn');if(rprev)rprev.addEventListener('click',preview
 var rapply=gr('rand-apply-btn');if(rapply)rapply.addEventListener('click',applyRandom);
 var rcanc=gr('rand-cancel');if(rcanc)rcanc.addEventListener('click',function(){closeM('modal-random');});
 
-function renderAll(){renderPlanner();if(gr('panel-shopping').classList.contains('active'))renderShop();renderCF();renderDF();renderRGrid();}
+function renderAll(){renderDashboard();renderPlanner();if(gr('panel-shopping').classList.contains('active'))renderShop();renderCF();renderDF();renderRGrid();if(gr('panel-stock')&&gr('panel-stock').classList.contains('active'))renderStock();}
 
 // RANDOM MEAL FEATURE
 var randScope='week';
@@ -3239,15 +3540,21 @@ function applyRandom() {
 function handleShareTarget(){
   try{
     var params=new URLSearchParams(window.location.search);
+    var tab=params.get('tab');
+    if(tab&&gr('panel-'+tab)){
+      if(window.history&&window.history.replaceState)window.history.replaceState({},'',window.location.pathname);
+      showTab(tab);
+      return;
+    }
     var shared=params.get('share-url')||params.get('url')||params.get('text');
     if(!shared)return;
     if(window.history&&window.history.replaceState)window.history.replaceState({},'',window.location.pathname);
     shared=shared.trim();
     if(/^https?:\/\//i.test(shared)){
-      showTab('import');switchIT('url');gr('url-input').value=shared;
+      showTab('recipes');openImportModal('url');gr('url-input').value=shared;
       showToast('URL ready — tap Copy prompt or Extract');
     }else{
-      showTab('import');switchIT('paste');gr('paste-text').value=shared;
+      showTab('recipes');openImportModal('paste');gr('paste-text').value=shared;
       showToast('Text pasted — tap Extract Recipe');
     }
   }catch(e){}
@@ -3276,7 +3583,7 @@ loadPersisted();
 migrateLegacyPlan(loadL('currentWeekStartDate')||currentWeekStartKey());
 syncWeekAnchor();
 refreshMT();
-renderPlanner();renderCF();renderDF();renderRGrid();renderFC();renderExtras();
+renderDashboard();renderPlanner();renderCF();renderDF();renderRGrid();renderStock();renderExtras();
 gr('a-ind').style.display=userAllergens.length?'block':'none';
 gr('p-btn').style.display=userAllergens.length?'none':'block';
 initImportButtons();
@@ -3284,34 +3591,8 @@ handleShareTarget();
 
 // SERVICE WORKER
 (function(){
-  var CACHE_VERSION='v5.27';
-  if(!('serviceWorker' in navigator))return;
-  var swCode=[
-    'var CACHE="mep-'+CACHE_VERSION+'";',
-    'self.addEventListener("install",function(e){',
-    '  e.waitUntil(caches.open(CACHE).then(function(c){return c.addAll([location.href||"/"]);}));',
-    '  self.skipWaiting();',
-    '});',
-    'self.addEventListener("activate",function(e){',
-    '  e.waitUntil(caches.keys().then(function(keys){',
-    '    return Promise.all(keys.filter(function(k){return k!==CACHE;}).map(function(k){return caches.delete(k);}));',
-    '  }));',
-    '  self.clients.claim();',
-    '  self.clients.matchAll({type:"window"}).then(function(clients){',
-    '    clients.forEach(function(c){c.postMessage({type:"UPDATE_AVAILABLE",version:"'+CACHE_VERSION+'"});});',
-    '  });',
-    '});',
-    'self.addEventListener("fetch",function(e){',
-    '  e.respondWith(fetch(e.request).then(function(r){',
-    '    var rc=r.clone();',
-    '    caches.open(CACHE).then(function(c){c.put(e.request,rc);});',
-    '    return r;',
-    '  }).catch(function(){return caches.match(e.request);}));',
-    '});'
-  ].join('\n');
-  var blob=new Blob([swCode],{type:'application/javascript'});
-  var swUrl=URL.createObjectURL(blob);
-  navigator.serviceWorker.register(swUrl,{scope:'./'}).then(function(reg){
+  registerAppServiceWorker().then(function(reg){
+    if(!reg)return;
     reg.addEventListener('updatefound',function(){
       var nw=reg.installing;if(!nw)return;
       nw.addEventListener('statechange',function(){
