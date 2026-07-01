@@ -1378,8 +1378,9 @@ function mergeSharedState(remote, local, changedKey, changedDateKey, ts){
   }
   if(changedKey==='extraItems'){
     var exOp=changedDateKey||{};
-    if(exOp.type==='add')out.extraItems=mergeSimpleList(remote.extraItems,exOp.items||[]);
-    else if(exOp.type==='remove')out.extraItems=remote.extraItems.filter(function(item){return item!==exOp.item;});
+    var mergedExtras=mergeSimpleList(remote.extraItems,local.extraItems);
+    if(exOp.type==='add')out.extraItems=mergedExtras;
+    else if(exOp.type==='remove')out.extraItems=mergedExtras.filter(function(item){return item!==exOp.item;});
     else out.extraItems=local.extraItems;
   }
   if(changedKey==='stockItems'){
@@ -1516,9 +1517,9 @@ function bootstrapSharedState(){
 function openFBSetup(){var c=ensureFBCfgWorkspace(normaliseFBCfg(loadL('fbCfg')))||{url:'',key:'',proj:'',who:'',workspace:generateWorkspaceId(),vapid:''};fbCfg=c;gr('fb-url').value=c.url||'';gr('fb-key').value=c.key||'';gr('fb-proj').value=c.proj||'';gr('fb-workspace').value=c.workspace||'';gr('fb-who').value=c.who||'';if(gr('fb-vapid'))gr('fb-vapid').value=c.vapid||'';openM('modal-fb');}
 function connectFB(){
   var cfg=ensureFBCfgWorkspace(normaliseFBCfg({url:gr('fb-url').value,key:gr('fb-key').value,proj:gr('fb-proj').value,workspace:gr('fb-workspace').value,who:gr('fb-who').value,vapid:gr('fb-vapid')?gr('fb-vapid').value:''}));
-  var url=cfg.url,key=cfg.key,proj=cfg.proj,workspace=cfg.workspace,who=cfg.who;
+  var url=cfg.url,key=cfg.key,proj=cfg.proj,workspace=cfg.workspace,who=cfg.who,vapid=cfg.vapid;
   if(!url||!key||!proj||!workspace){gr('fb-status').innerHTML='<span style="color:var(--red)">Please fill in Database URL, API Key, Project ID and workspace ID</span>';return;}
-  fbCfg={url,key,proj,workspace,who};gr('fb-workspace').value=workspace;saveL('fbCfg',fbCfg);
+  fbCfg={url,key,proj,workspace,who,vapid};gr('fb-workspace').value=workspace;saveL('fbCfg',fbCfg);
   gr('fb-status').innerHTML='<span style="color:var(--sage)">Connecting...</span>';
   loadFBSDK().then(function(){return initFB();}).then(function(ok){
     if(!ok)gr('fb-status').innerHTML='<span style="color:var(--red)">Connection failed - check your config values and enable Anonymous Auth</span>';
@@ -3076,12 +3077,12 @@ function renderShoppingNeeds(el){
 function addLowStockToExtras(){
   var needs=stockNeedsForShopping();
   if(!needs.length){showToast('Nothing low to add');return;}
-  var added=0;
+  var added=[];
   needs.forEach(function(item){
     var label=item.name;
-    if(extraItems.indexOf(label)<0){extraItems.push(label);added++;}
+    if(extraItems.indexOf(label)<0){extraItems.push(label);added.push(label);}
   });
-  if(added){addActivity('Added low stock to shopping',added+' item'+(added===1?'':'s')+' added','shopping');persist('extraItems',{type:'add',items:needs.map(function(i){return i.name;})});renderShop();renderDashboard();showToast('Added to shopping');}
+  if(added.length){addActivity('Added low stock to shopping',added.length+' item'+(added.length===1?'':'s')+' added','shopping');persist('extraItems',{type:'add',items:added});renderShop();renderDashboard();showToast('Added to shopping');}
   else showToast('Already on shopping list');
 }
 function renderActivityFeed(el){
