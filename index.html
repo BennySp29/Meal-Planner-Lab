@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v5.30 -->
+<!-- v5.31 -->
 
 <html lang="en">
 <head>
@@ -250,17 +250,38 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
 .activity-row{background:var(--cream);border:1.5px solid var(--paper3);border-radius:var(--rs);padding:9px 10px;margin-bottom:6px}
 .activity-main{font-size:13px;color:var(--ink);font-weight:500}
 .activity-meta{font-size:11px;color:var(--ink3);margin-top:2px}
+.status-card{background:var(--sage-p);border:1.5px solid var(--sage-b);border-radius:var(--r);padding:12px;margin-bottom:10px}
+.status-main{font-size:14px;font-weight:700;color:var(--sage);margin-bottom:3px}
+.status-sub{font-size:12px;color:var(--ink2);line-height:1.45}
+.action-list{display:flex;flex-direction:column;gap:6px}
+.action-row{background:var(--cream);border:1.5px solid var(--paper3);border-radius:var(--rs);padding:9px 10px;font-size:13px;color:var(--ink2)}
+.check-row{display:flex;align-items:center;gap:9px;background:var(--cream);border:1.5px solid var(--paper3);border-radius:var(--rs);padding:9px 10px;margin-bottom:6px}
+.check-row.done{opacity:.62;text-decoration:line-through}
+.check-box{width:22px;height:22px;border-radius:6px;border:1.5px solid var(--sage);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;color:#fff;background:transparent}
+.check-row.done .check-box{background:var(--sage)}
+.check-text{flex:1;font-size:13px;color:var(--ink)}
 .stock-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px}
 .stock-template-row{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:8px}
 .stock-template-row .tchip{flex-shrink:0}
 .stock-card{background:var(--cream);border:1.5px solid var(--paper3);border-radius:var(--r);padding:13px;margin-bottom:8px}
 .stock-card.low{border-color:var(--warm);background:var(--warm-p)}
+.stock-photo{width:100%;max-height:150px;object-fit:cover;border-radius:var(--rs);margin-bottom:10px;border:1px solid var(--paper3)}
 .stock-name{font-family:'Playfair Display',serif;font-size:17px;margin-bottom:3px}
 .stock-meta{font-size:12px;color:var(--ink3);line-height:1.45;margin-bottom:8px}
 .stock-note{font-size:12px;color:var(--ink2);line-height:1.45;margin-bottom:8px}
 .stock-alert{display:inline-flex;align-items:center;background:var(--red-p);color:var(--red);border:1px solid var(--red-b);border-radius:20px;padding:3px 8px;font-size:11px;font-weight:600;margin-bottom:8px}
 .stock-dupe-hint{display:none;background:var(--warm-p);border:1px solid var(--warm);border-radius:var(--rs);padding:9px 10px;margin-top:8px;font-size:12px;color:#5a3a10;line-height:1.45}
 .quick-more{display:none;background:var(--paper2);border-radius:var(--rs);padding:12px;margin-top:10px}
+.variant-list{background:var(--paper2);border-radius:var(--rs);padding:8px;margin-bottom:8px}
+.variant-row{display:flex;align-items:center;gap:8px;padding:5px 0}
+.variant-name{flex:1;font-size:12px;color:var(--ink2);font-weight:600}
+.stock-img-wrap{position:relative;margin-bottom:8px}
+.stock-img-wrap img{width:100%;max-height:170px;object-fit:cover;border-radius:var(--rs);border:1px solid var(--paper3)}
+.sleepy-toggle.on{background:var(--warm-p);border-color:var(--warm);color:#6b4c1e}
+body.sleepy .mini-stock-row{padding:14px 12px}
+body.sleepy .mini-stock-name{font-size:15px}
+body.sleepy .srv-btn{width:42px;height:42px;font-size:20px}
+body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
 .qty-step{display:flex;align-items:center;gap:8px}
 .qty-pill{min-width:38px;text-align:center;background:var(--paper2);border-radius:20px;padding:5px 10px;font-size:13px;font-weight:600}
 .alpha-layout{display:grid;grid-template-columns:minmax(0,1fr) 24px;gap:8px;align-items:start}
@@ -289,7 +310,13 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
     <div id="panel-dashboard" class="panel active">
       <div class="sec-title" style="margin-bottom:6px">Dashboard</div>
       <div class="sec-sub">Quick checks for the week and the cupboards.</div>
+      <div id="dash-status"></div>
+      <div class="dash-action-row"><button class="btn btns sleepy-toggle" id="sleepy-toggle" onclick="toggleSleepyMode()">Sleepy Mode</button><button class="btn btns" onclick="markActivitySeen()">Mark changes seen</button></div>
       <div class="stats-grid" id="dash-stats"></div>
+      <div class="dash-section">
+        <div class="sec-hdr"><div class="sec-title">Today Actions</div></div>
+        <div id="dash-actions"></div>
+      </div>
       <div class="dash-section">
         <div class="sec-hdr"><div class="sec-title">3am Stock Controls</div><button class="btn btns btnp" onclick="openQuickStockModal(null)">+ Quick add</button></div>
         <div id="dash-3am-stock"></div>
@@ -315,6 +342,14 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
       <div class="dash-section">
         <div class="sec-hdr"><div class="sec-title">Recent Changes</div></div>
         <div id="dash-activity"></div>
+      </div>
+      <div class="dash-section">
+        <div class="sec-hdr"><div class="sec-title">Partner Changes</div></div>
+        <div id="dash-partner-changes"></div>
+      </div>
+      <div class="dash-section">
+        <div class="sec-hdr"><div class="sec-title">Newborn Checklist</div><button class="btn btns" onclick="addNewbornChecklistItem()">+ Add</button></div>
+        <div id="dash-newborn"></div>
       </div>
       <div class="dash-section">
         <div class="sec-hdr"><div class="sec-title">Today</div><button class="btn btns" onclick="showTab('planner')">Planner</button></div>
@@ -424,6 +459,8 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
       <div class="frow" style="margin-bottom:14px"><div><label class="fl">Quantity</label><input class="fi" type="number" id="qs-qty" min="0" value="1"/></div><div><label class="fl">Type</label><input class="fi" id="qs-type" placeholder="e.g. snack, dinner"/></div></div>
       <div class="fg"><button class="btn btns" style="width:100%" onclick="toggleQuickStockMore()">More details</button><div class="quick-more" id="qs-more">
         <div class="frow" style="margin-bottom:14px"><div><label class="fl">Warn at</label><input class="fi" type="number" id="qs-alert1" min="0" placeholder="5"/></div><div><label class="fl">Urgent at</label><input class="fi" type="number" id="qs-alert2" min="0" placeholder="2"/></div></div>
+        <div class="fg"><label class="fl">Usual target quantity</label><input class="fi" type="number" id="qs-target" min="0" placeholder="e.g. 8"/></div>
+        <div class="frow" style="margin-bottom:14px"><div><label class="fl">Use by</label><input class="fi" type="date" id="qs-expiry"/></div><div><label class="fl">Batch label</label><input class="fi" id="qs-batch" placeholder="e.g. cooked 1 Jul"/></div></div>
         <div class="fg"><label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer"><input type="checkbox" id="qs-notify" style="width:18px;height:18px;cursor:pointer"/> Notify when low</label></div>
         <div class="fg"><label class="fl">Make time</label><input class="fi" id="qs-time" placeholder="Freezer only, e.g. 45 min"/></div>
         <div class="fg"><label class="fl">Kitchen items</label><input class="fi" id="qs-kit" placeholder="e.g. microwave, pan"/></div>
@@ -566,12 +603,33 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
       <div class="fg"><label class="fl">Section</label><div class="cwrap" id="st-section"></div></div>
       <div class="fg"><label class="fl">Type</label><input class="fi" id="st-type" placeholder="e.g. snack, dinner, breakfast"/></div>
       <div class="frow" style="margin-bottom:14px"><div><label class="fl">Quantity</label><input class="fi" type="number" id="st-qty" min="0" value="1"/></div><div><label class="fl">Make time (freezer)</label><input class="fi" id="st-time" placeholder="e.g. 45 min"/></div></div>
+      <div class="fg"><label class="fl">Usual target quantity</label><input class="fi" type="number" id="st-target" min="0" placeholder="e.g. 8"/></div>
+      <div class="frow" style="margin-bottom:14px"><div><label class="fl">Use by / expiry</label><input class="fi" type="date" id="st-expiry"/></div><div><label class="fl">Batch label</label><input class="fi" id="st-batch" placeholder="e.g. cooked 1 Jul"/></div></div>
       <div class="frow" style="margin-bottom:14px"><div><label class="fl">Warn me at</label><input class="fi" type="number" id="st-alert1" min="0" placeholder="e.g. 5"/></div><div><label class="fl">Urgent at</label><input class="fi" type="number" id="st-alert2" min="0" placeholder="e.g. 2"/></div></div>
       <div class="fg"><label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer"><input type="checkbox" id="st-notify" style="width:18px;height:18px;cursor:pointer"/> Notify when this runs low</label></div>
+      <div class="fg"><label class="fl">Variants <span style="font-weight:300;text-transform:none;letter-spacing:0">(one per line, e.g. Chicken: 2)</span></label><textarea class="fi" id="st-variants" placeholder="Chicken: 2&#10;Curry: 1" style="height:72px;resize:none"></textarea></div>
+      <div class="fg"><label class="fl">Stock photo</label><input type="file" id="st-img-file" accept="image/*" style="display:none" onchange="handleStockImg(event)"/><div id="st-img-wrap"></div><button type="button" class="img-upload-btn" onclick="gr('st-img-file').click()">Add photo from camera roll</button></div>
       <div class="fg"><label class="fl">Kitchen items needed</label><input class="fi" id="st-kit" placeholder="e.g. microwave, pan, bottle warmer"/></div>
       <div class="fg"><label class="fl">Notes</label><textarea class="fi" id="st-notes" placeholder="Anything useful when tired..." style="height:86px;resize:none"></textarea></div>
     </div>
     <div class="s-foot"><button class="btn" onclick="closeM('modal-stock')">Cancel</button><button class="btn btnp" onclick="saveStockItem()">Save</button></div>
+  </div>
+</div>
+
+<!-- USE STOCK -->
+<div class="overlay" id="modal-stock-use">
+  <div class="sheet">
+    <div class="sh"></div><div class="s-title">Use stock</div>
+    <div class="s-body">
+      <div id="use-stock-name" style="font-size:14px;font-weight:700;margin-bottom:12px"></div>
+      <div class="dash-quick">
+        <button class="dash-btn" onclick="confirmUseStock('Ate')"><strong>Ate</strong><span>Snack or meal used now.</span></button>
+        <button class="dash-btn" onclick="confirmUseStock('Packed hospital bag')"><strong>Packed</strong><span>Moved into hospital bag.</span></button>
+        <button class="dash-btn" onclick="confirmUseStock('Used for meal')"><strong>Meal</strong><span>Used as part of food prep.</span></button>
+        <button class="dash-btn" onclick="confirmUseStock('Expired')"><strong>Expired</strong><span>Removed because it is no longer good.</span></button>
+      </div>
+    </div>
+    <div class="s-foot"><button class="btn" onclick="closeM('modal-stock-use')">Cancel</button></div>
   </div>
 </div>
 
@@ -658,7 +716,7 @@ body.dark{--ink:#e8f0e8;--ink2:#b0c8b0;--ink3:#6a8a6a;--paper:#141f14;--paper2:#
 <script>
 // ── CACHE NUKE v3.0: clears stale SW + caches, one-time reload ─────────────
 (function(){
-  var CURRENT='mep-app-v5.30';
+  var CURRENT='mep-app-v5.31';
   var nuked=sessionStorage.getItem('cache-nuked');
   if(nuked===CURRENT)return; // already done this session
   function doNuke(){
@@ -707,11 +765,24 @@ var stockDeletes={};
 var stockTemplates=[];
 var stockTemplateDeletes={};
 var activityLog=[];
+var newbornChecklist=[];
 var stockAlertState={};
 var stockFilter='all';
 var stockEditId=null;
 var stockQuickSection='snack';
 var recipeStockId=null;
+var stockUseId=null;
+var stockImgB64='';
+var sleepyMode=false;
+var lastActivitySeen=0;
+var DEFAULT_NEWBORN_CHECKLIST=[
+  'Hospital bag snacks',
+  'Freezer meals labelled',
+  'Easy drinks stocked',
+  'Bottle/snack station ready',
+  'Recovery cupboard checked',
+  'Emergency shopping list reviewed'
+];
 
 // ── v5.5: SUPERMARKETS ────────────────────────────────────────────────────────
 var SUPERMARKETS=[
@@ -1066,6 +1137,7 @@ function buildSharedState(ts){
     stockTemplates:stockTemplates.map(normaliseStockTemplate),
     stockTemplateDeletes:stockTemplateDeletes,
     activityLog:activityLog.map(normaliseActivity).filter(Boolean).slice(0,40),
+    newbornChecklist:newbornChecklist.map(normaliseChecklistItem).filter(Boolean),
     collections:collections,
     customMT:customMT,
     ts:ts||Date.now(),
@@ -1087,6 +1159,7 @@ function saveSharedLocal(){
   saveL('stockTemplates',stockTemplates);
   saveL('stockTemplateDeletes',stockTemplateDeletes);
   saveL('activityLog',activityLog);
+  saveL('newbornChecklist',newbornChecklist);
   saveL('collections',collections);
   saveL('customMT',customMT);
 }
@@ -1221,6 +1294,7 @@ function applySharedState(state,force){
   stockTemplates=appliedTemplates.items;
   stockTemplateDeletes=appliedTemplates.deleted;
   activityLog=Array.isArray(state.activityLog)?mergeActivityLogs(activityLog,state.activityLog):activityLog;
+  newbornChecklist=Array.isArray(state.newbornChecklist)?mergeChecklist(newbornChecklist,state.newbornChecklist):newbornChecklist;
   collections=Array.isArray(state.collections)?state.collections:collections;
   customMT=Array.isArray(state.customMT)?state.customMT:customMT;
   refreshMT();
@@ -1249,6 +1323,7 @@ function normaliseSharedState(state){
     stockTemplates:Array.isArray(state.stockTemplates)?state.stockTemplates.map(normaliseStockTemplate):[],
     stockTemplateDeletes:normaliseStampMap(state.stockTemplateDeletes),
     activityLog:Array.isArray(state.activityLog)?state.activityLog.map(normaliseActivity).filter(Boolean):[],
+    newbornChecklist:Array.isArray(state.newbornChecklist)?state.newbornChecklist.map(normaliseChecklistItem).filter(Boolean):[],
     collections:Array.isArray(state.collections)?state.collections:[],
     customMT:Array.isArray(state.customMT)?state.customMT:[],
     ts:parseInt(state.ts,10)||0,
@@ -1269,6 +1344,16 @@ function mergeActivityLogs(a,b){
   var merged=mergeListById(a,b).map(normaliseActivity).filter(Boolean);
   merged.sort(function(x,y){return y.ts-x.ts;});
   return merged.slice(0,40);
+}
+function mergeChecklist(a,b){
+  var byId={},order=[];
+  function add(item){
+    item=normaliseChecklistItem(item);if(!item)return;
+    var id=String(item.id);if(!byId[id])order.push(id);
+    if(!byId[id]||item.updatedAt>=byId[id].updatedAt)byId[id]=item;
+  }
+  (Array.isArray(a)?a:[]).forEach(add);(Array.isArray(b)?b:[]).forEach(add);
+  return order.map(function(id){return byId[id];}).filter(Boolean).sort(function(x,y){return x.order-y.order||x.text.localeCompare(y.text);});
 }
 function mergeSimpleList(remoteItems,localItems){
   var out=[],seen={};
@@ -1321,6 +1406,7 @@ function mergeWholeSharedState(remote,local,ts){
   out.stockTemplates=mergedTemplates.items;
   out.stockTemplateDeletes=mergedTemplates.deleted;
   out.activityLog=mergeActivityLogs(remote.activityLog,local.activityLog);
+  out.newbornChecklist=mergeChecklist(remote.newbornChecklist,local.newbornChecklist);
   out.collections=mergeListById(remote.collections,local.collections);
   out.customMT=mergeSimpleList(remote.customMT,local.customMT);
   out.version=2;out.ts=ts;out.clientId=fbClientId;out.who=fbCfg.who||'Someone';
@@ -1335,6 +1421,7 @@ function mergeSharedState(remote, local, changedKey, changedDateKey, ts){
   var out=normaliseSharedState(remote);
   if(!out.extraItems.length&&local.extraItems.length)out.extraItems=local.extraItems;
   out.activityLog=mergeActivityLogs(remote.activityLog,local.activityLog);
+  out.newbornChecklist=mergeChecklist(remote.newbornChecklist,local.newbornChecklist);
   if(!out.collections.length&&local.collections.length)out.collections=local.collections;
   if(!out.customMT.length&&local.customMT.length)out.customMT=local.customMT;
   var mergedRecipes=mergeRecipeLists(remote.recipes,local.recipes,remote.ts,ts,remote.recipeDeletes,local.recipeDeletes);
@@ -1397,6 +1484,7 @@ function mergeSharedState(remote, local, changedKey, changedDateKey, ts){
     out.stockTemplateDeletes=mergedTemplates.deleted;
     if(tplOp.type==='remove'&&tplOp.id)out.stockTemplateDeletes[String(tplOp.id)]=Math.max(out.stockTemplateDeletes[String(tplOp.id)]||0,tplOp.deletedAt||ts);
   }
+  if(changedKey==='newbornChecklist')out.newbornChecklist=mergeChecklist(remote.newbornChecklist,local.newbornChecklist);
   if(changedKey==='collections'){
     var collOp=changedDateKey||{};
     if(collOp.type==='add')out.collections=mergeListById(remote.collections,[collOp.item]);
@@ -1782,7 +1870,7 @@ function pushPlan(dateKey) {
   }
 
 function push(changedKey, changedDateKey) {
-  var sharedKeys=['recipes','plan','checked','extraItems','stockItems','stockTemplates','collections','customMT'];
+  var sharedKeys=['recipes','plan','checked','extraItems','stockItems','stockTemplates','newbornChecklist','collections','customMT'];
   if(sharedKeys.indexOf(changedKey)<0)return;
   if(fbConn&&fbRef){publishSharedState(changedKey,changedDateKey);return;}
   saveL('sharedDirty',Date.now());
@@ -1795,8 +1883,9 @@ function push(changedKey, changedDateKey) {
 function saveL(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 function loadL(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}}
 function persist(changedKey, changedDateKey){
-  var sharedKeys=['recipes','plan','checked','extraItems','stockItems','stockTemplates','collections','customMT'];
+  var sharedKeys=['recipes','plan','checked','extraItems','stockItems','stockTemplates','newbornChecklist','collections','customMT'];
   if(sharedKeys.indexOf(changedKey)>=0)saveL('sharedDirty',Date.now());
+  if(changedKey==='plan')addActivity('Updated meal plan',changedDateKey||'Planner changed','planner');
   if(changedKey==='recipes')saveL('recipesTs',Date.now());
   if(changedKey==='plan'&&changedDateKey)touchPlanDate(changedDateKey);
   if(changedKey==='recipes')recipeImages=recipeImagesFrom(recipes);
@@ -1823,6 +1912,7 @@ function persist(changedKey, changedDateKey){
   saveL('stockTemplates',stockTemplates);
   saveL('stockTemplateDeletes',stockTemplateDeletes);
   saveL('activityLog',activityLog);
+  saveL('newbornChecklist',newbornChecklist);
   saveL('aisleOrder',aisleOrder);
   saveL('collections',collections);
   saveL('customMT',customMT);
@@ -1875,7 +1965,12 @@ function loadPersisted(){
   var stp=loadL('stockTemplates');if(stp)stockTemplates=stp.map(normaliseStockTemplate);
   var std=loadL('stockTemplateDeletes');if(std)stockTemplateDeletes=normaliseStampMap(std);
   var al=loadL('activityLog');if(al)activityLog=al.map(normaliseActivity).filter(Boolean).slice(0,40);
+  var nb=loadL('newbornChecklist');if(nb)newbornChecklist=nb.map(normaliseChecklistItem).filter(Boolean);
+  if(!newbornChecklist.length)newbornChecklist=DEFAULT_NEWBORN_CHECKLIST.map(function(text,i){return normaliseChecklistItem({id:'nb-'+i,text:text,done:false,order:i,updatedAt:1});});
   var sas=loadL('stockAlertState');if(sas&&typeof sas==='object'&&!Array.isArray(sas))stockAlertState=sas;
+  sleepyMode=loadL('sleepyMode')===true;
+  lastActivitySeen=parseInt(loadL('lastActivitySeen'),10)||0;
+  if(sleepyMode)document.body.classList.add('sleepy');
   var ao=loadL('aisleOrder');if(ao&&ao.length===6)aisleOrder=ao;
   var co=loadL('collections');if(co)collections=co;
   var cmt=loadL('customMT');if(cmt)customMT=cmt;
@@ -2128,6 +2223,7 @@ function estimateCost(){
     });
   });
   total+=extraItems.length*(AISLE_BASE_COST.Pantry*sm.mult);
+  total+=stockNeedsForShopping().length*(AISLE_BASE_COST.Pantry*sm.mult);
   return{total:Math.round(total*100)/100,sm:sm};
 }
 function renderCostBanner(){
@@ -2135,7 +2231,7 @@ function renderCostBanner(){
   wrap.innerHTML='';
   var wp=getWeekPlan();
   var tot=Object.values(wp).reduce(function(s,a){return s+(a?a.length:0);},0);
-  if(tot===0)return;
+  if(tot===0&&!stockNeedsForShopping().length)return;
   var est=estimateCost();
   var tierClass=est.sm.tier==='budget'?' budget':est.sm.tier==='premium'?' premium':'';
   var banner=document.createElement('div');banner.className='cost-banner'+tierClass;
@@ -2196,8 +2292,10 @@ function renderShop(){
   renderCostBanner();
   var el=gr('shop-content');
   var tot=Object.values(getWeekPlan()).reduce(function(s,a){return s+(a?a.length:0)},0);
+  var stockHtml=renderStockShoppingHtml();
+  if(tot===0&&stockHtml){el.innerHTML=stockHtml;renderExtras();return;}
   if(tot===0){el.innerHTML='<div class="empty"><div class="empty-icon">🛒</div><div class="empty-text">Add meals to your planner first</div></div>';renderExtras();return;}
-  var grps=consolidate();var html='';
+  var grps=consolidate();var html=stockHtml;
   Object.entries(grps).forEach(function(e){
     var cat=e[0],items=e[1];if(!items.length)return;
     html+='<div class="shop-cat"><div class="shop-cat-hdr"><span>'+cat+'</span><span>'+items.length+' item'+(items.length!==1?'s':'')+'</span></div>';
@@ -2216,6 +2314,25 @@ function renderShop(){
   });
   el.innerHTML=html;
   renderExtras();
+}
+function renderStockShoppingHtml(){
+  var needs=stockNeedsForShopping();
+  if(!needs.length)return '';
+  var html='<div class="shop-cat"><div class="shop-cat-hdr"><span>Stock restock</span><span>'+needs.length+' item'+(needs.length!==1?'s':'')+'</span></div>';
+  needs.forEach(function(item){
+    item=normaliseStockItem(item);
+    var k='stock_'+item.id;var on=!!checked[k];
+    var need=stockRestockNeed(item);
+    var qty=need>0?'buy '+need:(item.qty+' left');
+    var note=item.expiry&&isStockExpiring(item)?'Use soon':(stockAlertLevel(item)===2?'Urgent':stockAlertLevel(item)===1?'Low':'Restock');
+    html+='<div class="shop-item'+(on?' done':'')+'" id="si-'+k+'">'
+         +'<div class="chk'+(on?' on':'')+'" onclick="toggleChk(\''+k+'\')"><span class="chk-tick">&#10003;</span></div>'
+         +'<div class="si-name">'+escHtml(item.name)+' <span style="color:var(--ink3);font-size:11px">('+escHtml(note)+')</span></div>'
+         +'<div class="si-qty">'+escHtml(qty)+'</div>'
+         +'</div>';
+  });
+  html+='</div>';
+  return html;
 }
 function removeShopItem(ev, name) {
   ev.stopPropagation();
@@ -2437,6 +2554,7 @@ function markCooked(id,btn,starEl){
 // ─── SHARE SHOPPING LIST ───────────────────────────────────────────────────────
 function shareShopList(){
   var grps=consolidate();
+  var stockNeeds=stockNeedsForShopping();
   var lines=['🛒 Shopping list — '+weekLabel(),''];
   aisleOrder.forEach(function(cat){
     var items=grps[cat];if(!items||!items.length)return;
@@ -2447,6 +2565,16 @@ function shareShopList(){
     });
     lines.push('');
   });
+  if(stockNeeds.length){
+    lines.push('-- Stock restock --');
+    stockNeeds.forEach(function(item){
+      item=normaliseStockItem(item);
+      var need=stockRestockNeed(item);
+      var reason=item.expiry&&isStockExpiring(item)?'use soon':(stockAlertLevel(item)===2?'urgent':stockAlertLevel(item)===1?'low':'restock');
+      lines.push('  '+item.name+' ('+(need>0?'buy '+need:item.qty+' left')+', '+reason+')');
+    });
+    lines.push('');
+  }
   if(extraItems.length){
     lines.push('── Extras ──');
     extraItems.forEach(function(e){lines.push('  '+e);});
@@ -2839,7 +2967,7 @@ function stockSectionName(id){var s=STOCK_SECTIONS.find(function(x){return x.id=
 function normaliseStockTemplate(item){
   item=item&&typeof item==='object'?item:{};
   var base=normaliseStockItem(item);
-  return{id:item.id||newId('tpl'),name:base.name,section:base.section,type:base.type,qty:base.qty||1,notes:base.notes,kit:base.kit,makeTime:base.makeTime,alert1:base.alert1,alert2:base.alert2,notify:!!base.notify,updatedAt:parseInt(item.updatedAt,10)||Date.now(),updatedBy:item.updatedBy||item.who||''};
+  return{id:item.id||newId('tpl'),name:base.name,section:base.section,type:base.type,qty:base.qty||1,targetQty:base.targetQty,notes:base.notes,kit:base.kit,makeTime:base.makeTime,expiry:base.expiry,batch:base.batch,alert1:base.alert1,alert2:base.alert2,notify:!!base.notify,updatedAt:parseInt(item.updatedAt,10)||Date.now(),updatedBy:item.updatedBy||item.who||''};
 }
 function normaliseActivity(row){
   if(!row||typeof row!=='object')return null;
@@ -2847,17 +2975,36 @@ function normaliseActivity(row){
   if(!label)return null;
   return{id:row.id||newId('act'),label:label,detail:String(row.detail||'').trim(),kind:String(row.kind||'stock'),ts:parseInt(row.ts,10)||Date.now(),who:String(row.who||'').trim(),clientId:row.clientId||''};
 }
+function normaliseChecklistItem(item){
+  if(!item||typeof item!=='object')return null;
+  var text=String(item.text||'').trim();
+  if(!text)return null;
+  return{id:item.id||newId('nb'),text:text,done:!!item.done,deleted:!!item.deleted,order:parseInt(item.order,10)||0,updatedAt:parseInt(item.updatedAt,10)||Date.now(),updatedBy:item.updatedBy||item.who||''};
+}
 function addActivity(label,detail,kind){
   var row=normaliseActivity({id:newId('act'),label:label,detail:detail||'',kind:kind||'stock',ts:Date.now(),who:fbCfg.who||'Someone',clientId:fbClientId});
   activityLog=mergeActivityLogs([row],activityLog);
   saveL('activityLog',activityLog);
+}
+function normaliseStockVariants(list){
+  return (Array.isArray(list)?list:[]).map(function(v,i){
+    if(typeof v==='string')v={name:v,qty:0};
+    var name=String(v&&v.name||'').trim();
+    if(!name)return null;
+    return{id:v.id||newId('var'),name:name,qty:Math.max(0,parseInt(v.qty,10)||0),order:parseInt(v.order,10)||i};
+  }).filter(Boolean);
 }
 function normaliseStockItem(item){
   item=item&&typeof item==='object'?item:{};
   function alertVal(v){if(v===undefined||v===null||v==='')return null;var n=parseInt(v,10);return isNaN(n)||n<0?null:n;}
   var a1=alertVal(item.alert1),a2=alertVal(item.alert2);
   if(a1!==null&&a2!==null&&a2>a1){var tmp=a1;a1=a2;a2=tmp;}
-  return{id:item.id||newId('stock'),name:String(item.name||'').trim(),section:item.section||'snack',type:String(item.type||'').trim(),qty:Math.max(0,parseInt(item.qty,10)||0),notes:String(item.notes||'').trim(),kit:String(item.kit||item.kitchenItems||'').trim(),makeTime:String(item.makeTime||'').trim(),alert1:a1,alert2:a2,notify:!!item.notify,recipeId:item.recipeId||null,updatedAt:parseInt(item.updatedAt,10)||Date.now(),updatedBy:item.updatedBy||item.who||''};
+  var variants=normaliseStockVariants(item.variants);
+  var variantTotal=variants.reduce(function(s,v){return s+v.qty;},0);
+  var qty=Math.max(0,parseInt(item.qty,10)||0);
+  if(variants.length)qty=variantTotal;
+  var target=item.targetQty===undefined||item.targetQty===null||item.targetQty===''?null:Math.max(0,parseInt(item.targetQty,10)||0);
+  return{id:item.id||newId('stock'),name:String(item.name||'').trim(),section:item.section||'snack',type:String(item.type||'').trim(),qty:qty,targetQty:target,variants:variants,notes:String(item.notes||'').trim(),kit:String(item.kit||item.kitchenItems||'').trim(),makeTime:String(item.makeTime||'').trim(),expiry:String(item.expiry||'').trim(),batch:String(item.batch||item.batchLabel||'').trim(),image:String(item.image||'').trim(),usage:Array.isArray(item.usage)?item.usage.slice(-20):[],alert1:a1,alert2:a2,notify:!!item.notify,recipeId:item.recipeId||null,updatedAt:parseInt(item.updatedAt,10)||Date.now(),updatedBy:item.updatedBy||item.who||''};
 }
 function sortedStockItems(){return stockItems.map(normaliseStockItem).filter(function(i){return i.name;}).sort(function(a,b){return a.name.localeCompare(b.name);});}
 function stockNameKey(name){return String(name||'').toLowerCase().replace(/\s+/g,' ').trim();}
@@ -2908,18 +3055,108 @@ function checkStockAlert(item){
   saveL('stockAlertState',stockAlertState);
 }
 function checkAllStockAlerts(){stockItems.map(normaliseStockItem).forEach(checkStockAlert);}
+function daysUntil(dateStr){
+  if(!dateStr)return null;
+  var d=new Date(dateStr+'T00:00:00');if(isNaN(d.getTime()))return null;
+  var today=new Date();today.setHours(0,0,0,0);
+  return Math.ceil((d.getTime()-today.getTime())/86400000);
+}
+function isStockExpiring(item){var d=daysUntil(normaliseStockItem(item).expiry);return d!==null&&d<=7;}
+function stockRestockNeed(item){item=normaliseStockItem(item);return item.targetQty!==null&&item.targetQty>item.qty?item.targetQty-item.qty:0;}
+function parseVariantText(text){
+  return String(text||'').split(/\n+/).map(function(line,i){
+    line=line.trim();if(!line)return null;
+    var parts=line.split(':');
+    var name=parts.shift().trim();
+    var qty=parts.length?parseInt(parts.join(':').trim(),10):0;
+    return{name:name,qty:Math.max(0,qty||0),order:i};
+  }).filter(Boolean);
+}
+function variantText(vars){
+  return normaliseStockVariants(vars).sort(function(a,b){return a.order-b.order;}).map(function(v){return v.name+': '+v.qty;}).join('\n');
+}
+function resizeImageFile(file,cb){
+  if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    var img=new Image();
+    img.onload=function(){
+      var max=700,w=img.width,h=img.height;
+      if(w>max){h=Math.round(h*(max/w));w=max;}
+      if(h>max){w=Math.round(w*(max/h));h=max;}
+      var canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      cb(canvas.toDataURL('image/jpeg',0.78).split(',')[1]);
+    };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function handleStockImg(e){var file=e.target.files[0];if(!file)return;resizeImageFile(file,function(b64){stockImgB64=b64;renderStockImg(b64);});}
+function renderStockImg(b64){
+  var wrap=gr('st-img-wrap');if(!wrap)return;
+  if(!b64){wrap.innerHTML='';return;}
+  wrap.innerHTML='<div class="stock-img-wrap"><img src="data:image/jpeg;base64,'+b64+'"/><button class="img-remove-btn" onclick="removeStockImg()">x</button></div>';
+}
+function removeStockImg(){stockImgB64='';renderStockImg('');}
 function renderStockTabs(){var el=gr('stock-tabs');if(!el)return;var tabs=[{id:'all',name:'All'},{id:'low',name:'Low'},{id:'recent',name:'Recent'}].concat(STOCK_SECTIONS);el.innerHTML=tabs.map(function(t){return'<button class="tchip'+(stockFilter===t.id?' on':'')+'" onclick="setStockFilter(\''+t.id+'\')">'+t.name+'</button>';}).join('');}
 function setStockFilter(id){stockFilter=id;renderStock();}
-function stockQty(id,delta){var item=stockItems.find(function(x){return String(x.id)===String(id);});if(!item)return;var before=parseInt(item.qty,10)||0;item.qty=Math.max(0,before+delta);item.updatedAt=Date.now();item.updatedBy=fbCfg.who||'Someone';var norm=normaliseStockItem(item);addActivity((delta<0?'Used ':'Added ')+Math.abs(delta)+' '+norm.name,norm.qty+' left','stock');persist('stockItems',{type:'update',item:norm});checkStockAlert(norm);renderStock();renderDashboard();}
+function updateStockItem(item,label,detail){
+  item.updatedAt=Date.now();item.updatedBy=fbCfg.who||'Someone';
+  var norm=normaliseStockItem(item);
+  var idx=stockItems.findIndex(function(x){return String(x.id)===String(norm.id);});
+  if(idx>=0)stockItems[idx]=norm;
+  if(label)addActivity(label,detail||'', 'stock');
+  persist('stockItems',{type:'update',item:norm});checkStockAlert(norm);renderStock();renderDashboard();
+}
+function stockQty(id,delta,reason){
+  var item=stockItems.find(function(x){return String(x.id)===String(id);});if(!item)return;
+  item=normaliseStockItem(item);
+  if(item.variants.length){
+    var variant=delta<0?item.variants.find(function(v){return v.qty>0;}):item.variants[0];
+    if(variant){stockVariantQty(id,variant.id,delta,reason);return;}
+  }
+  var before=parseInt(item.qty,10)||0;item.qty=Math.max(0,before+delta);
+  if(delta<0){item.usage=(Array.isArray(item.usage)?item.usage:[]).concat([{ts:Date.now(),qty:Math.abs(delta),reason:reason||'Used',who:fbCfg.who||'Someone'}]).slice(-20);}
+  var norm=normaliseStockItem(item);
+  updateStockItem(norm,(delta<0?(reason||'Used')+' ':'Added ')+Math.abs(delta)+' '+norm.name,norm.qty+' left');
+}
+function stockVariantQty(id,varId,delta,reason){
+  var item=stockItems.find(function(x){return String(x.id)===String(id);});if(!item)return;
+  item=normaliseStockItem(item);
+  var v=item.variants.find(function(x){return String(x.id)===String(varId);});if(!v)return;
+  v.qty=Math.max(0,v.qty+delta);
+  if(delta<0)item.usage=(item.usage||[]).concat([{ts:Date.now(),qty:Math.abs(delta),reason:(reason||'Used')+' '+v.name,who:fbCfg.who||'Someone'}]).slice(-20);
+  var norm=normaliseStockItem(item);
+  updateStockItem(norm,(delta<0?(reason||'Used')+' ':'Added ')+Math.abs(delta)+' '+norm.name+' - '+v.name,norm.qty+' total left');
+}
+function openUseStockModal(id){
+  var item=stockItems.find(function(x){return String(x.id)===String(id);});if(!item)return;
+  stockUseId=id;gr('use-stock-name').textContent=normaliseStockItem(item).name;openM('modal-stock-use');
+}
+function confirmUseStock(reason){if(!stockUseId)return;stockQty(stockUseId,-1,reason);closeM('modal-stock-use');stockUseId=null;}
+function restockStock(id){
+  var item=stockItems.find(function(x){return String(x.id)===String(id);});if(!item)return;
+  item=normaliseStockItem(item);
+  if(item.targetQty===null){showToast('Set a usual target quantity first');openStockModal(id);return;}
+  var need=item.targetQty-item.qty;if(need<=0){showToast('Already at usual quantity');return;}
+  if(item.variants.length)item.variants[0].qty+=need;
+  else item.qty=item.targetQty;
+  updateStockItem(item,'Restocked '+item.name,'Back to '+item.targetQty);
+  showToast('Restocked to usual');
+}
 function stockCard(item){
   item=normaliseStockItem(item);
   var card=document.createElement('div');card.className='stock-card'+(isStockLow(item)?' low':'');
+  if(item.image){var img=document.createElement('img');img.className='stock-photo';img.src='data:image/jpeg;base64,'+item.image;img.alt=item.name;card.appendChild(img);}
   var name=document.createElement('div');name.className='stock-name';name.textContent=item.name;card.appendChild(name);
-  var meta=document.createElement('div');meta.className='stock-meta';var bits=[stockSectionName(item.section)];if(item.type)bits.push(item.type);if(item.section==='freezer'&&item.makeTime)bits.push(item.makeTime);meta.textContent=bits.join(' - ');card.appendChild(meta);
+  var meta=document.createElement('div');meta.className='stock-meta';var bits=[stockSectionName(item.section)];if(item.type)bits.push(item.type);if(item.section==='freezer'&&item.makeTime)bits.push(item.makeTime);if(item.targetQty!==null)bits.push('usual '+item.targetQty);if(item.batch)bits.push(item.batch);if(item.expiry){var d=daysUntil(item.expiry);bits.push(d===null?item.expiry:(d<0?'expired':d===0?'use today':'use in '+d+'d'));}meta.textContent=bits.join(' - ');card.appendChild(meta);
   var level=stockAlertLevel(item);
   if(level){var alert=document.createElement('div');alert.className='stock-alert';alert.textContent=(level===2?'2nd alert':'1st alert')+' - '+item.qty+' left';card.appendChild(alert);}
+  if(isStockExpiring(item)){var exp=document.createElement('div');exp.className='stock-alert';exp.textContent='Use soon';card.appendChild(exp);}
   if(item.kit){var kit=document.createElement('div');kit.className='stock-note';kit.textContent='Needs: '+item.kit;card.appendChild(kit);}
   if(item.notes){var notes=document.createElement('div');notes.className='stock-note';notes.textContent=item.notes;card.appendChild(notes);}
+  if(item.variants.length){var vl=document.createElement('div');vl.className='variant-list';item.variants.sort(function(a,b){return a.order-b.order;}).forEach(function(v){var vr=document.createElement('div');vr.className='variant-row';var vn=document.createElement('div');vn.className='variant-name';vn.textContent=v.name;var vd=document.createElement('button');vd.className='srv-btn';vd.textContent='-';vd.addEventListener('click',function(){stockVariantQty(item.id,v.id,-1);});var vp=document.createElement('div');vp.className='qty-pill';vp.textContent=v.qty;var vu=document.createElement('button');vu.className='srv-btn';vu.textContent='+';vu.addEventListener('click',function(){stockVariantQty(item.id,v.id,1);});vr.appendChild(vn);vr.appendChild(vd);vr.appendChild(vp);vr.appendChild(vu);vl.appendChild(vr);});card.appendChild(vl);}
   var row=document.createElement('div');row.style.cssText='display:flex;align-items:center;gap:8px;justify-content:space-between';
   var qty=document.createElement('div');qty.className='qty-step';
   var dn=document.createElement('button');dn.className='srv-btn';dn.textContent='-';dn.addEventListener('click',function(){stockQty(item.id,-1);});
@@ -2928,10 +3165,12 @@ function stockCard(item){
   qty.appendChild(dn);qty.appendChild(pill);qty.appendChild(up);
   var acts=document.createElement('div');acts.style.cssText='display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end';
   var edit=document.createElement('button');edit.className='btn btns';edit.textContent='Edit';edit.addEventListener('click',function(){openStockModal(item.id);});
+  var use=document.createElement('button');use.className='btn btns btnp';use.textContent='Use';use.addEventListener('click',function(){openUseStockModal(item.id);});
+  var restock=document.createElement('button');restock.className='btn btns';restock.textContent='Restock';restock.addEventListener('click',function(){restockStock(item.id);});
   var dup=document.createElement('button');dup.className='btn btns btndup';dup.textContent='Duplicate';dup.addEventListener('click',function(){duplicateStockItem(item.id);});
   var tpl=document.createElement('button');tpl.className='btn btns';tpl.textContent='Template';tpl.addEventListener('click',function(){saveStockTemplate(item.id);});
   var del=document.createElement('button');del.className='btn btns btnd';del.textContent='Delete';del.addEventListener('click',function(){deleteStock(item.id);});
-  acts.appendChild(edit);acts.appendChild(dup);acts.appendChild(tpl);acts.appendChild(del);row.appendChild(qty);row.appendChild(acts);card.appendChild(row);
+  acts.appendChild(use);acts.appendChild(restock);acts.appendChild(edit);acts.appendChild(dup);acts.appendChild(tpl);acts.appendChild(del);row.appendChild(qty);row.appendChild(acts);card.appendChild(row);
   return card;
 }
 function renderStockTemplateStrip(){
@@ -2970,12 +3209,12 @@ function applyStockTemplate(id){
   var t=stockTemplates.find(function(x){return String(x.id)===String(id);});if(!t)return;
   t=normaliseStockTemplate(t);
   stockQuickSection=t.section||'snack';renderQuickStockSectionPicker(stockQuickSection);
-  gr('qs-name').value=t.name||'';gr('qs-type').value=t.type||'';gr('qs-qty').value=t.qty||1;gr('qs-time').value=t.makeTime||'';gr('qs-alert1').value=t.alert1!==null&&t.alert1!==undefined?t.alert1:'';gr('qs-alert2').value=t.alert2!==null&&t.alert2!==undefined?t.alert2:'';gr('qs-notify').checked=!!t.notify;gr('qs-kit').value=t.kit||'';gr('qs-notes').value=t.notes||'';renderStockDuplicateHint('qs');
+  gr('qs-name').value=t.name||'';gr('qs-type').value=t.type||'';gr('qs-qty').value=t.qty||1;gr('qs-target').value=t.targetQty!==null&&t.targetQty!==undefined?t.targetQty:'';gr('qs-time').value=t.makeTime||'';gr('qs-expiry').value=t.expiry||'';gr('qs-batch').value=t.batch||'';gr('qs-alert1').value=t.alert1!==null&&t.alert1!==undefined?t.alert1:'';gr('qs-alert2').value=t.alert2!==null&&t.alert2!==undefined?t.alert2:'';gr('qs-notify').checked=!!t.notify;gr('qs-kit').value=t.kit||'';gr('qs-notes').value=t.notes||'';renderStockDuplicateHint('qs');
 }
 function openQuickStockModal(templateId){
   var section=['all','low','recent'].indexOf(stockFilter)>=0?'snack':stockFilter;
   stockQuickSection=section||'snack';renderQuickStockSectionPicker(stockQuickSection);renderQuickStockTemplates();
-  ['qs-name','qs-type','qs-time','qs-alert1','qs-alert2','qs-kit','qs-notes'].forEach(function(id){if(gr(id))gr(id).value='';});
+  ['qs-name','qs-type','qs-target','qs-time','qs-expiry','qs-batch','qs-alert1','qs-alert2','qs-kit','qs-notes'].forEach(function(id){if(gr(id))gr(id).value='';});
   gr('qs-qty').value=1;gr('qs-notify').checked=false;gr('qs-template').checked=false;gr('qs-more').style.display='none';renderStockDuplicateHint('qs');
   openM('modal-stock-quick');if(templateId)applyStockTemplate(templateId);
 }
@@ -2985,13 +3224,14 @@ function openStockModal(id){
   var item=id?stockItems.find(function(x){return String(x.id)===String(id);}):null;
   item=item?normaliseStockItem(item):{section:['all','low','recent'].indexOf(stockFilter)>=0?'snack':stockFilter,qty:1};
   gr('stock-title').textContent=id?'Edit stock item':'New stock item';
-  gr('st-name').value=item.name||'';gr('st-type').value=item.type||'';gr('st-qty').value=item.qty===0?0:(item.qty||1);gr('st-time').value=item.makeTime||'';gr('st-alert1').value=item.alert1!==null&&item.alert1!==undefined?item.alert1:'';gr('st-alert2').value=item.alert2!==null&&item.alert2!==undefined?item.alert2:'';gr('st-notify').checked=!!item.notify;gr('st-kit').value=item.kit||'';gr('st-notes').value=item.notes||'';
+  stockImgB64=item.image||'';
+  gr('st-name').value=item.name||'';gr('st-type').value=item.type||'';gr('st-qty').value=item.qty===0?0:(item.qty||1);gr('st-target').value=item.targetQty!==null&&item.targetQty!==undefined?item.targetQty:'';gr('st-time').value=item.makeTime||'';gr('st-expiry').value=item.expiry||'';gr('st-batch').value=item.batch||'';gr('st-alert1').value=item.alert1!==null&&item.alert1!==undefined?item.alert1:'';gr('st-alert2').value=item.alert2!==null&&item.alert2!==undefined?item.alert2:'';gr('st-notify').checked=!!item.notify;gr('st-variants').value=variantText(item.variants);renderStockImg(stockImgB64);gr('st-kit').value=item.kit||'';gr('st-notes').value=item.notes||'';
   renderStockDuplicateHint('st',stockEditId);
   renderStockSectionPicker(item.section||'snack');openM('modal-stock');
 }
 function saveQuickStockItem(){
   var name=gr('qs-name').value.trim();if(!name){showToast('Add a stock name');return;}
-  var item=normaliseStockItem({id:newId('stock'),name:name,section:stockQuickSection,type:gr('qs-type').value,qty:gr('qs-qty').value,makeTime:gr('qs-time').value,alert1:gr('qs-alert1').value,alert2:gr('qs-alert2').value,notify:gr('qs-notify').checked,kit:gr('qs-kit').value,notes:gr('qs-notes').value,updatedAt:Date.now(),updatedBy:fbCfg.who||'Someone'});
+  var item=normaliseStockItem({id:newId('stock'),name:name,section:stockQuickSection,type:gr('qs-type').value,qty:gr('qs-qty').value,targetQty:gr('qs-target').value,makeTime:gr('qs-time').value,expiry:gr('qs-expiry').value,batch:gr('qs-batch').value,alert1:gr('qs-alert1').value,alert2:gr('qs-alert2').value,notify:gr('qs-notify').checked,kit:gr('qs-kit').value,notes:gr('qs-notes').value,updatedAt:Date.now(),updatedBy:fbCfg.who||'Someone'});
   stockItems.push(item);
   if(gr('qs-template').checked)upsertStockTemplate(item,false);
   addActivity('Added '+item.name,item.qty+' in '+stockSectionName(item.section),'stock');
@@ -3000,7 +3240,7 @@ function saveQuickStockItem(){
 }
 function saveStockItem(){
   var name=gr('st-name').value.trim();if(!name){showToast('Add a stock name');return;}
-  var item=normaliseStockItem({id:stockEditId||newId('stock'),name:name,section:gr('st-section').getAttribute('data-value')||'snack',type:gr('st-type').value,qty:gr('st-qty').value,makeTime:gr('st-time').value,alert1:gr('st-alert1').value,alert2:gr('st-alert2').value,notify:gr('st-notify').checked,kit:gr('st-kit').value,notes:gr('st-notes').value,updatedAt:Date.now(),updatedBy:fbCfg.who||'Someone'});
+  var item=normaliseStockItem({id:stockEditId||newId('stock'),name:name,section:gr('st-section').getAttribute('data-value')||'snack',type:gr('st-type').value,qty:gr('st-qty').value,targetQty:gr('st-target').value,makeTime:gr('st-time').value,expiry:gr('st-expiry').value,batch:gr('st-batch').value,variants:parseVariantText(gr('st-variants').value),image:stockImgB64,alert1:gr('st-alert1').value,alert2:gr('st-alert2').value,notify:gr('st-notify').checked,kit:gr('st-kit').value,notes:gr('st-notes').value,updatedAt:Date.now(),updatedBy:fbCfg.who||'Someone'});
   var idx=stockItems.findIndex(function(x){return String(x.id)===String(item.id);});
   if(idx>=0)stockItems[idx]=item;else stockItems.push(item);
   addActivity((idx>=0?'Updated ':'Added ')+item.name,item.qty+' left','stock');
@@ -3066,7 +3306,7 @@ function renderMiniStock(el,items,emptyText){
   el.appendChild(wrap);
 }
 function stockNeedsForShopping(){
-  return sortedStockItems().filter(isStockLow).sort(function(a,b){return stockAlertLevel(b)-stockAlertLevel(a)||a.name.localeCompare(b.name);});
+  return sortedStockItems().filter(function(item){return isStockLow(item)||stockRestockNeed(item)>0||isStockExpiring(item);}).sort(function(a,b){return stockAlertLevel(b)-stockAlertLevel(a)||stockRestockNeed(b)-stockRestockNeed(a)||a.name.localeCompare(b.name);});
 }
 function renderShoppingNeeds(el){
   if(!el)return;
@@ -3099,10 +3339,87 @@ function renderActivityFeed(el){
     el.appendChild(div);
   });
 }
+function renderStatusCard(){
+  var el=gr('dash-status');if(!el)return;
+  var latest=activityLog.map(normaliseActivity).filter(Boolean).sort(function(a,b){return b.ts-a.ts;})[0];
+  var sync=fbConn?'Live sync active':'Not synced';
+  var detail=fbConn?(fbCfg.who?'Connected as '+fbCfg.who:'Connected'):'Tap the cloud button to connect both phones';
+  if(latest)detail+=' - latest change '+fmtDate(latest.ts);
+  el.innerHTML='<div class="status-card"><div class="status-main">'+escHtml(sync)+'</div><div class="status-sub">'+escHtml(detail)+'</div></div>';
+  var btn=gr('sleepy-toggle');if(btn)btn.className='btn btns sleepy-toggle'+(sleepyMode?' on':'');
+}
+function dashboardActions(){
+  var actions=[];
+  var urgent=sortedStockItems().filter(function(i){return stockAlertLevel(i)===2;});
+  var low=sortedStockItems().filter(function(i){return stockAlertLevel(i)===1;});
+  var exp=sortedStockItems().filter(isStockExpiring);
+  var restock=sortedStockItems().filter(function(i){return stockRestockNeed(i)>0;});
+  var wp=getWeekPlan();var today=wp[DAYS[todayIdx()]]||[];
+  if(urgent.length)actions.push(urgent.length+' urgent stock item'+(urgent.length===1?'':'s')+' need attention');
+  if(low.length)actions.push(low.length+' stock item'+(low.length===1?' is':'s are')+' running low');
+  if(exp.length)actions.push(exp[0].name+' needs using soon');
+  if(restock.length)actions.push(restock.length+' item'+(restock.length===1?'':'s')+' below usual quantity');
+  if(!today.length)actions.push('No meals planned today');
+  var undone=newbornChecklist.filter(function(i){i=normaliseChecklistItem(i);return i&&!i.deleted&&!i.done;}).length;
+  if(undone)actions.push(undone+' newborn checklist item'+(undone===1?'':'s')+' left');
+  return actions.slice(0,6);
+}
+function renderActionList(el){
+  if(!el)return;
+  var actions=dashboardActions();
+  if(!actions.length){el.innerHTML='<div style="font-size:13px;color:var(--ink3);padding:4px 0">Nothing pressing right now</div>';return;}
+  el.innerHTML='<div class="action-list">'+actions.map(function(a){return'<div class="action-row">'+escHtml(a)+'</div>';}).join('')+'</div>';
+}
+function renderPartnerChanges(el){
+  if(!el)return;
+  var rows=activityLog.map(normaliseActivity).filter(function(row){return row&&row.ts>lastActivitySeen&&row.clientId&&row.clientId!==fbClientId;}).sort(function(a,b){return b.ts-a.ts;}).slice(0,5);
+  if(!rows.length){el.innerHTML='<div style="font-size:13px;color:var(--ink3);padding:4px 0">No unseen partner changes</div>';return;}
+  el.innerHTML='';
+  rows.forEach(function(row){
+    var div=document.createElement('div');div.className='activity-row';
+    div.appendChild(mkEl('div','activity-main',row.label));
+    div.appendChild(mkEl('div','activity-meta',(row.who||'Partner')+' - '+fmtDate(row.ts)+(row.detail?' - '+row.detail:'')));
+    el.appendChild(div);
+  });
+}
+function markActivitySeen(){lastActivitySeen=Date.now();saveL('lastActivitySeen',lastActivitySeen);renderDashboard();showToast('Changes marked seen');}
+function toggleSleepyMode(){sleepyMode=!sleepyMode;saveL('sleepyMode',sleepyMode);document.body.classList.toggle('sleepy',sleepyMode);renderDashboard();showToast(sleepyMode?'Sleepy Mode on':'Sleepy Mode off');}
+function renderNewbornChecklist(el){
+  if(!el)return;
+  var rows=newbornChecklist.map(normaliseChecklistItem).filter(function(i){return i&&!i.deleted;}).sort(function(a,b){return a.order-b.order;});
+  if(!rows.length){el.innerHTML='<div style="font-size:13px;color:var(--ink3);padding:4px 0">No checklist items yet</div>';return;}
+  el.innerHTML='';
+  rows.forEach(function(item){
+    var row=document.createElement('div');row.className='check-row'+(item.done?' done':'');
+    var box=document.createElement('div');box.className='check-box';box.textContent=item.done?'✓':'';box.addEventListener('click',function(){toggleNewbornChecklist(item.id);});
+    var txt=document.createElement('div');txt.className='check-text';txt.textContent=item.text;
+    var del=document.createElement('button');del.className='btn btns btnd';del.textContent='x';del.addEventListener('click',function(){deleteNewbornChecklistItem(item.id);});
+    row.appendChild(box);row.appendChild(txt);row.appendChild(del);el.appendChild(row);
+  });
+}
+function toggleNewbornChecklist(id){
+  var item=newbornChecklist.find(function(x){return String(x.id)===String(id);});if(!item)return;
+  item.done=!item.done;item.updatedAt=Date.now();item.updatedBy=fbCfg.who||'Someone';
+  addActivity((item.done?'Checked ':'Reopened ')+item.text,'Newborn checklist','newborn');
+  persist('newbornChecklist',{type:'update',item:normaliseChecklistItem(item)});renderDashboard();
+}
+function addNewbornChecklistItem(){
+  var text=prompt('Checklist item');if(!text||!text.trim())return;
+  var item=normaliseChecklistItem({id:newId('nb'),text:text.trim(),done:false,order:newbornChecklist.length,updatedAt:Date.now(),updatedBy:fbCfg.who||'Someone'});
+  newbornChecklist.push(item);addActivity('Added checklist item '+item.text,'Newborn checklist','newborn');persist('newbornChecklist',{type:'update',item:item});renderDashboard();
+}
+function deleteNewbornChecklistItem(id){
+  var item=newbornChecklist.find(function(x){return String(x.id)===String(id);});if(!item)return;
+  if(!confirm('Remove this checklist item?'))return;
+  item.deleted=true;item.updatedAt=Date.now();item.updatedBy=fbCfg.who||'Someone';
+  addActivity('Removed checklist item '+item.text,'Newborn checklist','newborn');persist('newbornChecklist',{type:'update',item:normaliseChecklistItem(item)});renderDashboard();
+}
 function renderDashboard(){
   var stats=gr('dash-stats');if(!stats)return;
+  renderStatusCard();
   var wp=getWeekPlan();var meals=Object.values(wp).reduce(function(s,a){return s+(a?a.length:0);},0);var low=stockItems.filter(isStockLow).length;var freezer=stockItems.filter(function(i){return normaliseStockItem(i).section==='freezer';}).length;
   stats.innerHTML='';[[meals,'Meals'],[stockItems.length,'Stock'],[low,'Low'],[freezer,'Freezer']].forEach(function(x){var c=mkEl('div','stat-card');c.appendChild(mkEl('div','stat-n',String(x[0])));c.appendChild(mkEl('div','stat-l',x[1]));stats.appendChild(c);});
+  renderActionList(gr('dash-actions'));
   var quick=stockNeedsForShopping().slice(0,4);
   if(!quick.length)quick=stockItems.map(normaliseStockItem).sort(function(a,b){return b.updatedAt-a.updatedAt;}).slice(0,4);
   renderMiniStock(gr('dash-3am-stock'),quick,'No stock yet - quick add your staples');
@@ -3110,6 +3427,8 @@ function renderDashboard(){
   renderMiniStock(gr('dash-low-stock'),sortedStockItems().filter(isStockLow).slice(0,5),'Nothing low right now');
   renderMiniStock(gr('dash-recent-stock'),stockItems.map(normaliseStockItem).sort(function(a,b){return b.updatedAt-a.updatedAt;}).slice(0,5),'No stock added yet');
   renderActivityFeed(gr('dash-activity'));
+  renderPartnerChanges(gr('dash-partner-changes'));
+  renderNewbornChecklist(gr('dash-newborn'));
   var today=gr('dash-today');if(today){var day=DAYS[todayIdx()];var mealsToday=wp[day]||[];if(!mealsToday.length)today.innerHTML='<div style="font-size:13px;color:var(--ink3);padding:4px 0">No meals planned today</div>';else today.innerHTML=mealsToday.map(function(m){var r=rec(m.recipeId);return'<div class="mini-stock-row"><div class="mini-stock-name">'+escHtml(m.mealType||'Meal')+' · '+escHtml(r?r.name:'Missing recipe')+'</div></div>';}).join('');}
 }
 
