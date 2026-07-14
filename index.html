@@ -2884,8 +2884,6 @@ function openRV(id){
 }
 
 // ADD MEAL MODAL
-function openAM(day){amDay=day||DAYS[0];amRecipe=null;amType='Dinner';gr('am-search').value='';if(gr('am-manual'))gr('am-manual').value='';if(gr('am-note'))gr('am-note').value='';if(gr('mt-inline-panel'))gr('mt-inline-panel').style.display='none';if(gr('mt-toggle-btn'))gr('mt-toggle-btn').textContent='⚙ Customise';renderAMD();renderAMT();renderAML();openM('modal-am');}
-function openAMForR(id){amDay=DAYS[0];amRecipe=id;amType='Dinner';gr('am-search').value='';if(gr('am-manual'))gr('am-manual').value='';if(gr('am-note'))gr('am-note').value='';if(gr('mt-inline-panel'))gr('mt-inline-panel').style.display='none';if(gr('mt-toggle-btn'))gr('mt-toggle-btn').textContent='⚙ Customise';renderAMD();renderAMT();renderAML();openM('modal-am');}
 function renderAMD(){gr('am-days').innerHTML=DAYS.map(function(d){return'<button class="day-sel-btn'+(amDay===d?' on':'')+'" onclick="selAMD(\''+d+'\')">'+d.slice(0,3)+'</button>'}).join('');}
 function renderAMT(){gr('am-types').innerHTML=MT.map(function(t){return'<button class="tchip'+(amType===t?' on':'')+'" onclick="selAMT(\''+t+'\')">'+t+'</button>'}).join('');}
 function selAMD(d){amDay=d;renderAMD();}
@@ -2897,10 +2895,6 @@ function renderAML(){
   if(!f.length){el.innerHTML='<div style="padding:16px;text-align:center;color:var(--ink3);font-size:13px">No recipes found</div>';return;}
   el.innerHTML=f.map(function(r){var ha=rha(r);var sel=amRecipe===r.id;var hits=r.allergens.filter(function(a){return userAllergens.indexOf(a)>=0});return'<div class="rpick'+(sel?' on':'')+'" onclick="selAMR('+r.id+')"><div style="font-size:13px;font-weight:500;margin-bottom:2px">'+r.name+(sel?' ✓':'')+'</div><div style="font-size:11px;color:var(--ink3)">'+r.cuisine+' · '+r.time+' min</div>'+(ha?'<div style="font-size:11px;color:var(--red);margin-top:3px">⚠ '+hits.join(', ')+'</div>':'')+'</div>';}).join('');
 }
-function handleAMManualInput(){if(gr('am-manual')&&gr('am-manual').value.trim()){amRecipe=null;renderAML();}}
-function selAMR(id){amRecipe=id;if(gr('am-manual'))gr('am-manual').value='';renderAML();}
-function confirmAM(){var manual=(gr('am-manual')?gr('am-manual').value.trim():'');if(!amRecipe&&!manual){showToast('Pick a recipe or enter a manual meal');return;}var k=planKey(amDay);if(!plan[k])plan[k]=[];var note=(gr('am-note')?gr('am-note').value.trim():'');var meal={id:newId('meal'),mealType:amType,updatedAt:Date.now()};if(amRecipe)meal.recipeId=typeof amRecipe==='string'?parseInt(amRecipe,10):amRecipe;else meal.manualName=manual;if(note)meal.note=note;plan[k].push(meal);closeM('modal-am');renderPlanner();persist('plan',k);showToast('Added to '+amDay);}
-
 function resetAMForm(day,recipeId){
   amDay=day||DAYS[0];amRecipe=recipeId||null;amType='Dinner';amMode='recipe';amIngN=0;
   gr('am-search').value='';
