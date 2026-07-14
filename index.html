@@ -314,6 +314,10 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
       <div class="dash-action-row"><button class="btn btns sleepy-toggle" id="sleepy-toggle" onclick="toggleSleepyMode()">Sleepy Mode</button><button class="btn btns" onclick="markActivitySeen()">Mark changes seen</button></div>
       <div class="stats-grid" id="dash-stats"></div>
       <div class="dash-section">
+        <div class="sec-hdr"><div class="sec-title">Planned Meals</div><button class="btn btns" onclick="showTab('planner')">Planner</button></div>
+        <div id="dash-planned"></div>
+      </div>
+      <div class="dash-section">
         <div class="sec-hdr"><div class="sec-title">Today Actions</div></div>
         <div id="dash-actions"></div>
       </div>
@@ -346,14 +350,6 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
       <div class="dash-section">
         <div class="sec-hdr"><div class="sec-title">Partner Changes</div></div>
         <div id="dash-partner-changes"></div>
-      </div>
-      <div class="dash-section">
-        <div class="sec-hdr"><div class="sec-title">Newborn Checklist</div><button class="btn btns" onclick="addNewbornChecklistItem()">+ Add</button></div>
-        <div id="dash-newborn"></div>
-      </div>
-      <div class="dash-section">
-        <div class="sec-hdr"><div class="sec-title">Today</div><button class="btn btns" onclick="showTab('planner')">Planner</button></div>
-        <div id="dash-today"></div>
       </div>
     </div>
     <div id="panel-planner" class="panel">
@@ -558,6 +554,7 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
     <div class="s-body">
       <div class="fg"><div class="fl">Day</div><div class="day-sel-grid" id="am-days"></div></div>
       <div class="fg"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span class="fl" style="margin-bottom:0">Meal type</span><button class="btn btns" id="mt-toggle-btn" style="font-size:10px;padding:4px 8px" onclick="toggleMTPanel()">⚙ Customise</button></div><div class="cwrap" id="am-types"></div><div id="mt-inline-panel" style="display:none;margin-top:10px;background:var(--paper2);border-radius:var(--rs);padding:12px"><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink3);margin-bottom:8px">Custom types</div><div class="mt-chip-wrap" id="mt-chips-inline"></div><div style="display:flex;gap:8px"><input class="fi" id="mt-new-inline" placeholder="e.g. Date Night, Batch Cook…" style="flex:1;font-size:13px;padding:8px 10px" onkeydown="mtKDInline(event)"/><button class="btn btns btnp" onclick="addMTInline()" style="flex-shrink:0">Add</button></div></div></div>
+      <div class="fg"><label class="fl">Manual meal <span style="font-weight:300;text-transform:none;letter-spacing:0">(optional)</span></label><input class="fi" id="am-manual" placeholder="e.g. freezer pizza, beans on toast..." oninput="handleAMManualInput()"/></div>
       <div class="fg"><input class="fi" id="am-search" placeholder="🔍 Search recipes…" oninput="renderAML()"/></div>
       <div id="am-list" style="max-height:32vh;overflow-y:auto"></div>
       <div class="fg" style="margin-top:10px"><label class="fl">Meal note <span style="font-weight:300;text-transform:none;letter-spacing:0">(optional)</span></label><input class="fi" id="am-note" placeholder="e.g. use up the chicken, double batch…"/></div>
@@ -758,7 +755,13 @@ var nrRating=0;
 var STOCK_SECTIONS=[
   {id:'snack',name:'Snack cupboard'},
   {id:'meal',name:'Meal cupboard'},
-  {id:'freezer',name:'Freezer'}
+  {id:'freezer',name:'Freezer'},
+  {id:'baby',name:'Baby'}
+];
+var DEFAULT_STOCK_TEMPLATES=[
+  {id:'tpl-baby-nappies',name:'Nappies',section:'baby',type:'changing',qty:1,targetQty:2,alert1:1,alert2:0,updatedAt:1},
+  {id:'tpl-baby-wipes',name:'Wipes',section:'baby',type:'changing',qty:1,targetQty:3,alert1:1,alert2:0,updatedAt:1},
+  {id:'tpl-baby-formula',name:'Formula',section:'baby',type:'feeding',qty:1,targetQty:2,alert1:1,alert2:0,updatedAt:1}
 ];
 var stockItems=[];
 var stockDeletes={};
@@ -775,14 +778,7 @@ var stockUseId=null;
 var stockImgB64='';
 var sleepyMode=false;
 var lastActivitySeen=0;
-var DEFAULT_NEWBORN_CHECKLIST=[
-  'Hospital bag snacks',
-  'Freezer meals labelled',
-  'Easy drinks stocked',
-  'Bottle/snack station ready',
-  'Recovery cupboard checked',
-  'Emergency shopping list reviewed'
-];
+var DEFAULT_NEWBORN_CHECKLIST=[];
 
 // ── v5.5: SUPERMARKETS ────────────────────────────────────────────────────────
 var SUPERMARKETS=[
@@ -876,7 +872,7 @@ function normaliseStampMap(map){
   return out;
 }
 function mealSig(m){
-  return [m.recipeId,m.mealType||'',m.note||'',m.servings||''].join('|');
+  return [m.recipeId||'',m.manualName||'',m.mealType||'',m.note||'',m.servings||''].join('|');
 }
 function legacyMealId(dateKey,m,index){
   return 'legacy-'+dateKey+'-'+index+'-'+simpleHash(mealSig(m));
@@ -888,6 +884,12 @@ function normaliseMeal(m,dateKey,index){
     if(m[k]!==undefined&&m[k]!==null)out[k]=m[k];
   });
   out.recipeId=parseInt(out.recipeId,10)||out.recipeId;
+  if(out.recipeId==='')delete out.recipeId;
+  if(out.manualName!==undefined){
+    out.manualName=String(out.manualName).trim();
+    if(!out.manualName)delete out.manualName;
+  }
+  if(out.recipeId===undefined&&!out.manualName)return null;
   out.id=out.id||legacyMealId(dateKey,out,index||0);
   out.updatedAt=parseInt(out.updatedAt,10)||0;
   if(out.note!==undefined){
@@ -1293,6 +1295,7 @@ function applySharedState(state,force){
   var appliedTemplates=mergeStockTemplateLists(Array.isArray(state.stockTemplates)?state.stockTemplates:stockTemplates,[],normaliseStampMap(state.stockTemplateDeletes),{});
   stockTemplates=appliedTemplates.items;
   stockTemplateDeletes=appliedTemplates.deleted;
+  ensureDefaultStockTemplates();
   activityLog=Array.isArray(state.activityLog)?mergeActivityLogs(activityLog,state.activityLog):activityLog;
   newbornChecklist=Array.isArray(state.newbornChecklist)?mergeChecklist(newbornChecklist,state.newbornChecklist):newbornChecklist;
   collections=Array.isArray(state.collections)?state.collections:collections;
@@ -1964,9 +1967,10 @@ function loadPersisted(){
   var sd=loadL('stockDeletes');if(sd)stockDeletes=normaliseStampMap(sd);
   var stp=loadL('stockTemplates');if(stp)stockTemplates=stp.map(normaliseStockTemplate);
   var std=loadL('stockTemplateDeletes');if(std)stockTemplateDeletes=normaliseStampMap(std);
+  ensureDefaultStockTemplates();
+  saveL('stockTemplates',stockTemplates);
   var al=loadL('activityLog');if(al)activityLog=al.map(normaliseActivity).filter(Boolean).slice(0,40);
   var nb=loadL('newbornChecklist');if(nb)newbornChecklist=nb.map(normaliseChecklistItem).filter(Boolean);
-  if(!newbornChecklist.length)newbornChecklist=DEFAULT_NEWBORN_CHECKLIST.map(function(text,i){return normaliseChecklistItem({id:'nb-'+i,text:text,done:false,order:i,updatedAt:1});});
   var sas=loadL('stockAlertState');if(sas&&typeof sas==='object'&&!Array.isArray(sas))stockAlertState=sas;
   sleepyMode=loadL('sleepyMode')===true;
   lastActivitySeen=parseInt(loadL('lastActivitySeen'),10)||0;
@@ -2096,6 +2100,24 @@ function weekLabel(){
 function getWeekPlan(){
   var wp={};DAYS.forEach(function(d){wp[d]=plan[planKey(d)]||[];});return wp;
 }
+function getWeekPlanForOffset(offset){
+  var wp={},start=getWeekStartForOffset(offset||0);
+  DAYS.forEach(function(d){wp[d]=plan[planKeyFromWeekStart(d,0,start)]||[];});
+  return wp;
+}
+function mealDisplayName(m){
+  if(!m)return'Missing recipe';
+  if(m.manualName)return m.manualName;
+  var r=rec(m.recipeId);
+  return r?r.name:'Missing recipe';
+}
+function dashboardPlanDay(offset){
+  var date=new Date();
+  date.setHours(0,0,0,0);
+  date.setDate(date.getDate()+offset);
+  var day=DAYS[(date.getDay()+6)%7];
+  return{label:offset===0?'Today':'Tomorrow',day:day,key:formatLocalDate(date),meals:plan[formatLocalDate(date)]||[]};
+}
 // ──────────────────────────────────────────────────────────────────────────────
 
 // PLANNER
@@ -2133,6 +2155,18 @@ function renderPlanner(){
     } else {
       meals.forEach(function(m,i){
         var r=rec(m.recipeId);
+        if(!r&&m.manualName){
+          var manualRow=mkEl('div','day-meal-row');
+          var manualInfo=mkEl('div','meal-info');
+          manualInfo.appendChild(mkEl('div','meal-label',m.mealType||'Meal'));
+          manualInfo.appendChild(mkEl('div','meal-title',m.manualName));
+          if(m.note)manualInfo.appendChild(mkEl('div','meal-note','Note: '+m.note));
+          manualInfo.appendChild(mkEl('div','meal-meta','Manual addition'));
+          var rmManual=mkEl('div','rm-btn','x');
+          (function(d2,idx){rmManual.addEventListener('click',function(){rmMeal(d2,idx);});})(day,i);
+          manualRow.appendChild(manualInfo);manualRow.appendChild(rmManual);dayDiv.appendChild(manualRow);
+          return;
+        }
         if(!r){
           var missingRow=mkEl('div','day-meal-row');
           var missingInfo=mkEl('div','meal-info');
@@ -2819,8 +2853,8 @@ function openRV(id){
 }
 
 // ADD MEAL MODAL
-function openAM(day){amDay=day||DAYS[0];amRecipe=null;amType='Dinner';gr('am-search').value='';if(gr('am-note'))gr('am-note').value='';if(gr('mt-inline-panel'))gr('mt-inline-panel').style.display='none';if(gr('mt-toggle-btn'))gr('mt-toggle-btn').textContent='⚙ Customise';renderAMD();renderAMT();renderAML();openM('modal-am');}
-function openAMForR(id){amDay=DAYS[0];amRecipe=id;amType='Dinner';gr('am-search').value='';if(gr('am-note'))gr('am-note').value='';if(gr('mt-inline-panel'))gr('mt-inline-panel').style.display='none';if(gr('mt-toggle-btn'))gr('mt-toggle-btn').textContent='⚙ Customise';renderAMD();renderAMT();renderAML();openM('modal-am');}
+function openAM(day){amDay=day||DAYS[0];amRecipe=null;amType='Dinner';gr('am-search').value='';if(gr('am-manual'))gr('am-manual').value='';if(gr('am-note'))gr('am-note').value='';if(gr('mt-inline-panel'))gr('mt-inline-panel').style.display='none';if(gr('mt-toggle-btn'))gr('mt-toggle-btn').textContent='⚙ Customise';renderAMD();renderAMT();renderAML();openM('modal-am');}
+function openAMForR(id){amDay=DAYS[0];amRecipe=id;amType='Dinner';gr('am-search').value='';if(gr('am-manual'))gr('am-manual').value='';if(gr('am-note'))gr('am-note').value='';if(gr('mt-inline-panel'))gr('mt-inline-panel').style.display='none';if(gr('mt-toggle-btn'))gr('mt-toggle-btn').textContent='⚙ Customise';renderAMD();renderAMT();renderAML();openM('modal-am');}
 function renderAMD(){gr('am-days').innerHTML=DAYS.map(function(d){return'<button class="day-sel-btn'+(amDay===d?' on':'')+'" onclick="selAMD(\''+d+'\')">'+d.slice(0,3)+'</button>'}).join('');}
 function renderAMT(){gr('am-types').innerHTML=MT.map(function(t){return'<button class="tchip'+(amType===t?' on':'')+'" onclick="selAMT(\''+t+'\')">'+t+'</button>'}).join('');}
 function selAMD(d){amDay=d;renderAMD();}
@@ -2832,8 +2866,9 @@ function renderAML(){
   if(!f.length){el.innerHTML='<div style="padding:16px;text-align:center;color:var(--ink3);font-size:13px">No recipes found</div>';return;}
   el.innerHTML=f.map(function(r){var ha=rha(r);var sel=amRecipe===r.id;var hits=r.allergens.filter(function(a){return userAllergens.indexOf(a)>=0});return'<div class="rpick'+(sel?' on':'')+'" onclick="selAMR('+r.id+')"><div style="font-size:13px;font-weight:500;margin-bottom:2px">'+r.name+(sel?' ✓':'')+'</div><div style="font-size:11px;color:var(--ink3)">'+r.cuisine+' · '+r.time+' min</div>'+(ha?'<div style="font-size:11px;color:var(--red);margin-top:3px">⚠ '+hits.join(', ')+'</div>':'')+'</div>';}).join('');
 }
-function selAMR(id){amRecipe=id;renderAML();}
-function confirmAM(){if(!amRecipe){showToast('Pick a recipe first');return;}var k=planKey(amDay);if(!plan[k])plan[k]=[];var note=(gr('am-note')?gr('am-note').value.trim():'');var meal={id:newId('meal'),recipeId:typeof amRecipe==='string'?parseInt(amRecipe,10):amRecipe,mealType:amType,updatedAt:Date.now()};if(note)meal.note=note;plan[k].push(meal);closeM('modal-am');renderPlanner();persist('plan',k);showToast('Added to '+amDay);}
+function handleAMManualInput(){if(gr('am-manual')&&gr('am-manual').value.trim()){amRecipe=null;renderAML();}}
+function selAMR(id){amRecipe=id;if(gr('am-manual'))gr('am-manual').value='';renderAML();}
+function confirmAM(){var manual=(gr('am-manual')?gr('am-manual').value.trim():'');if(!amRecipe&&!manual){showToast('Pick a recipe or enter a manual meal');return;}var k=planKey(amDay);if(!plan[k])plan[k]=[];var note=(gr('am-note')?gr('am-note').value.trim():'');var meal={id:newId('meal'),mealType:amType,updatedAt:Date.now()};if(amRecipe)meal.recipeId=typeof amRecipe==='string'?parseInt(amRecipe,10):amRecipe;else meal.manualName=manual;if(note)meal.note=note;plan[k].push(meal);closeM('modal-am');renderPlanner();persist('plan',k);showToast('Added to '+amDay);}
 
 // ADD/EDIT RECIPE
 function openRecipeAddChoice(){openM('modal-recipe-add');}
@@ -2968,6 +3003,15 @@ function normaliseStockTemplate(item){
   item=item&&typeof item==='object'?item:{};
   var base=normaliseStockItem(item);
   return{id:item.id||newId('tpl'),name:base.name,section:base.section,type:base.type,qty:base.qty||1,targetQty:base.targetQty,notes:base.notes,kit:base.kit,makeTime:base.makeTime,expiry:base.expiry,batch:base.batch,alert1:base.alert1,alert2:base.alert2,notify:!!base.notify,updatedAt:parseInt(item.updatedAt,10)||Date.now(),updatedBy:item.updatedBy||item.who||''};
+}
+function ensureDefaultStockTemplates(){
+  DEFAULT_STOCK_TEMPLATES.forEach(function(tpl){
+    var deleted=stockTemplateDeletes[String(tpl.id)];
+    var exists=stockTemplates.some(function(t){
+      return String(t.id)===String(tpl.id)||(stockNameKey(t.name)===stockNameKey(tpl.name)&&t.section===tpl.section&&stockNameKey(t.type)===stockNameKey(tpl.type));
+    });
+    if(!deleted&&!exists)stockTemplates.push(normaliseStockTemplate(tpl));
+  });
 }
 function normaliseActivity(row){
   if(!row||typeof row!=='object')return null;
@@ -3354,14 +3398,12 @@ function dashboardActions(){
   var low=sortedStockItems().filter(function(i){return stockAlertLevel(i)===1;});
   var exp=sortedStockItems().filter(isStockExpiring);
   var restock=sortedStockItems().filter(function(i){return stockRestockNeed(i)>0;});
-  var wp=getWeekPlan();var today=wp[DAYS[todayIdx()]]||[];
+  var today=dashboardPlanDay(0).meals;
   if(urgent.length)actions.push(urgent.length+' urgent stock item'+(urgent.length===1?'':'s')+' need attention');
   if(low.length)actions.push(low.length+' stock item'+(low.length===1?' is':'s are')+' running low');
   if(exp.length)actions.push(exp[0].name+' needs using soon');
   if(restock.length)actions.push(restock.length+' item'+(restock.length===1?'':'s')+' below usual quantity');
   if(!today.length)actions.push('No meals planned today');
-  var undone=newbornChecklist.filter(function(i){i=normaliseChecklistItem(i);return i&&!i.deleted&&!i.done;}).length;
-  if(undone)actions.push(undone+' newborn checklist item'+(undone===1?'':'s')+' left');
   return actions.slice(0,6);
 }
 function renderActionList(el){
@@ -3380,6 +3422,32 @@ function renderPartnerChanges(el){
     div.appendChild(mkEl('div','activity-main',row.label));
     div.appendChild(mkEl('div','activity-meta',(row.who||'Partner')+' - '+fmtDate(row.ts)+(row.detail?' - '+row.detail:'')));
     el.appendChild(div);
+  });
+}
+function renderDashboardPlannedMeals(el){
+  if(!el)return;
+  el.innerHTML='';
+  [dashboardPlanDay(0),dashboardPlanDay(1)].forEach(function(group){
+    var wrap=document.createElement('div');
+    wrap.style.cssText='margin-bottom:10px';
+    var label=document.createElement('div');
+    label.style.cssText='font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink3);margin-bottom:6px';
+    label.textContent=group.label+' - '+group.day;
+    wrap.appendChild(label);
+    if(!group.meals.length){
+      var empty=document.createElement('div');
+      empty.style.cssText='font-size:13px;color:var(--ink3);padding:4px 0';
+      empty.textContent='No meals planned';
+      wrap.appendChild(empty);
+    }else{
+      group.meals.forEach(function(m){
+        var row=document.createElement('div');
+        row.className='mini-stock-row';
+        row.innerHTML='<div class="mini-stock-name">'+escHtml(m.mealType||'Meal')+' - '+escHtml(mealDisplayName(m))+'</div>';
+        wrap.appendChild(row);
+      });
+    }
+    el.appendChild(wrap);
   });
 }
 function markActivitySeen(){lastActivitySeen=Date.now();saveL('lastActivitySeen',lastActivitySeen);renderDashboard();showToast('Changes marked seen');}
@@ -3417,8 +3485,9 @@ function deleteNewbornChecklistItem(id){
 function renderDashboard(){
   var stats=gr('dash-stats');if(!stats)return;
   renderStatusCard();
-  var wp=getWeekPlan();var meals=Object.values(wp).reduce(function(s,a){return s+(a?a.length:0);},0);var low=stockItems.filter(isStockLow).length;var freezer=stockItems.filter(function(i){return normaliseStockItem(i).section==='freezer';}).length;
+  var wp=getWeekPlanForOffset(0);var meals=Object.values(wp).reduce(function(s,a){return s+(a?a.length:0);},0);var low=stockItems.filter(isStockLow).length;var freezer=stockItems.filter(function(i){return normaliseStockItem(i).section==='freezer';}).length;
   stats.innerHTML='';[[meals,'Meals'],[stockItems.length,'Stock'],[low,'Low'],[freezer,'Freezer']].forEach(function(x){var c=mkEl('div','stat-card');c.appendChild(mkEl('div','stat-n',String(x[0])));c.appendChild(mkEl('div','stat-l',x[1]));stats.appendChild(c);});
+  renderDashboardPlannedMeals(gr('dash-planned'));
   renderActionList(gr('dash-actions'));
   var quick=stockNeedsForShopping().slice(0,4);
   if(!quick.length)quick=stockItems.map(normaliseStockItem).sort(function(a,b){return b.updatedAt-a.updatedAt;}).slice(0,4);
@@ -3428,8 +3497,6 @@ function renderDashboard(){
   renderMiniStock(gr('dash-recent-stock'),stockItems.map(normaliseStockItem).sort(function(a,b){return b.updatedAt-a.updatedAt;}).slice(0,5),'No stock added yet');
   renderActivityFeed(gr('dash-activity'));
   renderPartnerChanges(gr('dash-partner-changes'));
-  renderNewbornChecklist(gr('dash-newborn'));
-  var today=gr('dash-today');if(today){var day=DAYS[todayIdx()];var mealsToday=wp[day]||[];if(!mealsToday.length)today.innerHTML='<div style="font-size:13px;color:var(--ink3);padding:4px 0">No meals planned today</div>';else today.innerHTML=mealsToday.map(function(m){var r=rec(m.recipeId);return'<div class="mini-stock-row"><div class="mini-stock-name">'+escHtml(m.mealType||'Meal')+' · '+escHtml(r?r.name:'Missing recipe')+'</div></div>';}).join('');}
 }
 
 var iMode='url';var imgB64='';var imgMime='';var importedData=null;
