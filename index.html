@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v5.32 -->
+<!-- v5.33 -->
 
 <html lang="en">
 <head>
@@ -193,6 +193,13 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);overscroll-behavior:none}
 .rn-box{background:var(--warm-p);border:1.5px solid var(--warm);border-radius:var(--rs);padding:10px 12px;font-size:13px;color:#5a3d10;line-height:1.5;margin-top:8px;margin-bottom:8px}
 .cook-badge{display:inline-flex;align-items:center;gap:4px;background:var(--sage-p);color:var(--sage);border-radius:20px;padding:3px 9px;font-size:11px;font-weight:600}
 .meal-note{font-size:11px;color:var(--ink3);font-style:italic;margin-top:2px}
+.meal-note-btn{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--paper3);background:var(--paper2);color:var(--ink3);font-size:12px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.15s}
+.meal-note-btn:active{background:var(--warm-p);border-color:var(--warm);color:#6b4c1e}
+.meal-note-btn.has-note{background:var(--warm-p);border-color:var(--warm);color:#6b4c1e}
+.meal-swap-btn{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--paper3);background:var(--paper2);color:var(--ink3);font-size:13px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.15s}
+.meal-swap-btn:active{background:var(--sage-p);border-color:var(--sage);color:var(--sage)}
+.swap-pick-row{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--cream);border-radius:var(--rs);margin-bottom:8px;cursor:pointer;border:1.5px solid var(--paper3)}
+.swap-pick-row:active{background:var(--sage-p);border-color:var(--sage)}
 .week-nav{display:flex;align-items:center;gap:10px;margin-bottom:14px}
 .week-nav-btn{width:32px;height:32px;border-radius:50%;border:1.5px solid var(--paper3);background:var(--cream);color:var(--ink2);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;font-family:sans-serif}
 .week-nav-btn:active{background:var(--sage-p)}
@@ -587,6 +594,30 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
       <button class="btn btnf btnp" onclick="copyShareList()">&#128203; Copy to clipboard</button>
     </div>
     <div class="s-foot"><button class="btn" onclick="closeM('modal-share')">Close</button></div>
+  </div>
+</div>
+
+<!-- MEAL NOTE EDIT -->
+<div class="overlay" id="modal-meal-note">
+  <div class="sheet">
+    <div class="sh"></div><div class="s-title">📝 Meal note</div>
+    <div class="s-body">
+      <div style="font-size:13px;font-weight:500;color:var(--ink2);margin-bottom:12px" id="meal-note-title"></div>
+      <div class="fg"><label class="fl">Side dish / additional notes <span style="font-weight:300;text-transform:none;letter-spacing:0">(optional)</span></label><textarea class="fi" id="meal-note-input" placeholder="e.g. serve with garlic bread, add extra veg, double portion…" style="height:90px;resize:none"></textarea></div>
+    </div>
+    <div class="s-foot"><button class="btn" onclick="closeM('modal-meal-note')">Cancel</button><button class="btn btnd" id="meal-note-clear-btn" onclick="saveMealNote(true)" style="display:none">Clear note</button><button class="btn btnp" onclick="saveMealNote(false)">Save</button></div>
+  </div>
+</div>
+
+<!-- MEAL SWAP PICKER -->
+<div class="overlay" id="modal-meal-swap">
+  <div class="sheet">
+    <div class="sh"></div><div class="s-title">⇅ Swap meal</div>
+    <div class="s-body">
+      <div style="font-size:13px;color:var(--ink3);margin-bottom:14px">Swapping: <strong id="swap-source-name" style="color:var(--ink)"></strong><br><span style="font-size:12px">Tap a meal below to swap it with this one.</span></div>
+      <div id="swap-meal-list"></div>
+    </div>
+    <div class="s-foot"><button class="btn" onclick="closeM('modal-meal-swap')">Cancel</button></div>
   </div>
 </div>
 
@@ -2299,14 +2330,18 @@ function renderPlanner(){
           var manualInfo=mkEl('div','meal-info');
           manualInfo.appendChild(mkEl('div','meal-label',m.mealType||'Meal'));
           manualInfo.appendChild(mkEl('div','meal-title',m.manualName));
-          if(m.note)manualInfo.appendChild(mkEl('div','meal-note','Note: '+m.note));
+          if(m.note)manualInfo.appendChild(mkEl('div','meal-note','📝 '+m.note));
           var manualMeta=['Manual addition'];
           if(m.manualTime)manualMeta.push(m.manualTime+' min');
           if(m.manualIngredients&&m.manualIngredients.length)manualMeta.push(m.manualIngredients.length+' shopping item'+(m.manualIngredients.length===1?'':'s'));
           manualInfo.appendChild(mkEl('div','meal-meta',manualMeta.join(' - ')));
+          var mNoteBtnM=mkEl('button','meal-note-btn',m.note?'📝':'🖊');if(m.note)mNoteBtnM.classList.add('has-note');
+          (function(d2,idx){mNoteBtnM.addEventListener('click',function(e){e.stopPropagation();openMealNote(d2,idx);});})(day,i);
+          var mSwapBtnM=mkEl('button','meal-swap-btn','⇅');
+          (function(d2,idx){mSwapBtnM.addEventListener('click',function(e){e.stopPropagation();openSwapModal(d2,idx);});})(day,i);
           var rmManual=mkEl('div','rm-btn','x');
           (function(d2,idx){rmManual.addEventListener('click',function(){rmMeal(d2,idx);});})(day,i);
-          manualRow.appendChild(manualInfo);manualRow.appendChild(rmManual);dayDiv.appendChild(manualRow);
+          manualRow.appendChild(manualInfo);manualRow.appendChild(mNoteBtnM);manualRow.appendChild(mSwapBtnM);manualRow.appendChild(rmManual);dayDiv.appendChild(manualRow);
           return;
         }
         if(!r){
@@ -2370,11 +2405,13 @@ function renderPlanner(){
   });
 })(day, i, baseServings);
         sWrap.appendChild(sDn);sWrap.appendChild(sLbl);sWrap.appendChild(sUp);
-        var vb=mkEl('button','btn btns','View');vb.style.cssText='flex-shrink:0;font-size:11px;padding:5px 9px';
-        (function(rid){vb.addEventListener('click',function(e){e.stopPropagation();openRV(rid);});})(m.recipeId);
+        var mNoteBtn=mkEl('button','meal-note-btn',m.note?'📝':'🖊');if(m.note)mNoteBtn.classList.add('has-note');
+        (function(d2,idx){mNoteBtn.addEventListener('click',function(e){e.stopPropagation();openMealNote(d2,idx);});})(day,i);
+        var mSwapBtn=mkEl('button','meal-swap-btn','⇅');
+        (function(d2,idx){mSwapBtn.addEventListener('click',function(e){e.stopPropagation();openSwapModal(d2,idx);});})(day,i);
         var rm=mkEl('div','rm-btn','x');
         (function(d2,idx){rm.addEventListener('click',function(){rmMeal(d2,idx);});})(day,i);
-        row.appendChild(info);row.appendChild(sWrap);row.appendChild(vb);row.appendChild(rm);dayDiv.appendChild(row);
+        row.appendChild(info);row.appendChild(sWrap);row.appendChild(mNoteBtn);row.appendChild(mSwapBtn);row.appendChild(rm);dayDiv.appendChild(row);
       });
     }
     pc.appendChild(dayDiv);
@@ -2392,6 +2429,86 @@ function rmMeal(day,i){
     if(removedId&&planMealDeletes[removedId])delete planMealDeletes[removedId];
     renderPlanner();persist('plan',k);showToast('Meal restored');
   }:null);
+}
+
+// ─── MEAL NOTE EDIT ───────────────────────────────────────────────────────────
+var _mealNoteDay=null,_mealNoteIndex=null;
+function openMealNote(day,idx){
+  var k=planKey(day);
+  var meal=plan[k]&&plan[k][idx];
+  if(!meal)return;
+  _mealNoteDay=day;_mealNoteIndex=idx;
+  var name=mealDisplayName(meal);
+  gr('meal-note-title').textContent=name;
+  gr('meal-note-input').value=meal.note||'';
+  var clearBtn=gr('meal-note-clear-btn');
+  if(clearBtn)clearBtn.style.display=meal.note?'inline-flex':'none';
+  openM('modal-meal-note');
+  setTimeout(function(){gr('meal-note-input').focus();},350);
+}
+function saveMealNote(clear){
+  if(_mealNoteDay===null||_mealNoteIndex===null)return;
+  var k=planKey(_mealNoteDay);
+  if(!plan[k]||!plan[k][_mealNoteIndex])return;
+  var note=clear?'':gr('meal-note-input').value.trim();
+  plan[k][_mealNoteIndex].note=note||undefined;
+  if(!note)delete plan[k][_mealNoteIndex].note;
+  plan[k][_mealNoteIndex].updatedAt=Date.now();
+  closeM('modal-meal-note');
+  persist('plan',k);renderPlanner();
+  showToast(clear?'Note cleared':'Note saved');
+  _mealNoteDay=null;_mealNoteIndex=null;
+}
+
+// ─── MEAL SWAP ────────────────────────────────────────────────────────────────
+var _swapDay=null,_swapIndex=null;
+function openSwapModal(day,idx){
+  var k=planKey(day);
+  var meal=plan[k]&&plan[k][idx];
+  if(!meal)return;
+  _swapDay=day;_swapIndex=idx;
+  gr('swap-source-name').textContent=mealDisplayName(meal);
+  var list=gr('swap-meal-list');list.innerHTML='';
+  var found=false;
+  orderedDays().forEach(function(d){
+    var dk=planKey(d);
+    var meals=plan[dk]||[];
+    meals.forEach(function(m,i){
+      if(d===day&&i===idx)return; // skip self
+      found=true;
+      var row=document.createElement('div');row.className='swap-pick-row';
+      var info=document.createElement('div');info.style.flex='1';
+      var type=document.createElement('div');type.style.cssText='font-size:10px;color:var(--ink3);font-weight:500;text-transform:uppercase;letter-spacing:0.05em';type.textContent=d+' — '+(m.mealType||'Meal');
+      var name=document.createElement('div');name.style.cssText='font-size:14px;font-weight:500;margin-top:1px';name.textContent=mealDisplayName(m);
+      if(m.note){var note=document.createElement('div');note.style.cssText='font-size:11px;color:var(--ink3);font-style:italic;margin-top:2px';note.textContent='📝 '+m.note;info.appendChild(type);info.appendChild(name);info.appendChild(note);}
+      else{info.appendChild(type);info.appendChild(name);}
+      var icon=document.createElement('div');icon.style.cssText='font-size:18px;color:var(--sage);flex-shrink:0';icon.textContent='⇅';
+      row.appendChild(info);row.appendChild(icon);
+      (function(td,ti){row.addEventListener('click',function(){doSwapMeals(_swapDay,_swapIndex,td,ti);});})(d,i);
+      list.appendChild(row);
+    });
+  });
+  if(!found){list.innerHTML='<div style="padding:16px;text-align:center;color:var(--ink3);font-size:13px">No other meals planned this week to swap with.</div>';}
+  openM('modal-meal-swap');
+}
+function doSwapMeals(dayA,idxA,dayB,idxB){
+  var kA=planKey(dayA),kB=planKey(dayB);
+  if(!plan[kA]||!plan[kA][idxA]||!plan[kB]||!plan[kB][idxB])return;
+  var mealA=plan[kA][idxA],mealB=plan[kB][idxB];
+  // Swap mealType to preserve the slot's intention but swap the meal content
+  var tmpA=JSON.parse(JSON.stringify(mealA));
+  var tmpB=JSON.parse(JSON.stringify(mealB));
+  var typeA=tmpA.mealType,typeB=tmpB.mealType;
+  tmpA.mealType=typeB;tmpB.mealType=typeA;
+  var idA=tmpA.id,idB=tmpB.id;
+  tmpA.id=idB;tmpB.id=idA;
+  tmpA.updatedAt=Date.now();tmpB.updatedAt=Date.now();
+  plan[kA][idxA]=tmpB;plan[kB][idxB]=tmpA;
+  closeM('modal-meal-swap');
+  persist('plan',kA);if(kA!==kB)persist('plan',kB);
+  renderPlanner();renderShop();
+  showToast('Meals swapped ✓');
+  _swapDay=null;_swapIndex=null;
 }
 
 // ─── v5.5 COST ESTIMATION ────────────────────────────────────────────────────
@@ -3538,6 +3655,7 @@ function deleteStock(id,skipConfirm){
   renderStock();renderDashboard();
   showToast('Stock deleted',existing?function(){
     delete stockDeletes[String(id)];
+    existing.updatedAt=Date.now();
     stockItems.push(existing);
     addActivity('Restored '+existing.name,'Undo delete','stock');
     persist('stockItems',{type:'update',item:existing});
