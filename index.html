@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v5.33 -->
+<!-- v5.34 -->
 
 <html lang="en">
 <head>
@@ -2341,7 +2341,14 @@ function renderPlanner(){
           (function(d2,idx){mSwapBtnM.addEventListener('click',function(e){e.stopPropagation();openSwapModal(d2,idx);});})(day,i);
           var rmManual=mkEl('div','rm-btn','x');
           (function(d2,idx){rmManual.addEventListener('click',function(){rmMeal(d2,idx);});})(day,i);
-          manualRow.appendChild(manualInfo);manualRow.appendChild(mNoteBtnM);manualRow.appendChild(mSwapBtnM);manualRow.appendChild(rmManual);dayDiv.appendChild(manualRow);
+          
+          manualRow.style.flexDirection='column';
+          manualRow.style.alignItems='stretch';
+          manualRow.style.gap='6px';
+          var mActs=mkEl('div');mActs.style.cssText='display:flex;align-items:center;gap:8px;justify-content:flex-end';
+          mActs.appendChild(mNoteBtnM);mActs.appendChild(mSwapBtnM);mActs.appendChild(rmManual);
+          
+          manualRow.appendChild(manualInfo);manualRow.appendChild(mActs);dayDiv.appendChild(manualRow);
           return;
         }
         if(!r){
@@ -2409,9 +2416,20 @@ function renderPlanner(){
         (function(d2,idx){mNoteBtn.addEventListener('click',function(e){e.stopPropagation();openMealNote(d2,idx);});})(day,i);
         var mSwapBtn=mkEl('button','meal-swap-btn','⇅');
         (function(d2,idx){mSwapBtn.addEventListener('click',function(e){e.stopPropagation();openSwapModal(d2,idx);});})(day,i);
+        var vb=mkEl('button','btn btns','View');vb.style.cssText='flex-shrink:0;font-size:11px;padding:5px 9px';
+        (function(rid){vb.addEventListener('click',function(e){e.stopPropagation();openRV(rid);});})(m.recipeId);
         var rm=mkEl('div','rm-btn','x');
         (function(d2,idx){rm.addEventListener('click',function(){rmMeal(d2,idx);});})(day,i);
-        row.appendChild(info);row.appendChild(sWrap);row.appendChild(mNoteBtn);row.appendChild(mSwapBtn);row.appendChild(rm);dayDiv.appendChild(row);
+        
+        row.style.flexDirection='column';
+        row.style.alignItems='stretch';
+        row.style.gap='6px';
+        var acts=mkEl('div');acts.style.cssText='display:flex;align-items:center;gap:8px';
+        acts.appendChild(sWrap);
+        var spacer=mkEl('div');spacer.style.flex='1';acts.appendChild(spacer);
+        acts.appendChild(vb);acts.appendChild(mNoteBtn);acts.appendChild(mSwapBtn);acts.appendChild(rm);
+        
+        row.appendChild(info);row.appendChild(acts);dayDiv.appendChild(row);
       });
     }
     pc.appendChild(dayDiv);
