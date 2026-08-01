@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v5.35 -->
+<!-- v5.36 -->
 
 <html lang="en">
 <head>
@@ -2574,12 +2574,14 @@ function doSwapMeals(dayA,idxA,dayB,idxB){
 
   if(idxB===null){
     var mealA=plan[kA][idxA];
+    var ts=Date.now();
+    deletePlanMeal(kA,mealA,ts);
+    var movedMeal=Object.assign({},mealA,{id:newId('meal'),updatedAt:ts});
     plan[kA].splice(idxA,1);
     if(!plan[kA].length)delete plan[kA];
     
     if(!plan[kB])plan[kB]=[];
-    mealA.updatedAt=Date.now();
-    plan[kB].push(mealA);
+    plan[kB].push(movedMeal);
 
     closeM('modal-meal-swap');
     persist('plan',kA);if(kA!==kB)persist('plan',kB);
@@ -3882,17 +3884,44 @@ function parseNotesLine(line) {
   return { name: name, qty: isNaN(qty) || qty <= 0 ? 1 : qty };
 }
 
+function normKey(s) {
+  return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function stripPlural(s) {
+  var k = normKey(s);
+  if (k.endsWith('ies')) return k.slice(0, -3) + 'y';
+  if (k.endsWith('es')) return k.slice(0, -2);
+  if (k.endsWith('s')) return k.slice(0, -1);
+  return k;
+}
+
 function findStockMatchByName(name) {
   var key = stockNameKey(name);
-  if (!key) return null;
+  if (!key) return { match: null, suggestions: [] };
   var items = sortedStockItems();
+
   var exact = items.find(function(i) { return stockNameKey(i.name) === key; });
-  if (exact) return exact;
-  var sub = items.find(function(i) {
-    var ik = stockNameKey(i.name);
-    return ik.indexOf(key) >= 0 || key.indexOf(ik) >= 0;
+  if (exact) return { match: exact, suggestions: [] };
+
+  var normN = normKey(name);
+  var stemN = stripPlural(name);
+
+  var candidates = [];
+  items.forEach(function(item) {
+    var ik = stockNameKey(item.name);
+    var normI = normKey(item.name);
+    var stemI = stripPlural(item.name);
+
+    if (normN === normI || stemN === stemI) {
+      candidates.unshift(item);
+    } else if (ik.indexOf(key) >= 0 || key.indexOf(ik) >= 0 || (stemN.length >= 3 && (stemN.indexOf(stemI) >= 0 || stemI.indexOf(stemN) >= 0))) {
+      candidates.push(item);
+    }
   });
-  return sub || null;
+
+  if (!candidates.length) return { match: null, suggestions: [] };
+  return { match: candidates[0], suggestions: candidates.slice(1, 4) };
 }
 
 function openStockNotesImportModal() {
@@ -3923,7 +3952,8 @@ function parseStockNotesInput() {
   lines.forEach(function(line, idx) {
     var parsed = parseNotesLine(line);
     if (!parsed) return;
-    var match = findStockMatchByName(parsed.name);
+    var matchRes = findStockMatchByName(parsed.name);
+    var match = matchRes.match;
     items.push({
       id: 'sn-item-' + idx,
       name: parsed.name,
@@ -3931,7 +3961,9 @@ function parseStockNotesInput() {
       matchId: match ? match.id : null,
       matchName: match ? match.name : null,
       currentQty: match ? match.qty : null,
-      section: match ? match.section : 'snack'
+      section: match ? match.section : 'snack',
+      isFuzzy: match && stockNameKey(match.name) !== stockNameKey(parsed.name),
+      suggestions: matchRes.suggestions
     });
   });
 
@@ -3946,18 +3978,20 @@ function updateStockNotesItem(id, field, val) {
   if (field === 'qty') item.qty = Math.max(1, parseFloat(val) || 1);
   if (field === 'section') item.section = val;
   if (field === 'matchId') {
-    if (val) {
+    if (val && val !== 'NEW') {
       var match = stockItems.find(function(s) { return String(s.id) === String(val); });
       if (match) {
         item.matchId = match.id;
         item.matchName = match.name;
         item.currentQty = match.qty;
         item.section = match.section;
+        item.isFuzzy = stockNameKey(match.name) !== stockNameKey(item.name);
       }
     } else {
       item.matchId = null;
       item.matchName = null;
       item.currentQty = null;
+      item.isFuzzy = false;
     }
   }
   var mode = 'add';
@@ -4000,6 +4034,8 @@ function renderStockNotesPreview(mode) {
   var newCount = parsedStockNotesItems.length - matchCount;
   if (hdr) hdr.textContent = 'Parsed ' + parsedStockNotesItems.length + ' Item' + (parsedStockNotesItems.length === 1 ? '' : 's') + ' (' + matchCount + ' Matched, ' + newCount + ' New)';
 
+  var allStock = sortedStockItems();
+
   list.innerHTML = '';
   parsedStockNotesItems.forEach(function(item) {
     var card = document.createElement('div');
@@ -4033,16 +4069,39 @@ function renderStockNotesPreview(mode) {
     top.appendChild(rmBtn);
     card.appendChild(top);
 
-    var meta = document.createElement('div');
-    meta.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;color:var(--ink3)';
+    var linkRow = document.createElement('div');
+    linkRow.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:11px;color:var(--ink3);flex-wrap:wrap';
 
-    if (item.matchId) {
-      var newQty = mode === 'add' ? (item.currentQty + item.qty) : item.qty;
-      meta.innerHTML = '<div>🟢 Matches <strong style="color:var(--ink)">' + escHtml(item.matchName) + '</strong> (Current: ' + item.currentQty + ' → New: <strong style="color:var(--sage)">' + newQty + '</strong>)</div>';
-    } else {
+    var matchSelect = document.createElement('select');
+    matchSelect.className = 'fi';
+    matchSelect.style.cssText = 'flex:1;padding:4px 6px;font-size:11px';
+
+    var optNew = document.createElement('option');
+    optNew.value = 'NEW';
+    optNew.textContent = '➕ Create as New Stock Item';
+    if (!item.matchId) optNew.selected = true;
+    matchSelect.appendChild(optNew);
+
+    allStock.forEach(function(s) {
+      var opt = document.createElement('option');
+      opt.value = s.id;
+      opt.textContent = '🔗 Link to: ' + s.name + ' (' + s.qty + ' in stock)';
+      if (item.matchId && String(item.matchId) === String(s.id)) opt.selected = true;
+      matchSelect.appendChild(opt);
+    });
+
+    (function(itemId){
+      matchSelect.addEventListener('change', function(e) {
+        updateStockNotesItem(itemId, 'matchId', e.target.value);
+      });
+    })(item.id);
+
+    linkRow.appendChild(matchSelect);
+
+    if (!item.matchId) {
       var secSelect = document.createElement('select');
       secSelect.className = 'fi';
-      secSelect.style.cssText = 'padding:4px 6px;font-size:11px';
+      secSelect.style.cssText = 'width:100px;padding:4px 6px;font-size:11px';
       STOCK_SECTIONS.forEach(function(s) {
         var opt = document.createElement('option');
         opt.value = s.id;
@@ -4050,10 +4109,26 @@ function renderStockNotesPreview(mode) {
         if (s.id === item.section) opt.selected = true;
         secSelect.appendChild(opt);
       });
-      secSelect.addEventListener('change', function(e) { updateStockNotesItem(item.id, 'section', e.target.value); });
-      
-      meta.innerHTML = '<div>🔵 New item</div>';
-      meta.appendChild(secSelect);
+      (function(itemId){
+        secSelect.addEventListener('change', function(e) { updateStockNotesItem(itemId, 'section', e.target.value); });
+      })(item.id);
+      linkRow.appendChild(secSelect);
+    }
+
+    card.appendChild(linkRow);
+
+    var meta = document.createElement('div');
+    meta.style.cssText = 'font-size:11px;color:var(--ink3);margin-top:2px';
+
+    if (item.matchId) {
+      var newQty = mode === 'add' ? (item.currentQty + item.qty) : item.qty;
+      var matchMsg = '🟢 Matches <strong>' + escHtml(item.matchName) + '</strong> (' + item.currentQty + ' → <strong style="color:var(--sage)">' + newQty + '</strong>)';
+      if (item.isFuzzy) {
+        matchMsg += ' <span style="color:var(--warm)">[Linked match]</span>';
+      }
+      meta.innerHTML = matchMsg;
+    } else {
+      meta.innerHTML = '<div>🔵 Will create new stock item in <strong>' + stockSectionName(item.section) + '</strong></div>';
     }
 
     card.appendChild(meta);
