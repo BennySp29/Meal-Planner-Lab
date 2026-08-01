@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v5.34 -->
+<!-- v5.35 -->
 
 <html lang="en">
 <head>
@@ -430,7 +430,7 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
       <div id="rgrid"></div>
     </div>
     <div id="panel-stock" class="panel">
-      <div class="sec-hdr"><div><div class="sec-title">Stock</div><div class="sec-sub" style="margin-bottom:0">Snack cupboard, meal cupboard and freezer, built for 3am taps.</div></div><div style="display:flex;gap:6px"><button class="btn btns" onclick="openStockModal(null)">Detailed</button><button class="btn btns btnp" onclick="openQuickStockModal(null)">+ Add</button></div></div>
+      <div class="sec-hdr"><div><div class="sec-title">Stock</div><div class="sec-sub" style="margin-bottom:0">Snack cupboard, meal cupboard and freezer, built for 3am taps.</div></div><div style="display:flex;gap:6px"><button class="btn btns" onclick="openStockNotesImportModal()">📝 Notes</button><button class="btn btns" onclick="openStockModal(null)">Detailed</button><button class="btn btns btnp" onclick="openQuickStockModal(null)">+ Add</button></div></div>
       <div id="stock-template-strip" class="stock-template-row"></div>
       <div class="stock-tabs" id="stock-tabs"></div>
       <input class="fi" id="stock-search" placeholder="Search stock..." oninput="renderStock()" style="margin-bottom:12px"/>
@@ -515,6 +515,35 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
       </div></div>
     </div>
     <div class="s-foot"><button class="btn" onclick="closeM('modal-stock-quick')">Cancel</button><button class="btn btnp" onclick="saveQuickStockItem()">Add</button></div>
+  </div>
+</div>
+
+<!-- STOCK NOTES IMPORT -->
+<div class="overlay" id="modal-stock-notes">
+  <div class="sheet">
+    <div class="sh"></div><div class="s-title">Import Stock from Notes</div>
+    <div class="s-body">
+      <div class="sec-sub">Paste text from iPhone Notes or a shopping list to quickly restock.</div>
+      <div class="fg">
+        <label class="fl">Notes / Shopping List Text</label>
+        <textarea class="fi" id="sn-text" placeholder="e.g.&#10;[ ] 2x Milk&#10;• Cheddar Cheese&#10;- 6 Eggs&#10;Butter x3" style="height:110px;resize:none;font-family:inherit;font-size:13px;line-height:1.4" oninput="parseStockNotesInput()"></textarea>
+      </div>
+      <div class="fg">
+        <label class="fl">Restock Mode</label>
+        <div style="display:flex;gap:14px;margin-top:4px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="radio" name="sn-mode" value="add" checked onchange="parseStockNotesInput()"/> Add to current qty</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="radio" name="sn-mode" value="set" onchange="parseStockNotesInput()"/> Set qty directly</label>
+        </div>
+      </div>
+      <div id="sn-preview-wrap" style="margin-top:14px;display:none">
+        <div style="font-size:11px;font-weight:500;color:var(--ink3);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px" id="sn-preview-hdr">Parsed Items</div>
+        <div id="sn-preview-list" style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+    </div>
+    <div class="s-foot">
+      <button class="btn" onclick="closeM('modal-stock-notes')">Cancel</button>
+      <button class="btn btnp" id="sn-import-btn" onclick="confirmStockNotesImport()" disabled>Restock Items</button>
+    </div>
   </div>
 </div>
 
@@ -2491,29 +2520,77 @@ function openSwapModal(day,idx){
   orderedDays().forEach(function(d){
     var dk=planKey(d);
     var meals=plan[dk]||[];
-    meals.forEach(function(m,i){
-      if(d===day&&i===idx)return; // skip self
-      found=true;
-      var row=document.createElement('div');row.className='swap-pick-row';
-      var info=document.createElement('div');info.style.flex='1';
-      var type=document.createElement('div');type.style.cssText='font-size:10px;color:var(--ink3);font-weight:500;text-transform:uppercase;letter-spacing:0.05em';type.textContent=d+' — '+(m.mealType||'Meal');
-      var name=document.createElement('div');name.style.cssText='font-size:14px;font-weight:500;margin-top:1px';name.textContent=mealDisplayName(m);
-      if(m.note){var note=document.createElement('div');note.style.cssText='font-size:11px;color:var(--ink3);font-style:italic;margin-top:2px';note.textContent='📝 '+m.note;info.appendChild(type);info.appendChild(name);info.appendChild(note);}
-      else{info.appendChild(type);info.appendChild(name);}
-      var icon=document.createElement('div');icon.style.cssText='font-size:18px;color:var(--sage);flex-shrink:0';icon.textContent='⇅';
-      row.appendChild(info);row.appendChild(icon);
-      (function(td,ti){row.addEventListener('click',function(){doSwapMeals(_swapDay,_swapIndex,td,ti);});})(d,i);
-      list.appendChild(row);
-    });
+    if(d===day){
+      meals.forEach(function(m,i){
+        if(i===idx)return;
+        found=true;
+        var row=document.createElement('div');row.className='swap-pick-row';
+        var info=document.createElement('div');info.style.flex='1';
+        var type=document.createElement('div');type.style.cssText='font-size:10px;color:var(--ink3);font-weight:500;text-transform:uppercase;letter-spacing:0.05em';type.textContent=d+' — '+(m.mealType||'Meal');
+        var name=document.createElement('div');name.style.cssText='font-size:14px;font-weight:500;margin-top:1px';name.textContent=mealDisplayName(m);
+        if(m.note){var note=document.createElement('div');note.style.cssText='font-size:11px;color:var(--ink3);font-style:italic;margin-top:2px';note.textContent='📝 '+m.note;info.appendChild(type);info.appendChild(name);info.appendChild(note);}
+        else{info.appendChild(type);info.appendChild(name);}
+        var icon=document.createElement('div');icon.style.cssText='font-size:18px;color:var(--sage);flex-shrink:0';icon.textContent='⇅';
+        row.appendChild(info);row.appendChild(icon);
+        (function(td,ti){row.addEventListener('click',function(){doSwapMeals(_swapDay,_swapIndex,td,ti);});})(d,i);
+        list.appendChild(row);
+      });
+    }else{
+      if(meals.length){
+        meals.forEach(function(m,i){
+          found=true;
+          var row=document.createElement('div');row.className='swap-pick-row';
+          var info=document.createElement('div');info.style.flex='1';
+          var type=document.createElement('div');type.style.cssText='font-size:10px;color:var(--ink3);font-weight:500;text-transform:uppercase;letter-spacing:0.05em';type.textContent=d+' — '+(m.mealType||'Meal');
+          var name=document.createElement('div');name.style.cssText='font-size:14px;font-weight:500;margin-top:1px';name.textContent=mealDisplayName(m);
+          if(m.note){var note=document.createElement('div');note.style.cssText='font-size:11px;color:var(--ink3);font-style:italic;margin-top:2px';note.textContent='📝 '+m.note;info.appendChild(type);info.appendChild(name);info.appendChild(note);}
+          else{info.appendChild(type);info.appendChild(name);}
+          var icon=document.createElement('div');icon.style.cssText='font-size:18px;color:var(--sage);flex-shrink:0';icon.textContent='⇅';
+          row.appendChild(info);row.appendChild(icon);
+          (function(td,ti){row.addEventListener('click',function(){doSwapMeals(_swapDay,_swapIndex,td,ti);});})(d,i);
+          list.appendChild(row);
+        });
+      }else{
+        found=true;
+        var row=document.createElement('div');row.className='swap-pick-row';
+        row.style.cssText='background:var(--paper2);border:1px dashed var(--paper3)';
+        var info=document.createElement('div');info.style.flex='1';
+        var type=document.createElement('div');type.style.cssText='font-size:10px;color:var(--ink3);font-weight:500;text-transform:uppercase;letter-spacing:0.05em';type.textContent=d+' — Blank Day';
+        var name=document.createElement('div');name.style.cssText='font-size:13px;font-weight:500;color:var(--sage);margin-top:1px';name.textContent='Move meal to this day';
+        info.appendChild(type);info.appendChild(name);
+        var icon=document.createElement('div');icon.style.cssText='font-size:18px;color:var(--sage);flex-shrink:0';icon.textContent='➡️';
+        row.appendChild(info);row.appendChild(icon);
+        (function(td){row.addEventListener('click',function(){doSwapMeals(_swapDay,_swapIndex,td,null);});})(d);
+        list.appendChild(row);
+      }
+    }
   });
-  if(!found){list.innerHTML='<div style="padding:16px;text-align:center;color:var(--ink3);font-size:13px">No other meals planned this week to swap with.</div>';}
+  if(!found){list.innerHTML='<div style="padding:16px;text-align:center;color:var(--ink3);font-size:13px">No other days available to swap or move to.</div>';}
   openM('modal-meal-swap');
 }
 function doSwapMeals(dayA,idxA,dayB,idxB){
   var kA=planKey(dayA),kB=planKey(dayB);
-  if(!plan[kA]||!plan[kA][idxA]||!plan[kB]||!plan[kB][idxB])return;
+  if(!plan[kA]||!plan[kA][idxA])return;
+
+  if(idxB===null){
+    var mealA=plan[kA][idxA];
+    plan[kA].splice(idxA,1);
+    if(!plan[kA].length)delete plan[kA];
+    
+    if(!plan[kB])plan[kB]=[];
+    mealA.updatedAt=Date.now();
+    plan[kB].push(mealA);
+
+    closeM('modal-meal-swap');
+    persist('plan',kA);if(kA!==kB)persist('plan',kB);
+    renderPlanner();renderShop();
+    showToast('Meal moved to '+dayB+' ✓');
+    _swapDay=null;_swapIndex=null;
+    return;
+  }
+
+  if(!plan[kB]||!plan[kB][idxB])return;
   var mealA=plan[kA][idxA],mealB=plan[kB][idxB];
-  // Swap mealType to preserve the slot's intention but swap the meal content
   var tmpA=JSON.parse(JSON.stringify(mealA));
   var tmpB=JSON.parse(JSON.stringify(mealB));
   var typeA=tmpA.mealType,typeB=tmpB.mealType;
@@ -3176,11 +3253,42 @@ function renderAMT(){gr('am-types').innerHTML=MT.map(function(t){return'<button 
 function selAMD(d){amDay=d;renderAMD();}
 function selAMT(t){amType=t;renderAMT();}
 function renderAML(){
-  var s=gr('am-search').value.toLowerCase();
-  var f=recipes.filter(function(r){return!s||r.name.toLowerCase().indexOf(s)>=0});
+  var s=gr('am-search')?gr('am-search').value.toLowerCase():'';
+  var f=recipes.filter(function(r){return!s||r.name.toLowerCase().indexOf(s)>=0;});
+  f=f.slice().sort(function(a,b){return a.name.localeCompare(b.name);});
   var el=gr('am-list');
+  if(!el)return;
   if(!f.length){el.innerHTML='<div style="padding:16px;text-align:center;color:var(--ink3);font-size:13px">No recipes found</div>';return;}
-  el.innerHTML=f.map(function(r){var ha=rha(r);var sel=amRecipe===r.id;var hits=r.allergens.filter(function(a){return userAllergens.indexOf(a)>=0});return'<div class="rpick'+(sel?' on':'')+'" onclick="selAMR('+r.id+')"><div style="font-size:13px;font-weight:500;margin-bottom:2px">'+r.name+(sel?' ✓':'')+'</div><div style="font-size:11px;color:var(--ink3)">'+r.cuisine+' · '+r.time+' min</div>'+(ha?'<div style="font-size:11px;color:var(--red);margin-top:3px">⚠ '+hits.join(', ')+'</div>':'')+'</div>';}).join('');
+  el.innerHTML='';
+  var layout=document.createElement('div');layout.className='alpha-layout';
+  var list=document.createElement('div');list.style.cssText='display:flex;flex-direction:column;gap:6px';
+  var letters=[];
+  f.forEach(function(r){
+    var l=firstLetter(r.name);
+    if(letters.indexOf(l)<0){
+      letters.push(l);
+      var anchor=document.createElement('div');anchor.id='am-recipe-letter-'+l;anchor.className='letter-anchor';list.appendChild(anchor);
+    }
+    var ha=rha(r);
+    var sel=amRecipe===r.id;
+    var hits=r.allergens.filter(function(a){return userAllergens.indexOf(a)>=0;});
+    var card=document.createElement('div');card.className='rpick'+(sel?' on':'');
+    (function(rid){card.addEventListener('click',function(){selAMR(rid);});})(r.id);
+    var nameDiv=document.createElement('div');nameDiv.style.cssText='font-size:13px;font-weight:500;margin-bottom:2px';
+    nameDiv.textContent=r.name+(sel?' ✓':'');
+    var metaDiv=document.createElement('div');metaDiv.style.cssText='font-size:11px;color:var(--ink3)';
+    metaDiv.textContent=r.cuisine+' · '+r.time+' min';
+    card.appendChild(nameDiv);card.appendChild(metaDiv);
+    if(ha){
+      var haDiv=document.createElement('div');haDiv.style.cssText='font-size:11px;color:var(--red);margin-top:3px';
+      haDiv.textContent='⚠ '+hits.join(', ');
+      card.appendChild(haDiv);
+    }
+    list.appendChild(card);
+  });
+  layout.appendChild(list);
+  addAlphaRail(layout,letters,'am-recipe-letter-');
+  el.appendChild(layout);
 }
 function resetAMForm(day,recipeId){
   amDay=day||DAYS[0];amRecipe=recipeId||null;amType='Dinner';amMode='recipe';amIngN=0;
@@ -3730,6 +3838,298 @@ function saveRecipeStockBatch(){
   function finish(){closeM('modal-recipe-stock');persist('stockItems',{type:'update',item:item});checkStockAlert(item);renderStock();renderDashboard();showToast('Freezer stock added');}
   if(item.notify&&(item.alert1!==null||item.alert2!==null))setupClosedStockNotifications(false).then(finish);else finish();
 }
+
+// ─── STOCK NOTES IMPORT ───────────────────────────────────────────
+var parsedStockNotesItems = [];
+
+function parseNotesLine(line) {
+  line = String(line || '').trim();
+  if (!line) return null;
+  line = line.replace(/^(\[[ xX✓✔]*\]|[\u2022\u25cf\u25cb\u25a0\u25a1\-*+]|\d+[\.\)])\s*/, '').trim();
+  if (!line) return null;
+
+  var name = line;
+  var qty = 1;
+
+  var m = line.match(/^(\d+(?:\.\d+)?)\s*[xX]\s+(.+)$/);
+  if (m) {
+    qty = parseFloat(m[1]);
+    name = m[2].trim();
+  } else {
+    m = line.match(/^(.+?)\s+[xX]\s*(\d+(?:\.\d+)?)$/);
+    if (m) {
+      name = m[1].trim();
+      qty = parseFloat(m[2]);
+    } else {
+      m = line.match(/^(\d+(?:\.\d+)?)\s+(.+)$/);
+      if (m) {
+        qty = parseFloat(m[1]);
+        name = m[2].trim();
+      } else {
+        m = line.match(/^(.+?)\s*\(\s*(\d+(?:\.\d+)?)\s*[xX]?\s*\)$/);
+        if (m) {
+          name = m[1].trim();
+          qty = parseFloat(m[2]);
+        }
+      }
+    }
+  }
+
+  if (name.length > 0) {
+    name = name.charAt(0).toUpperCase() + name.slice(1);
+  }
+
+  return { name: name, qty: isNaN(qty) || qty <= 0 ? 1 : qty };
+}
+
+function findStockMatchByName(name) {
+  var key = stockNameKey(name);
+  if (!key) return null;
+  var items = sortedStockItems();
+  var exact = items.find(function(i) { return stockNameKey(i.name) === key; });
+  if (exact) return exact;
+  var sub = items.find(function(i) {
+    var ik = stockNameKey(i.name);
+    return ik.indexOf(key) >= 0 || key.indexOf(ik) >= 0;
+  });
+  return sub || null;
+}
+
+function openStockNotesImportModal() {
+  var txt = gr('sn-text');
+  if (txt) txt.value = '';
+  var radios = document.getElementsByName('sn-mode');
+  if (radios && radios.length) radios[0].checked = true;
+  parsedStockNotesItems = [];
+  var previewWrap = gr('sn-preview-wrap');
+  if (previewWrap) previewWrap.style.display = 'none';
+  var btn = gr('sn-import-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Restock Items'; }
+  openM('modal-stock-notes');
+}
+
+function parseStockNotesInput() {
+  var txt = gr('sn-text') ? gr('sn-text').value : '';
+  var mode = 'add';
+  var radios = document.getElementsByName('sn-mode');
+  if (radios) {
+    for (var i = 0; i < radios.length; i++) {
+      if (radios[i].checked) mode = radios[i].value;
+    }
+  }
+
+  var lines = txt.split(/\r?\n/);
+  var items = [];
+  lines.forEach(function(line, idx) {
+    var parsed = parseNotesLine(line);
+    if (!parsed) return;
+    var match = findStockMatchByName(parsed.name);
+    items.push({
+      id: 'sn-item-' + idx,
+      name: parsed.name,
+      qty: parsed.qty,
+      matchId: match ? match.id : null,
+      matchName: match ? match.name : null,
+      currentQty: match ? match.qty : null,
+      section: match ? match.section : 'snack'
+    });
+  });
+
+  parsedStockNotesItems = items;
+  renderStockNotesPreview(mode);
+}
+
+function updateStockNotesItem(id, field, val) {
+  var item = parsedStockNotesItems.find(function(x) { return x.id === id; });
+  if (!item) return;
+  if (field === 'name') item.name = String(val || '').trim();
+  if (field === 'qty') item.qty = Math.max(1, parseFloat(val) || 1);
+  if (field === 'section') item.section = val;
+  if (field === 'matchId') {
+    if (val) {
+      var match = stockItems.find(function(s) { return String(s.id) === String(val); });
+      if (match) {
+        item.matchId = match.id;
+        item.matchName = match.name;
+        item.currentQty = match.qty;
+        item.section = match.section;
+      }
+    } else {
+      item.matchId = null;
+      item.matchName = null;
+      item.currentQty = null;
+    }
+  }
+  var mode = 'add';
+  var radios = document.getElementsByName('sn-mode');
+  if (radios) {
+    for (var i = 0; i < radios.length; i++) {
+      if (radios[i].checked) mode = radios[i].value;
+    }
+  }
+  renderStockNotesPreview(mode);
+}
+
+function removeStockNotesItem(id) {
+  parsedStockNotesItems = parsedStockNotesItems.filter(function(x) { return x.id !== id; });
+  var mode = 'add';
+  var radios = document.getElementsByName('sn-mode');
+  if (radios) {
+    for (var i = 0; i < radios.length; i++) {
+      if (radios[i].checked) mode = radios[i].value;
+    }
+  }
+  renderStockNotesPreview(mode);
+}
+
+function renderStockNotesPreview(mode) {
+  var wrap = gr('sn-preview-wrap');
+  var list = gr('sn-preview-list');
+  var hdr = gr('sn-preview-hdr');
+  var btn = gr('sn-import-btn');
+  if (!wrap || !list) return;
+
+  if (!parsedStockNotesItems.length) {
+    wrap.style.display = 'none';
+    if (btn) { btn.disabled = true; btn.textContent = 'Restock Items'; }
+    return;
+  }
+
+  wrap.style.display = 'block';
+  var matchCount = parsedStockNotesItems.filter(function(x) { return x.matchId; }).length;
+  var newCount = parsedStockNotesItems.length - matchCount;
+  if (hdr) hdr.textContent = 'Parsed ' + parsedStockNotesItems.length + ' Item' + (parsedStockNotesItems.length === 1 ? '' : 's') + ' (' + matchCount + ' Matched, ' + newCount + ' New)';
+
+  list.innerHTML = '';
+  parsedStockNotesItems.forEach(function(item) {
+    var card = document.createElement('div');
+    card.style.cssText = 'background:var(--cream);border:1px solid var(--paper3);border-radius:var(--rs);padding:10px 12px;display:flex;flex-direction:column;gap:6px';
+    
+    var top = document.createElement('div');
+    top.style.cssText = 'display:flex;align-items:center;gap:8px;justify-content:space-between';
+    
+    var nameInp = document.createElement('input');
+    nameInp.className = 'fi';
+    nameInp.style.cssText = 'flex:1;font-weight:500;padding:6px 8px;font-size:13px';
+    nameInp.value = item.name;
+    nameInp.addEventListener('change', function(e) { updateStockNotesItem(item.id, 'name', e.target.value); });
+    
+    var qtyInp = document.createElement('input');
+    qtyInp.className = 'fi';
+    qtyInp.type = 'number';
+    qtyInp.min = '1';
+    qtyInp.style.cssText = 'width:60px;padding:6px 6px;font-size:13px;text-align:center';
+    qtyInp.value = item.qty;
+    qtyInp.addEventListener('change', function(e) { updateStockNotesItem(item.id, 'qty', e.target.value); });
+
+    var rmBtn = document.createElement('button');
+    rmBtn.className = 'btn btns btnd';
+    rmBtn.style.cssText = 'padding:6px 10px;font-size:12px;flex-shrink:0';
+    rmBtn.textContent = '✕';
+    rmBtn.addEventListener('click', function() { removeStockNotesItem(item.id); });
+
+    top.appendChild(nameInp);
+    top.appendChild(qtyInp);
+    top.appendChild(rmBtn);
+    card.appendChild(top);
+
+    var meta = document.createElement('div');
+    meta.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;color:var(--ink3)';
+
+    if (item.matchId) {
+      var newQty = mode === 'add' ? (item.currentQty + item.qty) : item.qty;
+      meta.innerHTML = '<div>🟢 Matches <strong style="color:var(--ink)">' + escHtml(item.matchName) + '</strong> (Current: ' + item.currentQty + ' → New: <strong style="color:var(--sage)">' + newQty + '</strong>)</div>';
+    } else {
+      var secSelect = document.createElement('select');
+      secSelect.className = 'fi';
+      secSelect.style.cssText = 'padding:4px 6px;font-size:11px';
+      STOCK_SECTIONS.forEach(function(s) {
+        var opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = s.name;
+        if (s.id === item.section) opt.selected = true;
+        secSelect.appendChild(opt);
+      });
+      secSelect.addEventListener('change', function(e) { updateStockNotesItem(item.id, 'section', e.target.value); });
+      
+      meta.innerHTML = '<div>🔵 New item</div>';
+      meta.appendChild(secSelect);
+    }
+
+    card.appendChild(meta);
+    list.appendChild(card);
+  });
+
+  if (btn) {
+    btn.disabled = false;
+    btn.textContent = 'Restock ' + parsedStockNotesItems.length + ' Item' + (parsedStockNotesItems.length === 1 ? '' : 's');
+  }
+}
+
+function confirmStockNotesImport() {
+  if (!parsedStockNotesItems.length) return;
+  var mode = 'add';
+  var radios = document.getElementsByName('sn-mode');
+  if (radios) {
+    for (var i = 0; i < radios.length; i++) {
+      if (radios[i].checked) mode = radios[i].value;
+    }
+  }
+
+  var updatedCount = 0;
+  var createdCount = 0;
+
+  parsedStockNotesItems.forEach(function(item) {
+    if (!item.name) return;
+    if (item.matchId) {
+      var existing = stockItems.find(function(s) { return String(s.id) === String(item.matchId); });
+      if (existing) {
+        var norm = normaliseStockItem(existing);
+        var targetQty = norm.qty;
+        if (mode === 'add') targetQty = norm.qty + item.qty;
+        else targetQty = item.qty;
+        
+        norm.qty = Math.max(0, targetQty);
+        norm.updatedAt = Date.now();
+        norm.updatedBy = fbCfg.who || 'Someone';
+
+        for (var k = 0; k < stockItems.length; k++) {
+          if (String(stockItems[k].id) === String(norm.id)) {
+            stockItems[k] = norm;
+            break;
+          }
+        }
+        checkStockAlert(norm);
+        updatedCount++;
+      }
+    } else {
+      var newItem = normaliseStockItem({
+        id: newId('stock'),
+        name: item.name,
+        qty: item.qty,
+        targetQty: item.qty,
+        section: item.section || 'snack',
+        type: 'staple',
+        updatedAt: Date.now(),
+        updatedBy: fbCfg.who || 'Someone'
+      });
+      stockItems.push(newItem);
+      checkStockAlert(newItem);
+      createdCount++;
+    }
+  });
+
+  var total = updatedCount + createdCount;
+  if (total > 0) {
+    addActivity('Imported stock notes', 'Restocked ' + total + ' items (' + updatedCount + ' updated, ' + createdCount + ' new)', 'stock');
+    persist('stockItems', { type: 'batch_update', count: total });
+    renderStock();
+    renderDashboard();
+    closeM('modal-stock-notes');
+    showToast('Restocked ' + total + ' item' + (total === 1 ? '' : 's') + ' into stock ✓');
+  }
+}
+
 function renderMiniStock(el,items,emptyText){
   if(!el)return;
   if(!items.length){el.innerHTML='<div style="font-size:13px;color:var(--ink3);padding:4px 0">'+emptyText+'</div>';return;}
