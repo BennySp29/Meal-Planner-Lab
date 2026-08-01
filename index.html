@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v5.43 -->
+<!-- v5.44 -->
 
 <html lang="en">
 <head>
@@ -43,9 +43,9 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);overscroll-behavior:none}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
 .sync-bar.off{background:#8a6a20}
 .sync-bar.off .sync-dot{background:#ffc87a;animation:none}
-.content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding-bottom:calc(70px + env(safe-area-inset-bottom,0px))}
-.bottom-nav{display:flex;background:var(--cream);border-top:1px solid var(--paper3);padding-bottom:max(4px,calc(env(safe-area-inset-bottom,0px) * 0.45));position:fixed;bottom:0;left:0;right:0;width:100%;z-index:100}
-.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 4px 4px;border:none;background:none;cursor:pointer;color:var(--ink3);font-size:10px;font-weight:500;font-family:'DM Sans',sans-serif;transition:color 0.15s}
+.content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))}
+.bottom-nav{display:flex;background:var(--cream);border-top:1px solid var(--paper3);padding-top:6px;padding-bottom:env(safe-area-inset-bottom,6px);position:fixed;bottom:0;left:0;right:0;width:100%;z-index:100}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:2px 2px 2px;border:none;background:none;cursor:pointer;color:var(--ink3);font-size:10px;font-weight:500;font-family:'DM Sans',sans-serif;transition:color 0.15s}
 .nav-item.active{color:var(--sage)}
 .nav-icon{font-size:20px;line-height:1}
 .panel{display:none;padding:16px 16px 36px;min-height:100%}
@@ -824,7 +824,7 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
 <script>
 // ── CACHE NUKE v3.0: clears stale SW + caches, one-time reload ─────────────
 (function(){
-  var CURRENT='mep-app-v5.43';
+  var CURRENT='mep-app-v5.44';
   var nuked=sessionStorage.getItem('cache-nuked');
   if(nuked===CURRENT)return; // already done this session
   function doNuke(){
