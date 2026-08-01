@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v5.36 -->
+<!-- v5.37 -->
 
 <html lang="en">
 <head>
@@ -1653,6 +1653,9 @@ function publishPlanDateState(local,dateKey,ts){
     var updates={version:2,ts:ts,clientId:fbClientId,who:fbCfg.who||'Someone'};
     planMeta[dateKey]=cleanForFirebase(local.planMeta[dateKey]||{updatedAt:ts,clientId:fbClientId});
     updates['planMeta/'+dateKey]=planMeta[dateKey];
+    if(!plan[dateKey]||!plan[dateKey].length){
+      updates['plan/'+dateKey]=null;
+    }
     Object.keys(local.planMealDeletes).forEach(function(id){updates['planMealDeletes/'+id]=local.planMealDeletes[id];});
     saveL('plan',plan);saveL('planMeta',planMeta);saveL('planMealDeletes',planMealDeletes);
     return fbRef.child('state').update(cleanForFirebase(updates));
