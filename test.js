@@ -1,7 +1,7 @@
-
 // ── CACHE NUKE v3.0: clears stale SW + caches, one-time reload ─────────────
 (function(){
-  var CURRENT='mep-app-v5.31';
+  if(typeof window==='undefined'||typeof sessionStorage==='undefined')return;
+  var CURRENT='mep-app-v5.48';
   var nuked=sessionStorage.getItem('cache-nuked');
   if(nuked===CURRENT)return; // already done this session
   function doNuke(){
@@ -3603,6 +3603,7 @@ function saveProfile(){
 // MODAL
 function openM(id){gr(id).classList.add('open');}
 function closeM(id){gr(id).classList.remove('open');}
+if(typeof document!=='undefined'){
 document.querySelectorAll('.overlay').forEach(function(o){o.addEventListener('click',function(e){if(e.target===o)o.classList.remove('open');});});
 var rvcb=gr('rv-close-btn');if(rvcb)rvcb.addEventListener('click',function(){closeM('modal-rv');});
 var randbtn=gr('random-btn');if(randbtn)randbtn.addEventListener('click',openRandom);
@@ -3611,6 +3612,7 @@ var rscd=gr('rscope-day');if(rscd)rscd.addEventListener('click',function(){randS
 var rprev=gr('rand-preview-btn');if(rprev)rprev.addEventListener('click',previewRandom);
 var rapply=gr('rand-apply-btn');if(rapply)rapply.addEventListener('click',applyRandom);
 var rcanc=gr('rand-cancel');if(rcanc)rcanc.addEventListener('click',function(){closeM('modal-random');});
+}//end browser-only modal bindings
 
 function renderAll(){renderDashboard();renderPlanner();if(gr('panel-shopping').classList.contains('active'))renderShop();renderCF();renderDF();renderRGrid();if(gr('panel-stock')&&gr('panel-stock').classList.contains('active'))renderStock();}
 
@@ -3766,6 +3768,7 @@ function cleanSocialText(raw){
 }
 
 // INIT
+if(typeof document!=='undefined'){
 loadPersisted();
 migrateLegacyPlan(loadL('currentWeekStartDate')||currentWeekStartKey());
 syncWeekAnchor();
@@ -3797,3 +3800,4 @@ setupKeyboardHandling();
     if(e.data&&e.data.type==='UPDATE_AVAILABLE'){showToast('✓ Updated to '+e.data.version);}
   });
 })();
+}//end browser-only init

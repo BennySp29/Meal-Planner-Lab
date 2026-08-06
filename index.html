@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v5.47 -->
+<!-- v5.48 -->
 
 <html lang="en">
 <head>
@@ -773,7 +773,7 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
       <span style="font-family:'Playfair Display',serif;font-size:15px;color:var(--ink3)">Recipe</span>
       <button id="rv-close-btn" class="rv-close-btn">&larr; Back</button>
     </div>
-    <div id="rv-content" style="padding:0 20px 20px"></div>
+    <div id="rv-content" class="s-body"></div>
   </div>
 </div>
 
@@ -825,7 +825,8 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
 <script>
 // ── CACHE NUKE v3.0: clears stale SW + caches, one-time reload ─────────────
 (function(){
-  var CURRENT='mep-app-v5.47';
+  if(typeof window==='undefined'||typeof sessionStorage==='undefined')return;
+  var CURRENT='mep-app-v5.48';
   var nuked=sessionStorage.getItem('cache-nuked');
   if(nuked===CURRENT)return; // already done this session
   function doNuke(){
