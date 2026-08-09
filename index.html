@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v5.49 -->
+<!-- v5.50 -->
 
 <html lang="en">
 <head>
@@ -118,7 +118,8 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);overscroll-behavior:none}
 .s-foot{padding:12px 20px calc(12px + env(safe-area-inset-bottom,0px));background:var(--paper);border-top:1px solid var(--paper3);display:flex;gap:10px;justify-content:flex-end;align-items:center;flex-shrink:0}
 .fg{margin-bottom:14px}
 .fl{font-size:11px;font-weight:500;color:var(--ink3);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em}
-.fi{padding:11px 13px;border:1.5px solid var(--paper3);border-radius:var(--rs);font-size:14px;background:var(--cream);color:var(--ink);width:100%;font-family:'DM Sans',sans-serif;-webkit-appearance:none}
+.fi{padding:11px 13px;border:1.5px solid var(--paper3);border-radius:var(--rs);font-size:16px;background:var(--cream);color:var(--ink);width:100%;font-family:'DM Sans',sans-serif;-webkit-appearance:none}
+@media screen and (max-width:768px){input,select,textarea,.fi{font-size:16px !important}}
 .fi:focus{outline:none;border-color:var(--sage)}
 .frow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .cwrap{display:flex;flex-wrap:wrap;gap:6px}
@@ -660,7 +661,7 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
       <div class="fg"><div class="fl">Add from</div><div class="cwrap" id="am-mode"></div></div>
       <div id="am-recipe-panel">
         <div class="fg"><input class="fi" id="am-search" placeholder="🔍 Search recipes…" oninput="renderAML()"/></div>
-        <div id="am-list" style="max-height:32vh;overflow-y:auto"></div>
+        <div id="am-list"></div>
       </div>
       <div id="am-manual-panel" style="display:none">
         <div class="fg"><label class="fl">Meal name</label><input class="fi" id="am-manual" placeholder="e.g. freezer pizza, beans on toast..."/></div>
@@ -2172,11 +2173,6 @@ function setupKeyboardHandling(){
   }
   window.visualViewport.addEventListener('resize', updateVV);
   updateVV();
-  document.addEventListener('focusin',function(e){
-    if(e.target.matches('.sheet input,.sheet textarea,.sheet select')){
-      setTimeout(function(){e.target.scrollIntoView({behavior:'smooth',block:'center'});},300);
-    }
-  });
 }
 
 // UTILS
