@@ -1,4 +1,4 @@
-var CACHE = 'mep-v5.51';
+var CACHE = 'mep-v5.52';
 var CORE_ASSETS = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', function(event) {
