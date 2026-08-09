@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v5.52 -->
+<!-- v5.54 -->
 
 <html lang="en">
 <head>
@@ -45,6 +45,7 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);overscroll-behavior:none}
 .sync-bar.off{background:#8a6a20}
 .sync-bar.off .sync-dot{background:#ffc87a;animation:none}
 .content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding-bottom:calc(90px + env(safe-area-inset-bottom,0px))}
+body.keyboard-open .content{padding-bottom:12px !important}
 .bottom-nav{display:flex;align-items:center;background:var(--cream);border:1.5px solid var(--paper3);border-radius:20px;box-shadow:0 4px 20px rgba(15,26,15,0.12);padding:5px 6px;position:fixed;bottom:calc(10px + env(safe-area-inset-bottom,0px));left:14px;right:14px;z-index:100;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
 .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 4px;border:none;background:none;border-radius:14px;cursor:pointer;color:var(--ink3);font-size:10px;font-weight:500;font-family:'DM Sans',sans-serif;transition:all 0.15s ease}
 .nav-item.active{color:var(--sage);background:var(--sage-p)}
@@ -111,10 +112,18 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);overscroll-behavior:none}
 .overlay{display:none;position:fixed;top:var(--vv-top, 0px);left:0;right:0;height:var(--vv-height, 100%);background:rgba(15,26,15,0.6);z-index:200;align-items:flex-end;justify-content:center}
 .overlay.open{display:flex}
 .sheet{background:var(--paper);border-radius:20px 20px 0 0;width:100%;max-width:600px;max-height:calc(var(--vv-height, 100%) - env(safe-area-inset-top, 0px) - 14px);display:flex;flex-direction:column;overflow:hidden;animation:su 0.3s cubic-bezier(0.34,1.26,0.64,1)}
+body.keyboard-open .sheet{height:calc(var(--vv-height, 100%) - env(safe-area-inset-top, 0px)) !important;max-height:calc(var(--vv-height, 100%) - env(safe-area-inset-top, 0px)) !important}
 @keyframes su{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}
-.sh{width:40px;height:4px;background:var(--paper3);border-radius:2px;margin:12px auto 12px;flex-shrink:0}
+.sh{width:40px;height:4px;background:var(--paper3);border-radius:2px;margin:10px auto 8px;flex-shrink:0}
+.s-hdr{display:flex;align-items:center;justify-content:space-between;padding:4px 18px 12px;flex-shrink:0;border-bottom:1px solid var(--paper3)}
+.s-hdr .s-title{margin-bottom:0;padding:0 8px;font-size:18px;text-align:center;flex:1}
+.hdr-btn{padding:7px 14px;border-radius:18px;border:none;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.15s ease;flex-shrink:0}
+.hdr-cancel{background:var(--paper2);color:var(--ink2)}
+.hdr-cancel:active{background:var(--paper3)}
+.hdr-confirm{background:var(--sage);color:#fff}
+.hdr-confirm:active{opacity:0.85}
 .s-title{font-family:'Playfair Display',serif;font-size:20px;padding:0 20px;margin-bottom:12px;flex-shrink:0}
-.s-body{padding:0 20px 16px;flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.s-body{padding:14px 20px 16px;flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .s-foot{padding:12px 20px calc(12px + env(safe-area-inset-bottom,0px));background:var(--paper);border-top:1px solid var(--paper3);display:flex;gap:10px;justify-content:flex-end;align-items:center;flex-shrink:0}
 .fg{margin-bottom:14px}
 .fl{font-size:11px;font-weight:500;color:var(--ink3);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em}
@@ -654,7 +663,12 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
 <!-- ADD MEAL -->
 <div class="overlay" id="modal-am">
   <div class="sheet">
-    <div class="sh"></div><div class="s-title">Add a meal</div>
+    <div class="sh"></div>
+    <div class="s-hdr">
+      <button class="hdr-btn hdr-cancel" onclick="closeM('modal-am')">Cancel</button>
+      <div class="s-title">Add a meal</div>
+      <button class="hdr-btn hdr-confirm" onclick="confirmAM()">Add Meal</button>
+    </div>
     <div class="s-body">
       <div class="fg"><div class="fl">Day</div><div class="day-sel-grid" id="am-days"></div></div>
       <div class="fg"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span class="fl" style="margin-bottom:0">Meal type</span><button class="btn btns" id="mt-toggle-btn" style="font-size:10px;padding:4px 8px" onclick="toggleMTPanel()">⚙ Customise</button></div><div class="cwrap" id="am-types"></div><div id="mt-inline-panel" style="display:none;margin-top:10px;background:var(--paper2);border-radius:var(--rs);padding:12px"><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink3);margin-bottom:8px">Custom types</div><div class="mt-chip-wrap" id="mt-chips-inline"></div><div style="display:flex;gap:8px"><input class="fi" id="mt-new-inline" placeholder="e.g. Date Night, Batch Cook…" style="flex:1;font-size:13px;padding:8px 10px" onkeydown="mtKDInline(event)"/><button class="btn btns btnp" onclick="addMTInline()" style="flex-shrink:0">Add</button></div></div></div>
@@ -670,7 +684,6 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
       </div>
       <div class="fg" style="margin-top:10px"><label class="fl">Meal note <span style="font-weight:300;text-transform:none;letter-spacing:0">(optional)</span></label><input class="fi" id="am-note" placeholder="e.g. use up the chicken, double batch…"/></div>
     </div>
-    <div class="s-foot"><button class="btn" onclick="closeM('modal-am')">Cancel</button><button class="btn btnp" onclick="confirmAM()">Add Meal</button></div>
   </div>
 </div>
 
@@ -2168,10 +2181,17 @@ function addSwipeDelete(host,deleteFn){
 }
 function setupKeyboardHandling(){
   if(!window.visualViewport)return;
+  var baseH = window.visualViewport.height;
   function updateVV(){
     var vv = window.visualViewport;
-    document.documentElement.style.setProperty('--vv-height', vv.height + 'px');
+    var h = vv.height;
+    document.documentElement.style.setProperty('--vv-height', h + 'px');
     document.documentElement.style.setProperty('--vv-top', (vv.offsetTop || 0) + 'px');
+    if (baseH - h > 80) {
+      document.body.classList.add('keyboard-open');
+    } else {
+      document.body.classList.remove('keyboard-open');
+    }
   }
   window.visualViewport.addEventListener('resize', updateVV);
   window.visualViewport.addEventListener('scroll', updateVV);
