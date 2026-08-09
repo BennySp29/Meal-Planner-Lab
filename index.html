@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v5.50 -->
+<!-- v5.51 -->
 
 <html lang="en">
 <head>
@@ -108,7 +108,7 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);overscroll-behavior:none}
 .ai-thinking{background:var(--warm-p);border:1.5px solid var(--warm);border-radius:var(--r);padding:16px;text-align:center;margin-bottom:16px}
 .ai-spin{font-size:28px;animation:spin 1.5s linear infinite;display:inline-block;margin-bottom:8px}
 @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
-.overlay{display:none;position:fixed;top:0;left:0;right:0;height:var(--vv-height, 100%);background:rgba(15,26,15,0.6);z-index:200;align-items:flex-end;justify-content:center}
+.overlay{display:none;position:fixed;top:var(--vv-top, 0px);left:0;right:0;height:var(--vv-height, 100%);background:rgba(15,26,15,0.6);z-index:200;align-items:flex-end;justify-content:center}
 .overlay.open{display:flex}
 .sheet{background:var(--paper);border-radius:20px 20px 0 0;width:100%;max-width:600px;max-height:calc(var(--vv-height, 100%) - env(safe-area-inset-top, 0px) - 14px);display:flex;flex-direction:column;overflow:hidden;animation:su 0.3s cubic-bezier(0.34,1.26,0.64,1)}
 @keyframes su{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}
@@ -2169,10 +2169,26 @@ function addSwipeDelete(host,deleteFn){
 function setupKeyboardHandling(){
   if(!window.visualViewport)return;
   function updateVV(){
-    document.documentElement.style.setProperty('--vv-height', window.visualViewport.height + 'px');
+    var vv = window.visualViewport;
+    document.documentElement.style.setProperty('--vv-height', vv.height + 'px');
+    document.documentElement.style.setProperty('--vv-top', (vv.offsetTop || 0) + 'px');
   }
   window.visualViewport.addEventListener('resize', updateVV);
+  window.visualViewport.addEventListener('scroll', updateVV);
+  window.addEventListener('scroll', updateVV);
   updateVV();
+
+  document.addEventListener('focusin', function(e){
+    if(e.target && e.target.classList && e.target.classList.contains('fi')){
+      var sBody = e.target.closest('.s-body');
+      if(sBody){
+        setTimeout(function(){
+          var targetTop = e.target.offsetTop - 10;
+          if(targetTop > 0) sBody.scrollTo({ top: targetTop, behavior: 'smooth' });
+        }, 150);
+      }
+    }
+  });
 }
 
 // UTILS
