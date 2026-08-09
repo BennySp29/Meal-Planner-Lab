@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v5.48 -->
+<!-- v5.49 -->
 
 <html lang="en">
 <head>
@@ -31,7 +31,7 @@
 html{height:100%;height:-webkit-fill-available}
 body{height:100%;height:-webkit-fill-available;margin:0;padding:0;overflow:hidden;background:var(--paper)}
 body{font-family:'DM Sans',sans-serif;color:var(--ink);overscroll-behavior:none}
-.app{display:flex;flex-direction:column;height:100%;height:-webkit-fill-available;width:100%;overflow:hidden}
+.app{display:flex;flex-direction:column;height:var(--vv-height, 100%);width:100%;overflow:hidden}
 .topbar{background:var(--ink);color:var(--cream);padding:max(44px,env(safe-area-inset-top)) 18px 14px;display:flex;align-items:flex-end;justify-content:space-between;flex-shrink:0}
 .topbar-title{font-family:'Playfair Display',serif;font-size:22px;font-style:italic}
 .topbar-sub{font-size:11px;color:#a0b4a0;margin-top:1px;font-weight:300}
@@ -108,9 +108,9 @@ body{font-family:'DM Sans',sans-serif;color:var(--ink);overscroll-behavior:none}
 .ai-thinking{background:var(--warm-p);border:1.5px solid var(--warm);border-radius:var(--r);padding:16px;text-align:center;margin-bottom:16px}
 .ai-spin{font-size:28px;animation:spin 1.5s linear infinite;display:inline-block;margin-bottom:8px}
 @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
-.overlay{display:none;position:fixed;inset:0;background:rgba(15,26,15,0.6);z-index:200;align-items:flex-end;justify-content:center}
+.overlay{display:none;position:fixed;top:0;left:0;right:0;height:var(--vv-height, 100%);background:rgba(15,26,15,0.6);z-index:200;align-items:flex-end;justify-content:center}
 .overlay.open{display:flex}
-.sheet{background:var(--paper);border-radius:20px 20px 0 0;width:100%;max-width:600px;max-height:90vh;max-height:90dvh;display:flex;flex-direction:column;overflow:hidden;animation:su 0.3s cubic-bezier(0.34,1.26,0.64,1)}
+.sheet{background:var(--paper);border-radius:20px 20px 0 0;width:100%;max-width:600px;max-height:calc(var(--vv-height, 100%) - env(safe-area-inset-top, 0px) - 14px);display:flex;flex-direction:column;overflow:hidden;animation:su 0.3s cubic-bezier(0.34,1.26,0.64,1)}
 @keyframes su{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}
 .sh{width:40px;height:4px;background:var(--paper3);border-radius:2px;margin:12px auto 12px;flex-shrink:0}
 .s-title{font-family:'Playfair Display',serif;font-size:20px;padding:0 20px;margin-bottom:12px;flex-shrink:0}
@@ -344,7 +344,7 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
 .swipe-delete-reveal span{color:#fff;font-size:12px;font-weight:700;letter-spacing:0.04em;pointer-events:none}
 /* Mobile keyboard handling */
 :root{--keyboard-height:0px}
-.keyboard-open .sheet{max-height:calc(100dvh - var(--keyboard-height) - env(safe-area-inset-top,0px) - 14px) !important}
+
 </style>
 </head>
 <body>
@@ -511,7 +511,6 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
         <div class="frow" style="margin-bottom:14px"><div><label class="fl">Use by</label><input class="fi" type="date" id="qs-expiry"/></div><div><label class="fl">Batch label</label><input class="fi" id="qs-batch" placeholder="e.g. cooked 1 Jul"/></div></div>
         <div class="fg"><label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer"><input type="checkbox" id="qs-notify" style="width:18px;height:18px;cursor:pointer"/> Notify when low</label></div>
         <div class="fg"><label class="fl">Make time</label><input class="fi" id="qs-time" placeholder="Freezer only, e.g. 45 min"/></div>
-        <div class="fg"><label class="fl">Kitchen items</label><input class="fi" id="qs-kit" placeholder="e.g. microwave, pan"/></div>
         <div class="fg"><label class="fl">Notes</label><textarea class="fi" id="qs-notes" placeholder="Anything useful when tired..." style="height:72px;resize:none"></textarea></div>
         <div class="fg"><label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer"><input type="checkbox" id="qs-template" style="width:18px;height:18px;cursor:pointer"/> Save as template</label></div>
       </div></div>
@@ -556,7 +555,6 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
     <div class="s-body">
       <div class="fg"><label class="fl">Name</label><input class="fi" id="rs-name"/></div>
       <div class="frow" style="margin-bottom:14px"><div><label class="fl">Portions</label><input class="fi" type="number" id="rs-qty" min="1" value="4"/></div><div><label class="fl">Make time</label><input class="fi" id="rs-time" placeholder="e.g. 45 min"/></div></div>
-      <div class="fg"><label class="fl">Kitchen items</label><input class="fi" id="rs-kit" placeholder="e.g. microwave, oven"/></div>
       <div class="frow" style="margin-bottom:14px"><div><label class="fl">Warn at</label><input class="fi" type="number" id="rs-alert1" min="0" placeholder="3"/></div><div><label class="fl">Urgent at</label><input class="fi" type="number" id="rs-alert2" min="0" placeholder="1"/></div></div>
       <div class="fg"><label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer"><input type="checkbox" id="rs-notify" style="width:18px;height:18px;cursor:pointer"/> Notify when low</label></div>
       <div class="fg"><label class="fl">Notes</label><textarea class="fi" id="rs-notes" style="height:72px;resize:none"></textarea></div>
@@ -570,7 +568,7 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
   <div class="sheet">
     <div class="sh"></div><div class="s-title">Add Recipe</div>
     <div class="s-body">
-      <button class="dash-btn" style="width:100%;margin-bottom:8px" onclick="startManualRecipe()"><strong>Manual entry</strong><span>Add the recipe yourself with ingredients, method, appliances and notes.</span></button>
+      <button class="dash-btn" style="width:100%;margin-bottom:8px" onclick="startManualRecipe()"><strong>Manual entry</strong><span>Add the recipe yourself with ingredients, method and notes.</span></button>
       <button class="dash-btn" style="width:100%" onclick="startImportRecipe('url')"><strong>Import recipe</strong><span>Use a URL, photo, or pasted recipe text.</span></button>
     </div>
     <div class="s-foot"><button class="btn" onclick="closeM('modal-recipe-add')">Cancel</button></div>
@@ -695,7 +693,6 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
       <div class="fg"><label class="fl">Personal notes <span style="font-weight:300;text-transform:none;letter-spacing:0">(tips, tweaks, memories)</span></label><textarea class="fi" id="nr-notes" placeholder="e.g. add extra garlic, great for batch cooking…" style="height:72px;resize:none"></textarea></div>
       <div class="fg"><label class="fl">Dietary labels</label><div class="cwrap" id="nr-diets"></div></div>
       <div class="fg"><label class="fl">Contains allergens</label><div class="cwrap" id="nr-allergens"></div></div>
-      <div class="fg"><label class="fl">Kitchen appliances</label><div class="cwrap" id="nr-appliances"></div></div>
       <div class="fg"><label class="fl">Ingredients</label><div id="nr-ings"></div><button class="btn btns" onclick="addIR()" style="margin-top:6px">＋ Ingredient</button></div>
       <div class="fg"><label class="fl">Method / Instructions</label><div style="font-size:11px;color:var(--ink3);margin-bottom:8px">Add each step separately — one action per step works best</div><div id="nr-steps"></div><button class="btn btns" onclick="addSR()" style="margin-top:6px">＋ Step</button></div>
     </div>
@@ -718,7 +715,6 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
       <div class="fg"><label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer"><input type="checkbox" id="st-notify" style="width:18px;height:18px;cursor:pointer"/> Notify when this runs low</label></div>
       <div class="fg"><label class="fl">Variants <span style="font-weight:300;text-transform:none;letter-spacing:0">(one per line, e.g. Chicken: 2)</span></label><textarea class="fi" id="st-variants" placeholder="Chicken: 2&#10;Curry: 1" style="height:72px;resize:none"></textarea></div>
       <div class="fg"><label class="fl">Stock photo</label><input type="file" id="st-img-file" accept="image/*" style="display:none" onchange="handleStockImg(event)"/><div id="st-img-wrap"></div><button type="button" class="img-upload-btn" onclick="gr('st-img-file').click()">Add photo from camera roll</button></div>
-      <div class="fg"><label class="fl">Kitchen items needed</label><input class="fi" id="st-kit" placeholder="e.g. microwave, pan, bottle warmer"/></div>
       <div class="fg"><label class="fl">Notes</label><textarea class="fi" id="st-notes" placeholder="Anything useful when tired..." style="height:86px;resize:none"></textarea></div>
     </div>
     <div class="s-foot"><button class="btn" onclick="closeM('modal-stock')">Cancel</button><button class="btn btnp" onclick="saveStockItem()">Save</button></div>
@@ -754,11 +750,6 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
         <label class="fl">My supermarket</label>
         <div style="font-size:12px;color:var(--ink3);margin-bottom:10px;line-height:1.5">Used to estimate your weekly shop cost. Prices are rough UK averages — actual costs will vary.</div>
         <div class="sm-grid" id="prof-sm"></div>
-      </div>
-      <div class="fg">
-        <label class="fl">My kitchen appliances</label>
-        <div style="font-size:12px;color:var(--ink3);margin-bottom:10px;line-height:1.5">Tick what you own — we'll flag if a recipe needs something you haven't got.</div>
-        <div class="cwrap" id="prof-app"></div>
       </div>
     </div>
     <div class="s-foot"><button class="btn btnp" onclick="saveProfile()">Save</button></div>
@@ -2176,13 +2167,11 @@ function addSwipeDelete(host,deleteFn){
 }
 function setupKeyboardHandling(){
   if(!window.visualViewport)return;
-  var lastH=window.visualViewport.height;
-  window.visualViewport.addEventListener('resize',function(){
-    var h=window.visualViewport.height,diff=lastH-h;
-    if(diff>80){document.body.classList.add('keyboard-open');document.body.style.setProperty('--keyboard-height',diff+'px');}
-    else if(h>lastH-40){document.body.classList.remove('keyboard-open');document.body.style.setProperty('--keyboard-height','0px');}
-    lastH=h;
-  });
+  function updateVV(){
+    document.documentElement.style.setProperty('--vv-height', window.visualViewport.height + 'px');
+  }
+  window.visualViewport.addEventListener('resize', updateVV);
+  updateVV();
   document.addEventListener('focusin',function(e){
     if(e.target.matches('.sheet input,.sheet textarea,.sheet select')){
       setTimeout(function(){e.target.scrollIntoView({behavior:'smooth',block:'center'});},300);
@@ -2406,8 +2395,6 @@ function renderPlanner(){
         info.appendChild(mkEl('div','meal-title',r.name));
         if(m.note)info.appendChild(mkEl('div','meal-note','📝 '+m.note));
         if(ha){info.appendChild(mkEl('div','meal-warn','! Contains '+hits.join(', ')));}
-        var missingInPlan=getMissingAppliances(r);
-        if(missingInPlan.length){info.appendChild(mkEl('div','meal-warn','🔌 Needs: '+missingInPlan.map(function(id){var ap=ALL_APPLIANCES.find(function(a){return a.id===id;});return ap?ap.name:id;}).join(', ')));}
         var baseServings=r.servings||4;var planServings=m.servings||baseServings;
         var metaTxt=r.cuisine+' - '+r.time+' min'+(r.steps&&r.steps.length?' - '+r.steps.length+' steps':'');
         info.appendChild(mkEl('div','meal-meta',metaTxt));
@@ -2867,8 +2854,6 @@ function makeRCard(r){
   r.allergens.forEach(function(a){var t=document.createElement('span');t.className='tag '+(hits.indexOf(a)>=0?'tr':'tgr');t.textContent=a;tags.appendChild(t);});
   card.appendChild(tags);
   if(ha){var w=document.createElement('div');w.className='rc-warn';var s1=document.createElement('span');s1.textContent='!';var s2=document.createElement('span');s2.textContent='Contains '+hits.join(', ');w.appendChild(s1);w.appendChild(s2);card.appendChild(w);}
-  var missingApp=getMissingAppliances(r);
-  if(missingApp.length){var aw=document.createElement('div');aw.className='app-warn';var awI=document.createElement('span');awI.textContent='🔌';var awT=document.createElement('span');awT.textContent='May need: '+missingApp.map(function(id){var ap=ALL_APPLIANCES.find(function(a){return a.id===id;});return ap?ap.emoji+' '+ap.name:id;}).join(', ');aw.appendChild(awI);aw.appendChild(awT);card.appendChild(aw);}
   var acts=document.createElement('div');acts.className='rc-actions';
   var vb=document.createElement('button');vb.className='btn btns';vb.textContent='View';vb.style.flex='1';
   (function(id){vb.addEventListener('click',function(){openRV(id);});})(r.id);
@@ -3200,21 +3185,6 @@ function openRV(id){
   cont.appendChild(hero);
   if(r.diets.length||r.allergens.length){var tags=mkEl('div');tags.style.cssText='display:flex;flex-wrap:wrap;gap:5px;margin-bottom:16px';r.diets.forEach(function(d){tags.appendChild(mkEl('span','tag tg',d));});r.allergens.forEach(function(a){tags.appendChild(mkEl('span','tag '+(hits.indexOf(a)>=0?'tr':'tgr'),a));});cont.appendChild(tags);}
   if(ha){var w=mkEl('div','rc-warn');w.style.marginBottom='16px';w.appendChild(mkEl('span','','!'));w.appendChild(mkEl('span','','Contains: '+hits.join(', ')));cont.appendChild(w);}
-  var neededApp=getRecipeAppliances(r);
-  if(neededApp.length){
-    var appRow=document.createElement('div');appRow.style.cssText='display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:16px';
-    var appLbl=document.createElement('span');appLbl.style.cssText='font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink3)';appLbl.textContent='Needs:';
-    appRow.appendChild(appLbl);
-    neededApp.forEach(function(id){
-      var ap=ALL_APPLIANCES.find(function(a){return a.id===id;});if(!ap)return;
-      var missing=userAppliances.length>0&&userAppliances.indexOf(id)<0;
-      var chip=document.createElement('span');
-      chip.style.cssText='padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid;'+(missing?'background:var(--warm-p);color:#5a3a10;border-color:var(--warm)':'background:var(--sage-p);color:var(--sage);border-color:var(--sage-p)');
-      chip.textContent=ap.emoji+' '+ap.name+(missing?' ✕':'');
-      appRow.appendChild(chip);
-    });
-    cont.appendChild(appRow);
-  }
   // Servings scaler
   var rvServings=r.servings||4;
   var rvSWrap=mkEl('div');rvSWrap.style.cssText='display:flex;align-items:center;gap:10px;margin-bottom:16px;background:var(--paper2);border-radius:var(--rs);padding:10px 14px';
@@ -3739,7 +3709,7 @@ function applyStockTemplate(id){
   var t=stockTemplates.find(function(x){return String(x.id)===String(id);});if(!t)return;
   t=normaliseStockTemplate(t);
   stockQuickSection=t.section||'snack';renderQuickStockSectionPicker(stockQuickSection);
-  gr('qs-name').value=t.name||'';gr('qs-type').value=t.type||'';gr('qs-qty').value=t.qty||1;gr('qs-target').value=t.targetQty!==null&&t.targetQty!==undefined?t.targetQty:'';gr('qs-time').value=t.makeTime||'';gr('qs-expiry').value=t.expiry||'';gr('qs-batch').value=t.batch||'';gr('qs-alert1').value=t.alert1!==null&&t.alert1!==undefined?t.alert1:'';gr('qs-alert2').value=t.alert2!==null&&t.alert2!==undefined?t.alert2:'';gr('qs-notify').checked=!!t.notify;gr('qs-kit').value=t.kit||'';gr('qs-notes').value=t.notes||'';renderStockDuplicateHint('qs');
+  gr('qs-name').value=t.name||'';gr('qs-type').value=t.type||'';gr('qs-qty').value=t.qty||1;gr('qs-target').value=t.targetQty!==null&&t.targetQty!==undefined?t.targetQty:'';gr('qs-time').value=t.makeTime||'';gr('qs-expiry').value=t.expiry||'';gr('qs-batch').value=t.batch||'';gr('qs-alert1').value=t.alert1!==null&&t.alert1!==undefined?t.alert1:'';gr('qs-alert2').value=t.alert2!==null&&t.alert2!==undefined?t.alert2:'';gr('qs-notify').checked=!!t.notify;gr('qs-notes').value=t.notes||'';renderStockDuplicateHint('qs');
 }
 function openQuickStockModal(templateId){
   var section=['all','low','recent'].indexOf(stockFilter)>=0?'snack':stockFilter;
@@ -3755,13 +3725,13 @@ function openStockModal(id){
   item=item?normaliseStockItem(item):{section:['all','low','recent'].indexOf(stockFilter)>=0?'snack':stockFilter,qty:1};
   gr('stock-title').textContent=id?'Edit stock item':'New stock item';
   stockImgB64=item.image||'';
-  gr('st-name').value=item.name||'';gr('st-type').value=item.type||'';gr('st-qty').value=item.qty===0?0:(item.qty||1);gr('st-target').value=item.targetQty!==null&&item.targetQty!==undefined?item.targetQty:'';gr('st-time').value=item.makeTime||'';gr('st-expiry').value=item.expiry||'';gr('st-batch').value=item.batch||'';gr('st-alert1').value=item.alert1!==null&&item.alert1!==undefined?item.alert1:'';gr('st-alert2').value=item.alert2!==null&&item.alert2!==undefined?item.alert2:'';gr('st-notify').checked=!!item.notify;gr('st-variants').value=variantText(item.variants);renderStockImg(stockImgB64);gr('st-kit').value=item.kit||'';gr('st-notes').value=item.notes||'';
+  gr('st-name').value=item.name||'';gr('st-type').value=item.type||'';gr('st-qty').value=item.qty===0?0:(item.qty||1);gr('st-target').value=item.targetQty!==null&&item.targetQty!==undefined?item.targetQty:'';gr('st-time').value=item.makeTime||'';gr('st-expiry').value=item.expiry||'';gr('st-batch').value=item.batch||'';gr('st-alert1').value=item.alert1!==null&&item.alert1!==undefined?item.alert1:'';gr('st-alert2').value=item.alert2!==null&&item.alert2!==undefined?item.alert2:'';gr('st-notify').checked=!!item.notify;gr('st-variants').value=variantText(item.variants);renderStockImg(stockImgB64);gr('st-notes').value=item.notes||'';
   renderStockDuplicateHint('st',stockEditId);
   renderStockSectionPicker(item.section||'snack');openM('modal-stock');
 }
 function saveQuickStockItem(){
   var name=gr('qs-name').value.trim();if(!name){showToast('Add a stock name');return;}
-  var item=normaliseStockItem({id:newId('stock'),name:name,section:stockQuickSection,type:gr('qs-type').value,qty:gr('qs-qty').value,targetQty:gr('qs-target').value,makeTime:gr('qs-time').value,expiry:gr('qs-expiry').value,batch:gr('qs-batch').value,alert1:gr('qs-alert1').value,alert2:gr('qs-alert2').value,notify:gr('qs-notify').checked,kit:gr('qs-kit').value,notes:gr('qs-notes').value,updatedAt:Date.now(),updatedBy:fbCfg.who||'Someone'});
+  var item=normaliseStockItem({id:newId('stock'),name:name,section:stockQuickSection,type:gr('qs-type').value,qty:gr('qs-qty').value,targetQty:gr('qs-target').value,makeTime:gr('qs-time').value,expiry:gr('qs-expiry').value,batch:gr('qs-batch').value,alert1:gr('qs-alert1').value,alert2:gr('qs-alert2').value,notify:gr('qs-notify').checked,kit:'',notes:gr('qs-notes').value,updatedAt:Date.now(),updatedBy:fbCfg.who||'Someone'});
   stockItems.push(item);
   if(gr('qs-template').checked)upsertStockTemplate(item,false);
   addActivity('Added '+item.name,item.qty+' in '+stockSectionName(item.section),'stock');
@@ -3770,7 +3740,7 @@ function saveQuickStockItem(){
 }
 function saveStockItem(){
   var name=gr('st-name').value.trim();if(!name){showToast('Add a stock name');return;}
-  var item=normaliseStockItem({id:stockEditId||newId('stock'),name:name,section:gr('st-section').getAttribute('data-value')||'snack',type:gr('st-type').value,qty:gr('st-qty').value,targetQty:gr('st-target').value,makeTime:gr('st-time').value,expiry:gr('st-expiry').value,batch:gr('st-batch').value,variants:parseVariantText(gr('st-variants').value),image:stockImgB64,alert1:gr('st-alert1').value,alert2:gr('st-alert2').value,notify:gr('st-notify').checked,kit:gr('st-kit').value,notes:gr('st-notes').value,updatedAt:Date.now(),updatedBy:fbCfg.who||'Someone'});
+  var item=normaliseStockItem({id:stockEditId||newId('stock'),name:name,section:gr('st-section').getAttribute('data-value')||'snack',type:gr('st-type').value,qty:gr('st-qty').value,targetQty:gr('st-target').value,makeTime:gr('st-time').value,expiry:gr('st-expiry').value,batch:gr('st-batch').value,variants:parseVariantText(gr('st-variants').value),image:stockImgB64,alert1:gr('st-alert1').value,alert2:gr('st-alert2').value,notify:gr('st-notify').checked,kit:'',notes:gr('st-notes').value,updatedAt:Date.now(),updatedBy:fbCfg.who||'Someone'});
   var idx=stockItems.findIndex(function(x){return String(x.id)===String(item.id);});
   if(idx>=0)stockItems[idx]=item;else stockItems.push(item);
   addActivity((idx>=0?'Updated ':'Added ')+item.name,item.qty+' left','stock');
@@ -3832,15 +3802,14 @@ function openRecipeStockModal(id){
   gr('rs-name').value=r.name;
   gr('rs-qty').value=r.servings||4;
   gr('rs-time').value=(r.time||'')?(r.time+' min'):'';
-  var apps=(r.appliances&&r.appliances.length?r.appliances:getRecipeAppliances(r)).map(function(apId){var ap=ALL_APPLIANCES.find(function(a){return a.id===apId;});return ap?ap.name:apId;});
-  gr('rs-kit').value=apps.join(', ');
+
   gr('rs-alert1').value=3;gr('rs-alert2').value=1;gr('rs-notify').checked=false;
   gr('rs-notes').value='Batch cooked from recipe';
   openM('modal-recipe-stock');
 }
 function saveRecipeStockBatch(){
   var name=gr('rs-name').value.trim();if(!name){showToast('Add a freezer stock name');return;}
-  var item=normaliseStockItem({id:newId('stock'),name:name,section:'freezer',type:'meal',qty:gr('rs-qty').value,makeTime:gr('rs-time').value,alert1:gr('rs-alert1').value,alert2:gr('rs-alert2').value,notify:gr('rs-notify').checked,kit:gr('rs-kit').value,notes:gr('rs-notes').value,recipeId:recipeStockId,updatedAt:Date.now(),updatedBy:fbCfg.who||'Someone'});
+  var item=normaliseStockItem({id:newId('stock'),name:name,section:'freezer',type:'meal',qty:gr('rs-qty').value,makeTime:gr('rs-time').value,alert1:gr('rs-alert1').value,alert2:gr('rs-alert2').value,notify:gr('rs-notify').checked,kit:'',notes:gr('rs-notes').value,recipeId:recipeStockId,updatedAt:Date.now(),updatedBy:fbCfg.who||'Someone'});
   stockItems.push(item);
   addActivity('Added freezer batch '+item.name,item.qty+' portions','stock');
   function finish(){closeM('modal-recipe-stock');persist('stockItems',{type:'update',item:item});checkStockAlert(item);renderStock();renderDashboard();showToast('Freezer stock added');}
@@ -4938,19 +4907,7 @@ function openProfile(){
     });})(sm.id);
     smEl.appendChild(btn);
   });
-  // Appliances
-  var appEl=gr('prof-app');appEl.innerHTML='';
-  ALL_APPLIANCES.forEach(function(ap){
-    var btn=document.createElement('button');
-    btn.className='app-chip'+(userAppliances.indexOf(ap.id)>=0?' on':'');
-    btn.textContent=ap.emoji+' '+ap.name;
-    (function(id,b){b.addEventListener('click',function(){
-      var idx=userAppliances.indexOf(id);
-      if(idx>=0)userAppliances.splice(idx,1);else userAppliances.push(id);
-      b.className='app-chip'+(userAppliances.indexOf(id)>=0?' on':'');
-    });})(ap.id,btn);
-    appEl.appendChild(btn);
-  });
+
   openM('modal-prof');
 }
 function renderProfWeekStart(){
