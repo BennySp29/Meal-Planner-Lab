@@ -2179,11 +2179,14 @@ function setupKeyboardHandling(){
   updateVV();
 
   document.addEventListener('focusin', function(e){
-    if(e.target && e.target.classList && e.target.classList.contains('fi')){
+    if(e.target && e.target.matches && e.target.matches('.fi, input, textarea, select')){
       var sBody = e.target.closest('.s-body');
       if(sBody){
         setTimeout(function(){
-          var targetTop = e.target.offsetTop - 10;
+          if(!e.target || !sBody) return;
+          var inputRect = e.target.getBoundingClientRect();
+          var bodyRect = sBody.getBoundingClientRect();
+          var targetTop = inputRect.top - bodyRect.top + sBody.scrollTop - 10;
           if(targetTop > 0) sBody.scrollTo({ top: targetTop, behavior: 'smooth' });
         }, 150);
       }
