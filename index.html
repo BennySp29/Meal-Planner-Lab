@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v5.54 -->
+<!-- v5.55 -->
 
 <html lang="en">
 <head>
@@ -2200,14 +2200,14 @@ function setupKeyboardHandling(){
 
   document.addEventListener('focusin', function(e){
     if(e.target && e.target.matches && e.target.matches('.fi, input, textarea, select')){
-      var sBody = e.target.closest('.s-body');
-      if(sBody){
+      var container = e.target.closest('.s-body') || e.target.closest('.content');
+      if(container){
         setTimeout(function(){
-          if(!e.target || !sBody) return;
+          if(!e.target || !container) return;
           var inputRect = e.target.getBoundingClientRect();
-          var bodyRect = sBody.getBoundingClientRect();
-          var targetTop = inputRect.top - bodyRect.top + sBody.scrollTop - 10;
-          if(targetTop > 0) sBody.scrollTo({ top: targetTop, behavior: 'smooth' });
+          var containerRect = container.getBoundingClientRect();
+          var targetTop = inputRect.top - containerRect.top + container.scrollTop - 10;
+          if(targetTop > 0) container.scrollTo({ top: targetTop, behavior: 'smooth' });
         }, 150);
       }
     }
