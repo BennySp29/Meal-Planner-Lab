@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v5.56 -->
+<!-- v5.57 -->
 
 <html lang="en">
 <head>
@@ -428,9 +428,28 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
       <hr class="shop-divider"/>
       <div class="sec-hdr" style="margin-bottom:8px"><div style="font-family:'Playfair Display',serif;font-size:16px">Extras</div></div>
       <div style="font-size:12px;color:var(--ink3);margin-bottom:10px">Crisps, chocolate, toilet roll… anything not in a recipe</div>
-      <div class="extra-shop-row">
-        <input class="fi" id="extra-input" placeholder="e.g. toilet roll, chocolate…" style="flex:1" onkeydown="extraKD(event)"/>
-        <button class="btn btns btnp" onclick="addExtra()" style="flex-shrink:0">Add</button>
+      <div class="extra-shop-row" style="display:flex;gap:6px;align-items:center">
+        <input class="fi" id="extra-input" placeholder="e.g. toilet roll, chocolate…" style="flex:2;min-width:110px" onkeydown="extraKD(event)"/>
+        <input type="number" step="any" min="0" class="fi" id="extra-qty-input" placeholder="Qty" style="width:56px;flex:0 0 56px;padding:9px 6px;text-align:center" onkeydown="extraKD(event)"/>
+        <select class="fi" id="extra-unit-select" style="width:72px;flex:0 0 72px;padding:9px 4px;font-size:12px">
+          <option value="">—</option>
+          <option value="pack(s)">pack(s)</option>
+          <option value="can(s)">can(s)</option>
+          <option value="bottle(s)">bottle(s)</option>
+          <option value="bag(s)">bag(s)</option>
+          <option value="box(es)">box(es)</option>
+          <option value="g">g</option>
+          <option value="kg">kg</option>
+          <option value="ml">ml</option>
+          <option value="l">l</option>
+          <option value="tbsp">tbsp</option>
+          <option value="tsp">tsp</option>
+          <option value="cup">cup</option>
+          <option value="slice(s)">slice(s)</option>
+          <option value="bunch(es)">bunch(es)</option>
+          <option value="pinch">pinch</option>
+        </select>
+        <button class="btn btns btnp" onclick="addExtra()" style="flex-shrink:0;padding:9px 12px">Add</button>
       </div>
       <div id="extras-list"></div>
     </div>
@@ -1444,6 +1463,26 @@ function applySharedState(state,force){
   if(shouldCheckStockAlerts)checkAllStockAlerts();
   return true;
 }
+function normaliseExtraItem(item){
+  if(!item)return null;
+  if(typeof item==='string'){
+    var s=item.trim();
+    if(!s)return null;
+    return {name:s,qty:1,unit:''};
+  }
+  if(typeof item==='object'){
+    var n=String(item.name||'').trim();
+    if(!n)return null;
+    var q=parseFloat(item.qty);
+    return {name:n,qty:q>0?q:1,unit:String(item.unit||'').trim()};
+  }
+  return null;
+}
+function extraItemMatches(a,b){
+  var na=typeof a==='object'&&a?(a.name||''):String(a||'');
+  var nb=typeof b==='object'&&b?(b.name||''):String(b||'');
+  return na.trim().toLowerCase()===nb.trim().toLowerCase();
+}
 function normaliseSharedState(state){
   state=state&&typeof state==='object'?state:{};
   return{
@@ -1454,7 +1493,7 @@ function normaliseSharedState(state){
     planMeta:cleanPlanMeta(state.planMeta),
     planMealDeletes:normaliseStampMap(state.planMealDeletes),
     checked:checkedFromState(state.checked),
-    extraItems:Array.isArray(state.extraItems)?state.extraItems:[],
+    extraItems:(Array.isArray(state.extraItems)?state.extraItems:[]).map(normaliseExtraItem).filter(Boolean),
     stockItems:Array.isArray(state.stockItems)?state.stockItems.map(normaliseStockItem):[],
     stockDeletes:normaliseStampMap(state.stockDeletes),
     stockTemplates:Array.isArray(state.stockTemplates)?state.stockTemplates.map(normaliseStockTemplate):[],
@@ -1602,10 +1641,10 @@ function mergeSharedState(remote, local, changedKey, changedDateKey, ts){
   }
   if(changedKey==='extraItems'){
     var exOp=changedDateKey||{};
-    var mergedExtras=mergeSimpleList(remote.extraItems,local.extraItems);
+    var mergedExtras=mergeSimpleList(remote.extraItems,local.extraItems).map(normaliseExtraItem).filter(Boolean);
     if(exOp.type==='add')out.extraItems=mergedExtras;
-    else if(exOp.type==='remove')out.extraItems=mergedExtras.filter(function(item){return item!==exOp.item;});
-    else out.extraItems=local.extraItems;
+    else if(exOp.type==='remove')out.extraItems=mergedExtras.filter(function(item){return !extraItemMatches(item,exOp.item);});
+    else out.extraItems=(Array.isArray(local.extraItems)?local.extraItems:[]).map(normaliseExtraItem).filter(Boolean);
   }
   if(changedKey==='stockItems'){
     var stOp=changedDateKey||{};
@@ -2663,13 +2702,18 @@ function estimateCost(){
     var base=AISLE_BASE_COST[cat]||0.90;
     items.forEach(function(item){
       var cost=base*sm.mult;
-      if(item.unit==='g'&&item.qty>500)cost*=1.6;
-      else if(item.unit==='kg'&&item.qty>1)cost*=1.8;
-      else if(item.unit==='l'&&item.qty>0.5)cost*=1.4;
+      var q=typeof item.qty==='number'?item.qty:1;
+      if(item.unit==='g'&&q>500)cost*=1.6;
+      else if(item.unit==='kg'&&q>1)cost*=1.8;
+      else if(item.unit==='l'&&q>0.5)cost*=1.4;
       total+=cost;
     });
   });
-  total+=extraItems.length*(AISLE_BASE_COST.Pantry*sm.mult);
+  total+=extraItems.reduce(function(sum,e){
+    var item=normaliseExtraItem(e);
+    var q=item?item.qty:1;
+    return sum+q*(AISLE_BASE_COST.Pantry*sm.mult);
+  },0);
   total+=stockNeedsForShopping().length*(AISLE_BASE_COST.Pantry*sm.mult);
   return{total:Math.round(total*100)/100,sm:sm};
 }
@@ -2720,24 +2764,259 @@ function getMissingAppliances(r){
 // ─────────────────────────────────────────────────────────────────────────────
 
 // SHOPPING
+function standardiseUnit(unit){
+  if(!unit)return '';
+  var u=String(unit).toLowerCase().trim();
+  if(u==='g'||u==='gram'||u==='grams')return 'g';
+  if(u==='kg'||u==='kilo'||u==='kilos'||u==='kilogram'||u==='kilograms')return 'kg';
+  if(u==='ml'||u==='millilitre'||u==='millilitres'||u==='milliliter'||u==='milliliters')return 'ml';
+  if(u==='l'||u==='litre'||u==='litres'||u==='liter'||u==='liters')return 'l';
+  if(u==='tbsp'||u==='tablespoon'||u==='tablespoons')return 'tbsp';
+  if(u==='tsp'||u==='teaspoon'||u==='teaspoons')return 'tsp';
+  if(u==='cup'||u==='cups')return 'cup';
+  if(u==='oz'||u==='ounce'||u==='ounces')return 'oz';
+  if(u==='lb'||u==='lbs'||u==='pound'||u==='pounds')return 'lb';
+  if(u==='clove'||u==='cloves'||u==='clove(s)')return 'clove(s)';
+  if(u==='slice'||u==='slices'||u==='slice(s)')return 'slice(s)';
+  if(u==='bunch'||u==='bunches'||u==='bunch(es)')return 'bunch(es)';
+  if(u==='sprig'||u==='sprigs'||u==='sprig(s)')return 'sprig(s)';
+  if(u==='can'||u==='cans'||u==='can(s)'||u==='tin'||u==='tins'||u==='tin(s)')return 'can(s)';
+  if(u==='pinch'||u==='pinches')return 'pinch';
+  if(u==='pack'||u==='packs'||u==='pack(s)'||u==='packet'||u==='packets')return 'pack(s)';
+  if(u==='bottle'||u==='bottles'||u==='bottle(s)')return 'bottle(s)';
+  if(u==='bag'||u==='bags'||u==='bag(s)')return 'bag(s)';
+  if(u==='box'||u==='boxes'||u==='box(es)')return 'box(es)';
+  return u;
+}
+
+function cleanIngredientName(raw){
+  if(!raw)return '';
+  var s=String(raw).toLowerCase().trim();
+  s=s.replace(/\([^)]*\)/g,' ');
+  s=s.replace(/[,;:*~]/g,' ');
+  s=s.replace(/\s+/g,' ').trim();
+
+  if(/^(tin|tinned|can|canned)\s+(of\s+)?(chopped\s+|plum\s+|diced\s+)?tomatoes?$/i.test(s)||/^(chopped\s+|plum\s+|diced\s+)?(tinned|canned)\s+tomatoes?$/i.test(s)||/^(chopped|plum)\s+tomatoes?$/i.test(s)){
+    return 'tinned tomatoes';
+  }
+
+  var removeWords=[
+    'finely diced','roughly diced','coarsely diced','diced',
+    'finely chopped','roughly chopped','coarsely chopped','chopped',
+    'thinly sliced','thickly sliced','finely sliced','sliced',
+    'finely minced','minced','finely grated','coarsely grated','grated','shredded',
+    'crushed','mashed','smashed','beaten','whisked',
+    'peeled and diced','peeled and chopped','peeled','unpeeled','deseeded','seeded','stemmed','pitted','cored','trimmed',
+    'halved','quartered','cubed',
+    'melted','softened','chilled','cold','warm','hot','boiling','frozen','thawed','room temperature',
+    'cooked','uncooked','raw','roasted','toasted','fried','baked','steamed',
+    'drained and rinsed','rinsed and drained','drained','rinsed',
+    'freshly ground','freshly grated','freshly squeezed','fresh',
+    'small','medium','large','extra large','xl','baby','big',
+    'cloves of','clove of','stalks of','stalk of','sprigs of','sprig of',
+    'bunches of','bunch of','heads of','head of','pieces of','piece of',
+    'slices of','slice of','tins of','tin of','cans of','can of',
+    'pots of','pot of','packets of','packet of','packs of','pack of',
+    'bags of','bag of','bottles of','bottle of','jars of','jar of',
+    'rashers of','rasher of','rashers','rasher',
+    'to taste','for serving','for garnish','plus extra','optional'
+  ];
+
+  removeWords.sort(function(a,b){return b.length-a.length;});
+
+  for(var i=0;i<removeWords.length;i++){
+    var w=removeWords[i];
+    var reg=new RegExp('(^|\\s)'+w.replace(/[.*+?^${}()|[\\]\\\\]/g,'\\$&')+'($|\\s)','g');
+    s=s.replace(reg,' ').trim();
+  }
+
+  s=s.replace(/\s+/g,' ').trim();
+
+  var directMap={
+    'onion':'onion',
+    'onions':'onion',
+    'brown onion':'onion',
+    'brown onions':'onion',
+    'yellow onion':'onion',
+    'yellow onions':'onion',
+    'white onion':'onion',
+    'white onions':'onion',
+    'red onions':'red onion',
+    'spring onions':'spring onion',
+    'green onions':'spring onion',
+    'green onion':'spring onion',
+    'scallions':'spring onion',
+    'scallion':'spring onion',
+    'garlic clove':'garlic',
+    'garlic cloves':'garlic',
+    'clove garlic':'garlic',
+    'cloves garlic':'garlic',
+    'tomatoes':'tomato',
+    'cherry tomatoes':'cherry tomato',
+    'plum tomatoes':'plum tomato',
+    'tinned tomato':'tinned tomatoes',
+    'tin tomatoes':'tinned tomatoes',
+    'canned tomatoes':'tinned tomatoes',
+    'canned tomato':'tinned tomatoes',
+    'tin of tomatoes':'tinned tomatoes',
+    'can of tomatoes':'tinned tomatoes',
+    'chopped tomatoes':'tinned tomatoes',
+    'tinned chopped tomatoes':'tinned tomatoes',
+    'potatoes':'potato',
+    'sweet potatoes':'sweet potato',
+    'mushrooms':'mushroom',
+    'button mushrooms':'button mushroom',
+    'chestnut mushrooms':'chestnut mushroom',
+    'carrots':'carrot',
+    'peppers':'pepper',
+    'bell peppers':'bell pepper',
+    'bell pepper':'bell pepper',
+    'red peppers':'red pepper',
+    'green peppers':'green pepper',
+    'yellow peppers':'yellow pepper',
+    'chillies':'chilli',
+    'chilies':'chilli',
+    'chili':'chilli',
+    'chilis':'chilli',
+    'chilli pepper':'chilli',
+    'chilli flakes':'chilli flakes',
+    'chili flakes':'chilli flakes',
+    'red chillies':'red chilli',
+    'red chilies':'red chilli',
+    'green chillies':'green chilli',
+    'green chilies':'green chilli',
+    'lemons':'lemon',
+    'limes':'lime',
+    'avocados':'avocado',
+    'bananas':'banana',
+    'apples':'apple',
+    'eggs':'egg',
+    'chicken breasts':'chicken breast',
+    'chicken thighs':'chicken thigh',
+    'chicken fillets':'chicken fillet',
+    'tortillas':'tortilla',
+    'flour tortillas':'flour tortillas',
+    'corn tortillas':'corn tortillas',
+    'courgettes':'courgette',
+    'zucchinis':'courgette',
+    'zucchini':'courgette',
+    'shallots':'shallot',
+    'leeks':'leek',
+    'bay leaves':'bay leaf',
+    'lime leaves':'lime leaf',
+    'parmesan cheese':'parmesan',
+    'cheddar cheese':'cheddar',
+    'mozzarella cheese':'mozzarella',
+    'feta cheese':'feta',
+    'olive oils':'olive oil',
+    'extra virgin olive oil':'olive oil'
+  };
+
+  if(directMap[s])return directMap[s];
+
+  if(s.endsWith('ies'))s=s.slice(0,-3)+'y';
+  else if(s.endsWith('es')&&!s.endsWith('cheese')&&!s.endsWith('olives')){
+    if(s.endsWith('toes'))s=s.slice(0,-2);
+    else if(s.endsWith('ches')||s.endsWith('shes')||s.endsWith('sses')||s.endsWith('xes'))s=s.slice(0,-2);
+    else s=s.slice(0,-1);
+  }else if(s.endsWith('s')&&!s.endsWith('ss')&&!s.endsWith('us')&&!s.endsWith('is')&&!s.endsWith('couscous')&&!s.endsWith('hummus')&&!s.endsWith('molasses')&&!s.endsWith('oats')&&!s.endsWith('peas')&&!s.endsWith('olives')&&!s.endsWith('flakes')&&!s.endsWith('leaves')){
+    s=s.slice(0,-1);
+  }
+
+  return s.trim();
+}
+
 function consolidate(){
   var totals={};
   function addIngredientTotal(ing,scale){
     if(!ing||!ing.name)return;
-    var k=String(ing.name).toLowerCase().trim();
-    if(!k)return;
-    if(!totals[k])totals[k]={name:ing.name,qty:0,unit:ing.unit||''};
-    totals[k].qty+=(parseFloat(ing.qty)||1)*(scale||1);
+    var rawName=String(ing.name).trim();
+    if(!rawName)return;
+    var unit=standardiseUnit(ing.unit);
+    var canonicalName=cleanIngredientName(rawName);
+    if(!canonicalName)canonicalName=rawName.toLowerCase();
+
+    if(!unit&&(canonicalName==='garlic'&&/clove/i.test(rawName))){
+      unit='clove(s)';
+    }
+
+    var qty=(parseFloat(ing.qty)||1)*(scale||1);
+
+    if(!totals[canonicalName]){
+      totals[canonicalName]={
+        name:canonicalName,
+        quantities:{},
+        rawNames:[rawName]
+      };
+    } else {
+      if(totals[canonicalName].rawNames.indexOf(rawName)<0)totals[canonicalName].rawNames.push(rawName);
+    }
+
+    var targetUnit=unit;
+    var targetQty=qty;
+
+    if(unit==='kg'){targetUnit='g';targetQty=qty*1000;}
+    else if(unit==='l'){targetUnit='ml';targetQty=qty*1000;}
+
+    totals[canonicalName].quantities[targetUnit]=(totals[canonicalName].quantities[targetUnit]||0)+targetQty;
   }
-  Object.values(getWeekPlan()).forEach(function(meals){if(!meals)return;meals.forEach(function(m){var r=rec(m.recipeId);if(r){var baseServings=r.servings||4;var planServings=m.servings||baseServings;var scale=planServings/baseServings;r.ingredients.forEach(function(ing){addIngredientTotal(ing,scale);});return;}if(m.manualIngredients&&m.manualIngredients.length)m.manualIngredients.forEach(function(ing){addIngredientTotal(ing,1);});});});
+
+  Object.values(getWeekPlan()).forEach(function(meals){
+    if(!meals)return;
+    meals.forEach(function(m){
+      var r=rec(m.recipeId);
+      if(r){
+        var baseServings=r.servings||4;
+        var planServings=m.servings||baseServings;
+        var scale=planServings/baseServings;
+        r.ingredients.forEach(function(ing){addIngredientTotal(ing,scale);});
+        return;
+      }
+      if(m.manualIngredients&&m.manualIngredients.length){
+        m.manualIngredients.forEach(function(ing){addIngredientTotal(ing,1);});
+      }
+    });
+  });
+
+  var consolidatedList=[];
+  Object.values(totals).forEach(function(entry){
+    var unitKeys=Object.keys(entry.quantities);
+    if(unitKeys.length===1){
+      var u=unitKeys[0];
+      var q=entry.quantities[u];
+      if(u==='g'&&q>=1000&&q%100===0){q=q/1000;u='kg';}
+      else if(u==='ml'&&q>=1000&&q%100===0){q=q/1000;u='l';}
+      consolidatedList.push({
+        name:entry.name,
+        qty:q,
+        unit:u,
+        rawNames:entry.rawNames
+      });
+    } else {
+      var parts=unitKeys.map(function(u){
+        var q=entry.quantities[u];
+        if(u==='g'&&q>=1000&&q%100===0){q=q/1000;u='kg';}
+        else if(u==='ml'&&q>=1000&&q%100===0){q=q/1000;u='l';}
+        return u?(frac(q)+' '+u):frac(q);
+      });
+      consolidatedList.push({
+        name:entry.name,
+        qty:parts.join(' + '),
+        unit:'',
+        isCustomQty:true,
+        rawNames:entry.rawNames
+      });
+    }
+  });
+
   var cats={};aisleOrder.forEach(function(c){cats[c]=[];});
-  Object.values(totals).forEach(function(v){
+  consolidatedList.forEach(function(v){
     var n=v.name.toLowerCase();
-    if(PRODUCE.some(function(w){return n.indexOf(w)>=0}))cats.Produce.push(v);
-    else if(PROTEIN.some(function(w){return n.indexOf(w)>=0}))cats.Protein.push(v);
-    else if(DAIRY.some(function(w){return n.indexOf(w)>=0}))cats.Dairy.push(v);
-    else if(PANTRY.some(function(w){return n.indexOf(w)>=0}))cats.Pantry.push(v);
-    else if(SPICES.some(function(w){return n.indexOf(w)>=0}))cats.Spices.push(v);
+    if(PRODUCE.some(function(w){return n.indexOf(w)>=0;}))cats.Produce.push(v);
+    else if(PROTEIN.some(function(w){return n.indexOf(w)>=0;}))cats.Protein.push(v);
+    else if(DAIRY.some(function(w){return n.indexOf(w)>=0;}))cats.Dairy.push(v);
+    else if(PANTRY.some(function(w){return n.indexOf(w)>=0;}))cats.Pantry.push(v);
+    else if(SPICES.some(function(w){return n.indexOf(w)>=0;}))cats.Spices.push(v);
     else cats.Other.push(v);
   });
   return cats;
@@ -2745,7 +3024,7 @@ function consolidate(){
 function renderShop(){
   renderCostBanner();
   var el=gr('shop-content');
-  var tot=Object.values(getWeekPlan()).reduce(function(s,a){return s+(a?a.length:0)},0);
+  var tot=Object.values(getWeekPlan()).reduce(function(s,a){return s+(a?a.length:0);},0);
   var stockHtml=renderStockShoppingHtml();
   if(tot===0&&stockHtml){el.innerHTML=stockHtml;renderExtras();return;}
   if(tot===0){el.innerHTML='<div class="empty"><span class="empty-icon">🛒</span><div class="empty-title">Your list is empty</div><div class="empty-text">Add meals in the Planner tab to generate your shopping list</div></div>';renderExtras();return;}
@@ -2753,14 +3032,15 @@ function renderShop(){
   Object.entries(grps).forEach(function(e){
     var cat=e[0],items=e[1];if(!items.length)return;
     html+='<div class="shop-cat"><div class="shop-cat-hdr"><span>'+cat+'</span><span>'+items.length+' item'+(items.length!==1?'s':'')+'</span></div>';
-    items.sort(function(a,b){return a.name.localeCompare(b.name)}).forEach(function(item){
+    items.sort(function(a,b){return a.name.localeCompare(b.name);}).forEach(function(item){
       var k=item.name.toLowerCase().replace(/\s/g,'_');var on=!!checked[k];
       var sn=item.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      var qtyText=item.isCustomQty?item.qty:fmt(item.qty,item.unit);
       html+='<div class="shop-item'+(on?' done':'')+'" id="si-'+k+'">'
            +'<div class="chk'+(on?' on':'')+'" onclick="toggleChk(\''+k+'\')">'
            +'<span class="chk-tick">&#10003;</span></div>'
-           +'<div class="si-name">'+item.name+'</div>'
-           +'<div class="si-qty">'+fmt(item.qty,item.unit)+'</div>'
+           +'<div class="si-name">'+escHtml(item.name)+'</div>'
+           +'<div class="si-qty">'+escHtml(qtyText)+'</div>'
            +'<button class="rm-btn" onclick="removeShopItem(event,\''+sn+'\')" title="Remove">x</button>'
            +'</div>';
     });
@@ -2796,6 +3076,7 @@ function removeShopItem(ev, name) {
     'This removes the meal(s) that use this ingredient from your planner.'
   )) return;
 
+  var canonicalTarget = cleanIngredientName(name);
   var lower = name.toLowerCase().trim();
   var changedDates = [];
 
@@ -2805,10 +3086,14 @@ function removeShopItem(ev, name) {
 
     var remainingMeals = existingMeals.filter(function(meal) {
       var recipe = rec(meal.recipeId);
-      if (!recipe) return true;
+      var ings = [];
+      if (recipe && Array.isArray(recipe.ingredients)) ings = recipe.ingredients;
+      else if (meal.manualIngredients && Array.isArray(meal.manualIngredients)) ings = meal.manualIngredients;
+      else return true;
 
-      return !recipe.ingredients.some(function(ingredient) {
-        return ingredient.name.toLowerCase().trim() === lower;
+      return !ings.some(function(ingredient) {
+        var raw = (ingredient && ingredient.name) ? String(ingredient.name).toLowerCase().trim() : '';
+        return raw === lower || cleanIngredientName(raw) === canonicalTarget;
       });
     });
 
@@ -2832,31 +3117,47 @@ function removeShopItem(ev, name) {
 function renderExtras(){
   var el=gr('extras-list');if(!el)return;
   if(!extraItems.length){el.innerHTML='<div style="font-size:13px;color:var(--ink3);padding:4px 0">No extras added yet</div>';return;}
-  el.innerHTML=extraItems.map(function(item,i){
+  el.innerHTML=extraItems.map(function(raw,i){
+    var item=normaliseExtraItem(raw);
+    if(!item)return '';
     var k='extra_'+i;var on=!!checked[k];
+    var qtyText=fmt(item.qty,item.unit);
     return '<div class="shop-item'+(on?' done':'')+'" id="si-'+k+'">'
           +'<div class="chk'+(on?' on':'')+'" onclick="toggleChk(\''+k+'\')">'
           +'<span class="chk-tick">&#10003;</span></div>'
-          +'<div class="si-name">'+escHtml(item)+'</div>'
+          +'<div class="si-name">'+escHtml(item.name)+'</div>'
+          +'<div class="si-qty">'+escHtml(qtyText)+'</div>'
           +'<button class="rm-btn" onclick="removeExtra('+i+')" title="Remove">x</button>'
           +'</div>';
   }).join('');
 }
 function addExtra(){
-  var inp=gr('extra-input');var val=inp.value.trim();if(!val)return;
-  var added=val.split(',').map(function(v){return v.trim();}).filter(Boolean);
-  added.forEach(function(v){extraItems.push(v);});
-  inp.value='';persist('extraItems',{type:'add',items:added});renderExtras();
+  var inp=gr('extra-input');var val=inp?inp.value.trim():'';if(!val)return;
+  var qInp=gr('extra-qty-input');var qVal=qInp?parseFloat(qInp.value):NaN;
+  var uInp=gr('extra-unit-select');var uVal=uInp?uInp.value.trim():'';
+  var addedNames=val.split(',').map(function(v){return v.trim();}).filter(Boolean);
+  var added=[];
+  addedNames.forEach(function(v){
+    var obj={name:v,qty:qVal>0?qVal:1,unit:uVal};
+    extraItems.push(obj);
+    added.push(obj);
+  });
+  if(inp)inp.value='';
+  if(qInp)qInp.value='';
+  if(uInp)uInp.value='';
+  persist('extraItems',{type:'add',items:added});
+  renderExtras();
 }
 function removeExtra(i){
   var item=extraItems[i];
   extraItems.splice(i,1);
   persist('extraItems',{type:'remove',item:item});
   renderExtras();
+  var name=typeof item==='object'&&item?item.name:item;
   showToast('Removed',item?function(){
     extraItems.push(item);
     persist('extraItems',{type:'add',items:[item]});
-    renderExtras();showToast(item+' restored');
+    renderExtras();showToast((name||'Item')+' restored');
   }:null);
 }
 function extraKD(e){if(e.key==='Enter'){e.preventDefault();addExtra();}}
@@ -3035,7 +3336,8 @@ function shareShopList(){
     lines.push('── '+cat+' ──');
     items.sort(function(a,b){return a.name.localeCompare(b.name);}).forEach(function(item){
       var k=item.name.toLowerCase().replace(/\s/g,'_');
-      lines.push((checked[k]?'✓ ':'  ')+item.name+(item.qty?'  ('+fmt(item.qty,item.unit)+')':''));
+      var qtyText=item.isCustomQty?item.qty:fmt(item.qty,item.unit);
+      lines.push((checked[k]?'✓ ':'  ')+item.name+(qtyText?'  ('+qtyText+')':''));
     });
     lines.push('');
   });
@@ -3051,7 +3353,14 @@ function shareShopList(){
   }
   if(extraItems.length){
     lines.push('── Extras ──');
-    extraItems.forEach(function(e){lines.push('  '+e);});
+    extraItems.forEach(function(raw,i){
+      var item=normaliseExtraItem(raw);
+      if(!item)return;
+      var k='extra_'+i;
+      var mark=checked[k]?'✓ ':'  ';
+      var qtyText=fmt(item.qty,item.unit);
+      lines.push(mark+item.name+(qtyText?'  ('+qtyText+')':''));
+    });
   }
   gr('share-txt').textContent=lines.join('\n').trim();
   openM('modal-share');
@@ -4247,10 +4556,21 @@ function addLowStockToExtras(){
   var added=[];
   needs.forEach(function(item){
     var label=item.name;
-    if(extraItems.indexOf(label)<0){extraItems.push(label);added.push(label);}
+    var exists=extraItems.some(function(e){return extraItemMatches(e,label);});
+    if(!exists){
+      var needQty=stockRestockNeed(item);
+      var obj={name:label,qty:needQty>0?needQty:1,unit:item.unit||''};
+      extraItems.push(obj);
+      added.push(obj);
+    }
   });
-  if(added.length){addActivity('Added low stock to shopping',added.length+' item'+(added.length===1?'':'s')+' added','shopping');persist('extraItems',{type:'add',items:added});renderShop();renderDashboard();showToast('Added to shopping');}
-  else showToast('Already on shopping list');
+  if(added.length){
+    addActivity('Added low stock to shopping',added.length+' item'+(added.length===1?'':'s')+' added','shopping');
+    persist('extraItems',{type:'add',items:added});
+    renderShop();renderDashboard();showToast('Added to shopping');
+  } else {
+    showToast('Already on shopping list');
+  }
 }
 function renderActivityFeed(el){
   if(!el)return;
