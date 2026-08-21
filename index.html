@@ -902,7 +902,7 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
       </div>
       <div class="fg" style="margin-top:16px;padding-top:14px;border-top:1.5px dashed var(--paper3);display:flex;justify-content:space-between;align-items:center">
         <div>
-          <div style="font-size:13px;font-weight:700;color:var(--ink)">Mise en Place <span style="color:var(--sage);font-weight:700">v5.63</span></div>
+          <div style="font-size:13px;font-weight:700;color:var(--ink)">Mise en Place <span style="color:var(--sage);font-weight:700">v5.64</span></div>
           <div style="font-size:11px;color:var(--ink3)">Tap if you don't see new updates on your iPhone</div>
         </div>
         <button class="btn btns" onclick="forceAppUpdate()" style="font-size:12px;padding:7px 12px">🔄 Force Update</button>
@@ -5589,66 +5589,130 @@ function applyNlSuggestion(cmd){
   executeNaturalCommand(cmd);
 }
 
+var isSpeechListening = false;
+var speechRec = null;
+var speechTimeoutTimer = null;
+
+function stopSpeechSession(){
+  if(speechTimeoutTimer){
+    clearTimeout(speechTimeoutTimer);
+    speechTimeoutTimer = null;
+  }
+  isSpeechListening = false;
+  var btn = gr('nl-mic-btn'); if(btn) btn.classList.remove('listening');
+  var hub = gr('voice-hub'); if(hub) hub.classList.remove('listening');
+  if(speechRec){
+    try { speechRec.stop(); } catch(e) {}
+    try { speechRec.abort(); } catch(e) {}
+    speechRec = null;
+  }
+}
+
 function initSpeechRecognition(){
-  var Speech=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!Speech)return null;
-  var sr=new Speech();
-  sr.continuous=false;
-  sr.interimResults=false;
-  sr.lang='en-GB';
-  sr.onstart=function(){
-    isSpeechListening=true;
-    var btn=gr('nl-mic-btn');if(btn)btn.classList.add('listening');
-    var hub=gr('voice-hub');if(hub)hub.classList.add('listening');
-    setNlFeedback('listening','🎙 Listening... Speak your command (e.g. "Add 1 chocolate bar to stock")');
+  var Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!Speech) return null;
+  var sr = new Speech();
+  sr.continuous = false;
+  sr.interimResults = false;
+  sr.lang = 'en-GB';
+  
+  sr.onstart = function(){
+    isSpeechListening = true;
+    var btn = gr('nl-mic-btn'); if(btn) btn.classList.add('listening');
+    var hub = gr('voice-hub'); if(hub) hub.classList.add('listening');
+    setNlFeedback('listening', '🎙 Listening... Speak your command (e.g. "Add 1 chocolate bar to stock")');
     showToast('🎙 Listening... speak now');
+    
+    // Auto-stop after 8 seconds of listening to release iOS mic hardware
+    if(speechTimeoutTimer) clearTimeout(speechTimeoutTimer);
+    speechTimeoutTimer = setTimeout(function(){
+      if(isSpeechListening){
+        stopSpeechSession();
+        setNlFeedback('error', 'Listening timed out. Tap 🎙 to speak again.');
+      }
+    }, 8000);
   };
-  sr.onresult=function(e){
-    var text=e.results[0][0].transcript;
-    var inp=gr('nl-input');
-    if(inp){
-      inp.value=text;
-      nlInputChanged();
-    }
-    executeNaturalCommand(text);
-    setTimeout(function(){
-      if(inp&&inp.value===text){
-        inp.value='';
+  
+  sr.onresult = function(e){
+    if(speechTimeoutTimer) clearTimeout(speechTimeoutTimer);
+    var text = (e.results && e.results[0] && e.results[0][0] && e.results[0][0].transcript) ? e.results[0][0].transcript : '';
+    
+    // Explicitly stop and abort immediately on iOS to release microphone session
+    stopSpeechSession();
+
+    if(text){
+      var inp = gr('nl-input');
+      if(inp){
+        inp.value = text;
         nlInputChanged();
       }
-    },1200);
+      executeNaturalCommand(text);
+      setTimeout(function(){
+        if(inp && inp.value === text){
+          inp.value = '';
+          nlInputChanged();
+        }
+      }, 1200);
+    }
   };
-  sr.onerror=function(e){
-    isSpeechListening=false;
-    var btn=gr('nl-mic-btn');if(btn)btn.classList.remove('listening');
-    var hub=gr('voice-hub');if(hub)hub.classList.remove('listening');
-    setNlFeedback('error','Microphone error: '+(e.error||'Could not hear speech. Try typing above.'));
-    showToast('Microphone error: '+(e.error||'could not hear'));
+  
+  sr.onerror = function(e){
+    if(speechTimeoutTimer) clearTimeout(speechTimeoutTimer);
+    stopSpeechSession();
+    if(e && e.error && e.error !== 'no-speech' && e.error !== 'aborted'){
+      setNlFeedback('error', 'Microphone error: ' + (e.error || 'Could not hear speech. Try typing above.'));
+      showToast('Microphone error: ' + (e.error || 'could not hear'));
+    } else if(e && e.error === 'no-speech'){
+      setNlFeedback('error', 'No speech detected. Tap 🎙 to try again.');
+    }
   };
-  sr.onend=function(){
-    isSpeechListening=false;
-    var btn=gr('nl-mic-btn');if(btn)btn.classList.remove('listening');
-    var hub=gr('voice-hub');if(hub)hub.classList.remove('listening');
+  
+  sr.onend = function(){
+    if(speechTimeoutTimer) clearTimeout(speechTimeoutTimer);
+    stopSpeechSession();
   };
+  
   return sr;
 }
+
 function toggleVoiceInput(){
-  if(!speechRec)speechRec=initSpeechRecognition();
-  if(!speechRec){
-    setNlFeedback('error','Voice recognition is not supported on this browser — type your command in the box above.');
-    showToast('Voice not supported — type in the box instead');
-    var inp=gr('nl-input');if(inp)inp.focus();
+  if(isSpeechListening){
+    stopSpeechSession();
+    showToast('Microphone stopped');
     return;
   }
-  if(isSpeechListening){
-    speechRec.stop();
-  }else{
-    try{speechRec.start();}catch(e){
-      setNlFeedback('error','Could not access microphone. Please check permissions.');
-      showToast('Could not start microphone');
-    }
+  
+  // Re-instantiate a clean SpeechRecognition instance on iOS WebKit
+  stopSpeechSession();
+  speechRec = initSpeechRecognition();
+
+  if(!speechRec){
+    setNlFeedback('error', 'Voice recognition is not supported on this browser — type your command in the box above.');
+    showToast('Voice not supported — type in the box instead');
+    var inp = gr('nl-input'); if(inp) inp.focus();
+    return;
+  }
+  
+  try {
+    speechRec.start();
+  } catch(e) {
+    stopSpeechSession();
+    setNlFeedback('error', 'Could not access microphone. Please check iOS permissions.');
+    showToast('Could not start microphone');
   }
 }
+
+// Ensure microphone hardware is immediately released if user switches apps or tabs
+document.addEventListener('visibilitychange', function(){
+  if(document.hidden && isSpeechListening){
+    stopSpeechSession();
+  }
+});
+window.addEventListener('pagehide', function(){
+  if(isSpeechListening){
+    stopSpeechSession();
+  }
+});
 function nlKD(e){if(e.key==='Enter'){e.preventDefault();runNaturalCommand();}}
 function runNaturalCommand(){
   var inp=gr('nl-input');if(!inp)return;
@@ -6689,7 +6753,7 @@ setupKeyboardHandling();
       var nw=reg.installing;if(!nw)return;
       nw.addEventListener('statechange',function(){
         if(nw.state==='installed'&&navigator.serviceWorker.controller){
-          showToast('✓ Mise en Place updated to v5.63 — reloading...');
+          showToast('✓ Mise en Place updated to v5.64 — reloading...');
           setTimeout(function(){
             if(nw)nw.postMessage({type:'SKIP_WAITING'});
             window.location.reload();
