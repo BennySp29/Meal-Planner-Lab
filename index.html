@@ -385,10 +385,9 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
 .voice-feedback.error{display:flex;background:var(--red-p);border:1px solid var(--red-b);color:var(--red)}
 .voice-feedback.listening{display:flex;background:var(--warm-p);border:1px solid var(--warm);color:#6b4c1e}
 .voice-feedback-txt{flex:1;font-weight:500}
-.voice-feedback-btn{background:rgba(0,0,0,0.08);border:none;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;color:inherit}
 .voice-suggestions{display:flex;gap:6px;overflow-x:auto;margin-top:10px;padding-bottom:2px;-webkit-overflow-scrolling:touch}
-.voice-sug-chip{font-size:11px;color:var(--ink2);background:var(--paper2);border:1px solid var(--paper3);border-radius:14px;padding:5px 10px;white-space:nowrap;cursor:pointer;flex-shrink:0;font-family:'DM Sans',sans-serif}
-.voice-sug-chip:active{background:var(--sage-p);color:var(--sage)}
+.voice-sug-chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;color:var(--ink2);background:var(--paper2);border:1px solid var(--paper3);border-radius:14px;padding:6px 11px;white-space:nowrap;cursor:pointer;flex-shrink:0;font-family:'DM Sans',sans-serif;transition:all 0.15s ease}
+.voice-sug-chip:active{background:var(--sage-p);color:var(--sage);border-color:var(--sage-l);transform:scale(0.97)}
 
 /* Postpartum Freezer Stash */
 .stash-card{background:var(--warm-p);border:1.5px solid var(--warm);border-radius:var(--r);padding:13px 14px;margin-bottom:14px}
@@ -457,11 +456,7 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
           <span class="voice-feedback-txt" id="nl-feedback-txt"></span>
           <button class="voice-feedback-btn" id="nl-feedback-btn" style="display:none"></button>
         </div>
-        <div class="voice-suggestions">
-          <button class="voice-sug-chip" onclick="applyNlSuggestion('used 1 chocolate bar')">🎙 "Used 1 chocolate bar"</button>
-          <button class="voice-sug-chip" onclick="applyNlSuggestion('add 1 chocolate bar to stock')">🎙 "Add 1 chocolate bar to stock"</button>
-          <button class="voice-sug-chip" onclick="applyNlSuggestion('buy milk and strawberries')">🎙 "Buy milk & strawberries"</button>
-        </div>
+        <div class="voice-suggestions" id="voice-suggestions"></div>
       </div>
 
       <div class="dash-action-row"><button class="btn btns sleepy-toggle" id="sleepy-toggle" onclick="toggleSleepyMode()">Sleepy Mode</button><button class="btn btns" onclick="markActivitySeen()">Mark changes seen</button></div>
@@ -902,7 +897,7 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
       </div>
       <div class="fg" style="margin-top:16px;padding-top:14px;border-top:1.5px dashed var(--paper3);display:flex;justify-content:space-between;align-items:center">
         <div>
-          <div style="font-size:13px;font-weight:700;color:var(--ink)">Mise en Place <span style="color:var(--sage);font-weight:700">v5.64</span></div>
+          <div style="font-size:13px;font-weight:700;color:var(--ink)">Mise en Place <span style="color:var(--sage);font-weight:700">v5.65</span></div>
           <div style="font-size:11px;color:var(--ink3)">Tap if you don't see new updates on your iPhone</div>
         </div>
         <button class="btn btns" onclick="forceAppUpdate()" style="font-size:12px;padding:7px 12px">🔄 Force Update</button>
@@ -1077,6 +1072,7 @@ var stockImgB64='';
 var sleepyMode=false;
 var lastActivitySeen=0;
 var DEFAULT_NEWBORN_CHECKLIST=[];
+var frequentCommands=[];
 
 // ── PREGNANCY & NEWBORN UPGRADE STATE ───────────────────────────────────────
 var userAversions=[]; // e.g. ['peppers', 'garlic', 'chicken']
@@ -2365,6 +2361,7 @@ function loadPersisted(){
   var hyd=loadL('hydrationLog');
   if(hyd&&hyd.date===todayDateKey())hydrationLog=hyd;
   else hydrationLog={date:todayDateKey(),ml:0,target:2500};
+  var fc=loadL('frequentCommands');if(Array.isArray(fc))frequentCommands=fc;
   var ak=loadL('apiKey');if(ak)API_KEY=ak;
   var cfg=ensureFBCfgWorkspace(normaliseFBCfg(loadL('fbCfg')));if(cfg&&cfg.url&&cfg.key&&cfg.proj&&cfg.workspace){fbCfg=cfg;saveL('fbCfg',fbCfg);loadFBSDK().then(initFB).catch(function(){});}
 }
@@ -5589,6 +5586,118 @@ function applyNlSuggestion(cmd){
   executeNaturalCommand(cmd);
 }
 
+function recordFrequentCommand(rawText){
+  if(!rawText || typeof rawText !== 'string') return;
+  var cmd = rawText.trim().replace(/^[🎙⚡]\s*|["']/g, '').trim();
+  if(!cmd || cmd.length < 3) return;
+  
+  var norm = cmd.toLowerCase();
+  if(!Array.isArray(frequentCommands)) frequentCommands = [];
+  var found = frequentCommands.find(function(c){
+    return c && c.cmd && c.cmd.toLowerCase() === norm;
+  });
+  
+  if(found){
+    found.count = (found.count || 1) + 1;
+    found.lastUsed = Date.now();
+  } else {
+    frequentCommands.push({
+      cmd: cmd,
+      count: 1,
+      lastUsed: Date.now()
+    });
+  }
+  
+  frequentCommands.sort(function(a, b){
+    return (b.count || 0) - (a.count || 0) || (b.lastUsed || 0) - (a.lastUsed || 0);
+  });
+  frequentCommands = frequentCommands.slice(0, 20);
+  
+  saveL('frequentCommands', frequentCommands);
+  renderFrequentCommandChips();
+}
+
+function getTopFrequentCommands(){
+  var list = [];
+  var seen = {};
+
+  // 1. User's actual most used commands
+  (Array.isArray(frequentCommands) ? frequentCommands : []).slice()
+    .sort(function(a, b){ return (b.count || 0) - (a.count || 0) || (b.lastUsed || 0) - (a.lastUsed || 0); })
+    .forEach(function(item){
+      if(!item || !item.cmd) return;
+      var key = item.cmd.trim().toLowerCase();
+      if(!seen[key]){
+        seen[key] = true;
+        var cleanCmd = item.cmd.trim();
+        var capLabel = cleanCmd.charAt(0).toUpperCase() + cleanCmd.slice(1);
+        list.push({ cmd: cleanCmd, label: item.label || capLabel, count: item.count || 1 });
+      }
+    });
+
+  // 2. Supplement from user's actual inventory (popular snacks)
+  if(list.length < 4){
+    var snacks = stockItems.map(normaliseStockItem).filter(function(i){
+      return i.section === 'snack' || i.type.toLowerCase().indexOf('snack') >= 0;
+    });
+    snacks.forEach(function(s){
+      var cmd = 'used 1 ' + s.name.toLowerCase();
+      var key = cmd.toLowerCase();
+      if(!seen[key] && list.length < 4){
+        seen[key] = true;
+        list.push({ cmd: cmd, label: 'Used 1 ' + s.name, count: 0 });
+      }
+    });
+  }
+
+  // 3. Supplement with low stock restock commands
+  if(list.length < 4){
+    var low = stockItems.map(normaliseStockItem).filter(isStockLow);
+    low.forEach(function(l){
+      var cmd = 'buy ' + l.name.toLowerCase();
+      var key = cmd.toLowerCase();
+      if(!seen[key] && list.length < 4){
+        seen[key] = true;
+        list.push({ cmd: cmd, label: 'Buy ' + l.name, count: 0 });
+      }
+    });
+  }
+
+  // 4. Default fallbacks if brand new app
+  var defaults = [
+    { cmd: 'used 1 chocolate bar', label: 'Used 1 chocolate bar' },
+    { cmd: 'add 1 chocolate bar to stock', label: 'Add 1 chocolate bar to stock' },
+    { cmd: 'buy milk and bread', label: 'Buy milk & bread' },
+    { cmd: 'used 1 snack', label: 'Used 1 snack' }
+  ];
+
+  defaults.forEach(function(d){
+    var key = d.cmd.toLowerCase();
+    if(!seen[key] && list.length < 4){
+      seen[key] = true;
+      list.push(d);
+    }
+  });
+
+  return list.slice(0, 4);
+}
+
+function renderFrequentCommandChips(){
+  var el = gr('voice-suggestions');
+  if(!el) return;
+  var topCmds = getTopFrequentCommands();
+  if(!topCmds.length){
+    el.innerHTML = '';
+    return;
+  }
+  el.innerHTML = topCmds.map(function(item){
+    var cleanCmd = item.cmd.replace(/"/g, '&quot;');
+    var escapedCmd = cleanCmd.replace(/'/g, "\\'");
+    var label = item.label || item.cmd;
+    return '<button class="voice-sug-chip" onclick="applyNlSuggestion(\'' + escapedCmd + '\')">⚡ "' + escHtml(label) + '"</button>';
+  }).join('');
+}
+
 var isSpeechListening = false;
 var speechRec = null;
 var speechTimeoutTimer = null;
@@ -5792,6 +5901,7 @@ function executeNaturalCommand(rawText){
       var targetItem=matches[0];
       var prevQty=targetItem.qty;
       stockQty(targetItem.id,-qty,'Voice/Quick command');
+      recordFrequentCommand('used '+qty+' '+targetItem.name);
       var leftQty=Math.max(0,prevQty-qty);
       var msg='✓ Used '+qty+' × '+targetItem.name+' ('+leftQty+' left)';
       showToast(msg,function(){
@@ -5831,6 +5941,7 @@ function executeNaturalCommand(rawText){
     if(existingMatches.length){
       var exItem=existingMatches[0];
       stockQty(exItem.id,addQty,'Restocked');
+      recordFrequentCommand('add '+addQty+' '+exItem.name+' to stock');
       var newTotal=exItem.qty+addQty;
       var msg='✓ Added '+addQty+' × '+exItem.name+' ('+newTotal+' in '+stockSectionName(exItem.section)+')';
       showToast(msg,function(){
@@ -5851,6 +5962,7 @@ function executeNaturalCommand(rawText){
       });
       stockItems.push(newStItem);
       persist('stockItems',{type:'update',item:newStItem});
+      recordFrequentCommand('add '+addQty+' '+newStItem.name+' to stock');
       renderStock();renderDashboard();
       var msg='✓ Created '+newStItem.name+' ('+addQty+' in '+stockSectionName(targetSec)+')';
       showToast(msg);
@@ -5885,8 +5997,9 @@ function executeNaturalCommand(rawText){
     });
     if(addedExtras.length){
       persist('extraItems',{type:'add',items:addedExtras});
-      renderShop();renderDashboard();
       var itemNames=addedExtras.map(function(x){return x.name;}).join(', ');
+      recordFrequentCommand('buy '+itemNames);
+      renderShop();renderDashboard();
       var msg='✓ Added '+addedExtras.length+' item'+(addedExtras.length===1?'':'s')+' to shopping list: '+itemNames;
       showToast(msg,function(){
         addedExtras.forEach(function(obj){
@@ -5929,6 +6042,7 @@ function renderDashboard(){
   renderConsolidatedRestock(gr('dash-restock-needs'));
   renderFreezerStashCard();
   renderMiniStock(gr('dash-recent-stock'),stockItems.map(normaliseStockItem).sort(function(a,b){return b.updatedAt-a.updatedAt;}).slice(0,5),'No stock added yet');
+  renderFrequentCommandChips();
   renderActivityFeed(gr('dash-activity'));
 }
 
@@ -6753,7 +6867,7 @@ setupKeyboardHandling();
       var nw=reg.installing;if(!nw)return;
       nw.addEventListener('statechange',function(){
         if(nw.state==='installed'&&navigator.serviceWorker.controller){
-          showToast('✓ Mise en Place updated to v5.64 — reloading...');
+          showToast('✓ Mise en Place updated to v5.65 — reloading...');
           setTimeout(function(){
             if(nw)nw.postMessage({type:'SKIP_WAITING'});
             window.location.reload();
