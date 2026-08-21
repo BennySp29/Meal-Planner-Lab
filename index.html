@@ -367,22 +367,28 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
 .aversion-chip button{background:none;border:none;cursor:pointer;color:#6b4c1e;font-size:13px;padding:0 2px;font-weight:700}
 .craving-scroll{overflow-x:auto;margin:0 -16px 8px;padding:0 16px 2px;-webkit-overflow-scrolling:touch}
 
-/* Natural Language / Voice Command Bar */
-.nl-command-wrap{background:var(--cream);border:1.5px solid var(--paper3);border-radius:var(--r);padding:7px 10px;margin-bottom:14px;display:flex;align-items:center;gap:8px;box-shadow:0 2px 10px rgba(15,26,15,0.04)}
-.nl-input{flex:1;border:none;background:transparent;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--ink);outline:none;padding:4px 0}
-.nl-input::placeholder{color:var(--ink3);font-size:13px}
-.nl-mic-btn{width:36px;height:36px;border-radius:50%;border:none;background:var(--paper2);color:var(--ink2);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;flex-shrink:0}
-.nl-mic-btn.listening{background:var(--red);color:#fff;animation:pulse 1s infinite}
-.nl-send-btn{padding:7px 14px;border-radius:18px;border:none;background:var(--sage);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;flex-shrink:0}
-.nl-send-btn:active{opacity:0.85}
-
-/* Hydration Tracker */
-.hydration-card{background:var(--sage-p);border:1.5px solid var(--sage-l);border-radius:var(--r);padding:13px 14px;margin-bottom:14px}
-.hydration-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-.hydration-title{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:var(--sage)}
-.hydration-progress-wrap{height:8px;background:rgba(255,255,255,0.6);border-radius:4px;overflow:hidden;margin-bottom:10px}
-.hydration-progress-bar{height:100%;background:var(--sage);border-radius:4px;transition:width 0.3s ease}
-.hydration-btns{display:flex;gap:6px;flex-wrap:wrap}
+/* Natural Language & Voice Command Hub */
+.voice-hub{background:var(--cream);border:1.5px solid var(--paper3);border-radius:var(--r);padding:12px 14px;margin-bottom:16px;box-shadow:0 2px 12px rgba(15,26,15,0.05);transition:border-color 0.2s}
+.voice-hub.listening{border-color:var(--red);box-shadow:0 0 0 3px var(--red-p)}
+.voice-hub-top{display:flex;align-items:center;gap:10px}
+.voice-mic-btn{width:46px;height:46px;border-radius:50%;border:none;background:var(--sage);color:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;flex-shrink:0;box-shadow:0 2px 8px rgba(45,90,39,0.25)}
+.voice-mic-btn:active{transform:scale(0.92)}
+.voice-mic-btn.listening{background:var(--red);color:#fff;animation:pulse 1.2s infinite;box-shadow:0 0 0 4px var(--red-p)}
+.voice-input-wrap{flex:1;display:flex;align-items:center;background:var(--paper2);border:1px solid var(--paper3);border-radius:var(--rs);padding:0 10px;height:44px}
+.voice-input{flex:1;border:none;background:transparent;font-family:'DM Sans',sans-serif;font-size:15px;color:var(--ink);outline:none;padding:8px 0;width:100%}
+.voice-input::placeholder{color:var(--ink3);font-size:13px}
+.voice-clear-btn{background:none;border:none;color:var(--ink3);font-size:16px;cursor:pointer;padding:4px;display:none;margin-right:2px}
+.voice-send-btn{padding:0 15px;height:44px;border-radius:var(--rs);border:none;background:var(--ink);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;flex-shrink:0;transition:opacity 0.15s}
+.voice-send-btn:active{opacity:0.8}
+.voice-feedback{margin-top:10px;padding:9px 12px;border-radius:var(--rs);font-size:13px;line-height:1.4;display:none;align-items:center;justify-content:space-between;gap:8px}
+.voice-feedback.success{display:flex;background:var(--sage-p);border:1px solid var(--sage-l);color:var(--sage)}
+.voice-feedback.error{display:flex;background:var(--red-p);border:1px solid var(--red-b);color:var(--red)}
+.voice-feedback.listening{display:flex;background:var(--warm-p);border:1px solid var(--warm);color:#6b4c1e}
+.voice-feedback-txt{flex:1;font-weight:500}
+.voice-feedback-btn{background:rgba(0,0,0,0.08);border:none;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;color:inherit}
+.voice-suggestions{display:flex;gap:6px;overflow-x:auto;margin-top:10px;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+.voice-sug-chip{font-size:11px;color:var(--ink2);background:var(--paper2);border:1px solid var(--paper3);border-radius:14px;padding:5px 10px;white-space:nowrap;cursor:pointer;flex-shrink:0;font-family:'DM Sans',sans-serif}
+.voice-sug-chip:active{background:var(--sage-p);color:var(--sage)}
 
 /* Postpartum Freezer Stash */
 .stash-card{background:var(--warm-p);border:1.5px solid var(--warm);border-radius:var(--r);padding:13px 14px;margin-bottom:14px}
@@ -390,12 +396,6 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
 .stash-title{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:#5a3a10}
 .stash-progress-wrap{height:8px;background:rgba(255,255,255,0.6);border-radius:4px;overflow:hidden;margin-bottom:10px}
 .stash-progress-bar{height:100%;background:var(--warm);border-radius:4px;transition:width 0.3s ease}
-
-/* Night Feed / Snacks in Sleepy Mode */
-.night-snack-card{background:var(--paper2);border:1.5px solid var(--paper3);border-radius:var(--r);padding:13px 14px;margin-bottom:14px}
-.night-snack-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px}
-.night-snack-btn{background:var(--cream);border:1.5px solid var(--paper3);border-radius:var(--rs);padding:12px 10px;text-align:left;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-family:'DM Sans',sans-serif;color:var(--ink)}
-.night-snack-btn:active{background:var(--warm-p)}
 
 /* Fullscreen iOS Cook Mode */
 #modal-cook-mode.overlay{background:#0a120a;z-index:900;align-items:stretch;justify-content:stretch;padding:0}
@@ -436,11 +436,25 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
       <div class="sec-sub">Quick checks for the week and the cupboards.</div>
       <div id="dash-status"></div>
 
-      <!-- Quick Natural Language & Voice Command Bar -->
-      <div class="nl-command-wrap">
-        <button class="nl-mic-btn" id="nl-mic-btn" onclick="toggleVoiceInput()" title="Tap to speak">🎙</button>
-        <input class="nl-input" id="nl-input" placeholder="Type or speak: 'remove 1 chocolate', 'buy milk'…" onkeydown="nlKD(event)"/>
-        <button class="nl-send-btn" onclick="runNaturalCommand()">Run</button>
+      <!-- Quick Natural Language & Voice Command Hub -->
+      <div class="voice-hub" id="voice-hub">
+        <div class="voice-hub-top">
+          <button class="voice-mic-btn" id="nl-mic-btn" onclick="toggleVoiceInput()" title="Tap to speak">🎙</button>
+          <div class="voice-input-wrap">
+            <input class="voice-input" id="nl-input" placeholder="Type or speak: 'used 1 snack', 'buy milk'…" oninput="nlInputChanged()" onkeydown="nlKD(event)"/>
+            <button class="voice-clear-btn" id="nl-clear-btn" onclick="clearNlInput()" title="Clear">✕</button>
+          </div>
+          <button class="voice-send-btn" onclick="runNaturalCommand()">Run</button>
+        </div>
+        <div class="voice-feedback" id="nl-feedback">
+          <span class="voice-feedback-txt" id="nl-feedback-txt"></span>
+          <button class="voice-feedback-btn" id="nl-feedback-btn" style="display:none"></button>
+        </div>
+        <div class="voice-suggestions">
+          <button class="voice-sug-chip" onclick="applyNlSuggestion('used 1 chocolate bar')">🎙 "Used 1 chocolate bar"</button>
+          <button class="voice-sug-chip" onclick="applyNlSuggestion('add 1 chocolate bar to stock')">🎙 "Add 1 chocolate bar to stock"</button>
+          <button class="voice-sug-chip" onclick="applyNlSuggestion('buy milk and strawberries')">🎙 "Buy milk & strawberries"</button>
+        </div>
       </div>
 
       <div class="dash-action-row"><button class="btn btns sleepy-toggle" id="sleepy-toggle" onclick="toggleSleepyMode()">Sleepy Mode</button><button class="btn btns" onclick="markActivitySeen()">Mark changes seen</button></div>
@@ -869,7 +883,7 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
       </div>
       <div class="fg" style="margin-top:16px;padding-top:14px;border-top:1.5px dashed var(--paper3);display:flex;justify-content:space-between;align-items:center">
         <div>
-          <div style="font-size:13px;font-weight:700;color:var(--ink)">Mise en Place <span style="color:var(--sage);font-weight:700">v5.61</span></div>
+          <div style="font-size:13px;font-weight:700;color:var(--ink)">Mise en Place <span style="color:var(--sage);font-weight:700">v5.62</span></div>
           <div style="font-size:11px;color:var(--ink3)">Tap if you don't see new updates on your iPhone</div>
         </div>
         <button class="btn btns" onclick="forceAppUpdate()" style="font-size:12px;padding:7px 12px">🔄 Force Update</button>
@@ -977,7 +991,7 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
 // ── CACHE NUKE v3.0: clears stale SW + caches, one-time reload ─────────────
 (function(){
   if(typeof window==='undefined'||typeof sessionStorage==='undefined')return;
-  var CURRENT='mep-app-v5.61';
+  var CURRENT='mep-app-v5.62';
   var nuked=sessionStorage.getItem('cache-nuked');
   if(nuked===CURRENT)return; // already done this session
   function doNuke(){
@@ -1575,7 +1589,7 @@ function loadRemoteRecipeImages(){
 }
 function registerAppServiceWorker(){
   if(!('serviceWorker' in navigator))return Promise.resolve(null);
-  return navigator.serviceWorker.register('sw.js?v=5.61',{scope:'./'}).then(function(reg){
+  return navigator.serviceWorker.register('sw.js?v=5.62',{scope:'./'}).then(function(reg){
     if(reg&&typeof reg.update==='function')reg.update().catch(function(){});
     return reg;
   }).catch(function(){return null;});
@@ -5304,6 +5318,57 @@ function releaseCookWakeLock(){
 }
 
 // 6. Natural Language & Voice Input Parser
+function nlInputChanged(){
+  var inp=gr('nl-input');
+  var clr=gr('nl-clear-btn');
+  if(clr)clr.style.display=(inp&&inp.value.trim().length>0)?'block':'none';
+}
+
+function clearNlInput(){
+  var inp=gr('nl-input');
+  if(inp){
+    inp.value='';
+    inp.focus();
+  }
+  nlInputChanged();
+}
+
+function setNlFeedback(type,message,undoFn){
+  var box=gr('nl-feedback');
+  var txt=gr('nl-feedback-txt');
+  var btn=gr('nl-feedback-btn');
+  if(!box||!txt)return;
+  box.className='voice-feedback '+type;
+  txt.textContent=message;
+  if(undoFn){
+    btn.style.display='block';
+    btn.textContent='Undo';
+    btn.onclick=function(){
+      undoFn();
+      setNlFeedback('success','✓ Undone');
+    };
+  }else{
+    btn.style.display='none';
+    btn.onclick=null;
+  }
+  if(type!=='listening'){
+    setTimeout(function(){
+      if(box.classList.contains(type)){
+        box.className='voice-feedback';
+      }
+    },8000);
+  }
+}
+
+function applyNlSuggestion(cmd){
+  var inp=gr('nl-input');
+  if(inp){
+    inp.value=cmd;
+    nlInputChanged();
+  }
+  executeNaturalCommand(cmd);
+}
+
 function initSpeechRecognition(){
   var Speech=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!Speech)return null;
@@ -5314,35 +5379,54 @@ function initSpeechRecognition(){
   sr.onstart=function(){
     isSpeechListening=true;
     var btn=gr('nl-mic-btn');if(btn)btn.classList.add('listening');
-    showToast('🎙 Listening... speak your command');
+    var hub=gr('voice-hub');if(hub)hub.classList.add('listening');
+    setNlFeedback('listening','🎙 Listening... Speak your command (e.g. "Add 1 chocolate bar to stock")');
+    showToast('🎙 Listening... speak now');
   };
   sr.onresult=function(e){
     var text=e.results[0][0].transcript;
-    var inp=gr('nl-input');if(inp)inp.value=text;
+    var inp=gr('nl-input');
+    if(inp){
+      inp.value=text;
+      nlInputChanged();
+    }
     executeNaturalCommand(text);
+    setTimeout(function(){
+      if(inp&&inp.value===text){
+        inp.value='';
+        nlInputChanged();
+      }
+    },1200);
   };
   sr.onerror=function(e){
     isSpeechListening=false;
     var btn=gr('nl-mic-btn');if(btn)btn.classList.remove('listening');
+    var hub=gr('voice-hub');if(hub)hub.classList.remove('listening');
+    setNlFeedback('error','Microphone error: '+(e.error||'Could not hear speech. Try typing above.'));
     showToast('Microphone error: '+(e.error||'could not hear'));
   };
   sr.onend=function(){
     isSpeechListening=false;
     var btn=gr('nl-mic-btn');if(btn)btn.classList.remove('listening');
+    var hub=gr('voice-hub');if(hub)hub.classList.remove('listening');
   };
   return sr;
 }
 function toggleVoiceInput(){
   if(!speechRec)speechRec=initSpeechRecognition();
   if(!speechRec){
-    showToast('Voice recognition not supported on this browser — type in the box instead');
+    setNlFeedback('error','Voice recognition is not supported on this browser — type your command in the box above.');
+    showToast('Voice not supported — type in the box instead');
     var inp=gr('nl-input');if(inp)inp.focus();
     return;
   }
   if(isSpeechListening){
     speechRec.stop();
   }else{
-    try{speechRec.start();}catch(e){showToast('Could not start microphone');}
+    try{speechRec.start();}catch(e){
+      setNlFeedback('error','Could not access microphone. Please check permissions.');
+      showToast('Could not start microphone');
+    }
   }
 }
 function nlKD(e){if(e.key==='Enter'){e.preventDefault();runNaturalCommand();}}
@@ -5351,6 +5435,7 @@ function runNaturalCommand(){
   var text=inp.value.trim();if(!text)return;
   executeNaturalCommand(text);
   inp.value='';
+  nlInputChanged();
 }
 function parseWordNumber(w){
   var map={'a':1,'an':1,'one':1,'two':2,'three':3,'four':4,'five':5,'six':6,'seven':7,'eight':8,'nine':9,'ten':10,'half a dozen':6,'dozen':12};
@@ -5423,18 +5508,25 @@ function executeNaturalCommand(rawText){
       var targetItem=matches[0];
       var prevQty=targetItem.qty;
       stockQty(targetItem.id,-qty,'Voice/Quick command');
-      showToast('✓ Used '+qty+' × '+targetItem.name+' ('+Math.max(0,prevQty-qty)+' left)',function(){
+      var leftQty=Math.max(0,prevQty-qty);
+      var msg='✓ Used '+qty+' × '+targetItem.name+' ('+leftQty+' left)';
+      showToast(msg,function(){
+        stockQty(targetItem.id,qty,'Undo');
+      });
+      setNlFeedback('success',msg,function(){
         stockQty(targetItem.id,qty,'Undo');
       });
       return;
     }else{
+      var errMsg='❓ Could not find "'+cleaned+'" in stock. Tap Stock to add it or speak "Add '+cleaned+' to stock".';
       showToast('Could not find stock item matching "'+cleaned+'"');
+      setNlFeedback('error',errMsg);
       return;
     }
   }
 
   // B. Stock Addition / Restock
-  var isAddStock=/(to freezer|to cupboard|to pantry|to snack|to stock|into freezer|into cupboard)/i.test(text)||/^(restock|bought|stock up on|freeze)\s+/i.test(text);
+  var isAddStock=/(to freezer|to cupboard|to pantry|to snack|to stock|into freezer|into cupboard)/i.test(text)||/^(add|restock|bought|stock up on|freeze)\s+/i.test(text);
   if(isAddStock){
     var targetSec='snack';
     if(text.indexOf('freezer')>=0||text.indexOf('freeze')>=0)targetSec='freezer';
@@ -5455,7 +5547,12 @@ function executeNaturalCommand(rawText){
     if(existingMatches.length){
       var exItem=existingMatches[0];
       stockQty(exItem.id,addQty,'Restocked');
-      showToast('✓ Added '+addQty+' × '+exItem.name+' ('+(exItem.qty+addQty)+' total in '+stockSectionName(exItem.section)+')',function(){
+      var newTotal=exItem.qty+addQty;
+      var msg='✓ Added '+addQty+' × '+exItem.name+' ('+newTotal+' in '+stockSectionName(exItem.section)+')';
+      showToast(msg,function(){
+        stockQty(exItem.id,-addQty,'Undo');
+      });
+      setNlFeedback('success',msg,function(){
         stockQty(exItem.id,-addQty,'Undo');
       });
     }else{
@@ -5471,7 +5568,11 @@ function executeNaturalCommand(rawText){
       stockItems.push(newStItem);
       persist('stockItems',{type:'update',item:newStItem});
       renderStock();renderDashboard();
-      showToast('✓ Created '+newStItem.name+' ('+addQty+' in '+stockSectionName(targetSec)+')');
+      var msg='✓ Created '+newStItem.name+' ('+addQty+' in '+stockSectionName(targetSec)+')';
+      showToast(msg);
+      setNlFeedback('success',msg,function(){
+        deleteStockItem(newStItem.id);
+      });
     }
     return;
   }
@@ -5501,7 +5602,9 @@ function executeNaturalCommand(rawText){
     if(addedExtras.length){
       persist('extraItems',{type:'add',items:addedExtras});
       renderShop();renderDashboard();
-      showToast('✓ Added '+addedExtras.length+' item'+(addedExtras.length===1?'':'s')+' to shopping extras',function(){
+      var itemNames=addedExtras.map(function(x){return x.name;}).join(', ');
+      var msg='✓ Added '+addedExtras.length+' item'+(addedExtras.length===1?'':'s')+' to shopping list: '+itemNames;
+      showToast(msg,function(){
         addedExtras.forEach(function(obj){
           var idx=extraItems.indexOf(obj);
           if(idx>=0)extraItems.splice(idx,1);
@@ -5510,11 +5613,21 @@ function executeNaturalCommand(rawText){
         renderShop();
         showToast('Undo: Shopping extras removed');
       });
+      setNlFeedback('success',msg,function(){
+        addedExtras.forEach(function(obj){
+          var idx=extraItems.indexOf(obj);
+          if(idx>=0)extraItems.splice(idx,1);
+        });
+        persist('extraItems',{type:'remove'});
+        renderShop();
+      });
       return;
     }
   }
 
-  showToast('Command not recognized. Try: "remove 1 chocolate" or "buy milk"');
+  var unrecMsg='❓ Command not recognized: "'+rawText+'". Try: "used 1 chocolate", "add 1 chocolate bar to stock", or "buy milk".';
+  showToast('Command not recognized');
+  setNlFeedback('error',unrecMsg);
 }
 
 function renderDashboard(){
@@ -6356,7 +6469,7 @@ setupKeyboardHandling();
       var nw=reg.installing;if(!nw)return;
       nw.addEventListener('statechange',function(){
         if(nw.state==='installed'&&navigator.serviceWorker.controller){
-          showToast('✓ Mise en Place updated to v5.61 — reloading...');
+          showToast('✓ Mise en Place updated to v5.62 — reloading...');
           setTimeout(function(){
             if(nw)nw.postMessage({type:'SKIP_WAITING'});
             window.location.reload();
