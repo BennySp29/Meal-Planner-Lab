@@ -312,6 +312,10 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
 .mini-stock-list{display:flex;flex-direction:column;gap:6px}
 .mini-stock-row{display:flex;align-items:center;gap:8px;background:var(--cream);border:1.5px solid var(--paper3);border-radius:var(--rs);padding:9px 10px}
 .mini-stock-row.low{border-color:var(--warm);background:var(--warm-p)}
+.mini-stock-row.out-of-stock{border-color:var(--red);background:var(--red-p)}
+.mini-stock-row.out-of-stock .mini-stock-name{color:var(--red);font-weight:600}
+.stock-badge-out{background:var(--red);color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;margin-left:6px;display:inline-block;letter-spacing:0.03em;vertical-align:middle}
+.stock-badge-low{background:var(--warm);color:#5a3a10;font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;margin-left:6px;display:inline-block;letter-spacing:0.03em;vertical-align:middle}
 .mini-stock-name{flex:1;font-size:13px;font-weight:500}
 /* ── v6 ENHANCEMENTS ──────────────────────────────────────────────────── */
 /* Toast flex + pointer-events fix for undo button */
@@ -439,15 +443,6 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
         <button class="nl-send-btn" onclick="runNaturalCommand()">Run</button>
       </div>
 
-      <!-- Middle-of-the-Night Snacks (Visible in Sleepy Mode) -->
-      <div id="dash-night-snacks" style="display:none"></div>
-
-      <!-- Daily Hydration Barometer -->
-      <div id="dash-hydration"></div>
-
-      <!-- Postpartum Freezer Stash Goal -->
-      <div id="dash-freezer-stash"></div>
-
       <div class="dash-action-row"><button class="btn btns sleepy-toggle" id="sleepy-toggle" onclick="toggleSleepyMode()">Sleepy Mode</button><button class="btn btns" onclick="markActivitySeen()">Mark changes seen</button></div>
       <div class="stats-grid" id="dash-stats"></div>
       <div class="dash-section">
@@ -458,10 +453,6 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
         <div class="sec-hdr"><div class="sec-title">Today Actions</div></div>
         <div id="dash-actions"></div>
       </div>
-      <div class="dash-section">
-        <div class="sec-hdr"><div class="sec-title">3am Stock Controls</div><button class="btn btns btnp" onclick="openQuickStockModal(null)">+ Quick add</button></div>
-        <div id="dash-3am-stock"></div>
-      </div>
       <div class="dash-quick">
         <button class="dash-btn" onclick="showTab('stock')"><strong>Stock check</strong><span>Adjust snacks, meals and freezer food fast.</span></button>
         <button class="dash-btn" onclick="openQuickStockModal(null)"><strong>Quick add stock</strong><span>Add basics fast, then fill details only if needed.</span></button>
@@ -469,13 +460,19 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
         <button class="dash-btn" onclick="showTab('shopping')"><strong>Shopping</strong><span>Open the generated list.</span></button>
       </div>
       <div class="dash-section">
-        <div class="sec-hdr"><div class="sec-title">Buy Soon</div><button class="btn btns" onclick="addLowStockToExtras()">Add to shopping</button></div>
-        <div id="dash-shopping-needs"></div>
+        <div class="sec-hdr">
+          <div class="sec-title">Restock & Buy Soon</div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btns" onclick="addLowStockToExtras()">+ Add to shopping</button>
+            <button class="btn btns" onclick="showTab('stock')">Stock</button>
+          </div>
+        </div>
+        <div id="dash-restock-needs"></div>
       </div>
-      <div class="dash-section">
-        <div class="sec-hdr"><div class="sec-title">Needs Restocking</div><button class="btn btns" onclick="showTab('stock')">View all</button></div>
-        <div id="dash-low-stock"></div>
-      </div>
+
+      <!-- Postpartum Freezer Stash Goal -->
+      <div id="dash-freezer-stash" style="margin-bottom:18px"></div>
+
       <div class="dash-section">
         <div class="sec-hdr"><div class="sec-title">Recent Stock</div></div>
         <div id="dash-recent-stock"></div>
@@ -483,10 +480,6 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
       <div class="dash-section">
         <div class="sec-hdr"><div class="sec-title">Recent Changes</div></div>
         <div id="dash-activity"></div>
-      </div>
-      <div class="dash-section">
-        <div class="sec-hdr"><div class="sec-title">Partner Changes</div></div>
-        <div id="dash-partner-changes"></div>
       </div>
     </div>
     <div id="panel-planner" class="panel">
@@ -876,7 +869,7 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
       </div>
       <div class="fg" style="margin-top:16px;padding-top:14px;border-top:1.5px dashed var(--paper3);display:flex;justify-content:space-between;align-items:center">
         <div>
-          <div style="font-size:13px;font-weight:700;color:var(--ink)">Mise en Place <span style="color:var(--sage);font-weight:700">v5.60</span></div>
+          <div style="font-size:13px;font-weight:700;color:var(--ink)">Mise en Place <span style="color:var(--sage);font-weight:700">v5.61</span></div>
           <div style="font-size:11px;color:var(--ink3)">Tap if you don't see new updates on your iPhone</div>
         </div>
         <button class="btn btns" onclick="forceAppUpdate()" style="font-size:12px;padding:7px 12px">🔄 Force Update</button>
@@ -984,7 +977,7 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
 // ── CACHE NUKE v3.0: clears stale SW + caches, one-time reload ─────────────
 (function(){
   if(typeof window==='undefined'||typeof sessionStorage==='undefined')return;
-  var CURRENT='mep-app-v5.60';
+  var CURRENT='mep-app-v5.61';
   var nuked=sessionStorage.getItem('cache-nuked');
   if(nuked===CURRENT)return; // already done this session
   function doNuke(){
@@ -1582,7 +1575,7 @@ function loadRemoteRecipeImages(){
 }
 function registerAppServiceWorker(){
   if(!('serviceWorker' in navigator))return Promise.resolve(null);
-  return navigator.serviceWorker.register('sw.js?v=5.60',{scope:'./'}).then(function(reg){
+  return navigator.serviceWorker.register('sw.js?v=5.61',{scope:'./'}).then(function(reg){
     if(reg&&typeof reg.update==='function')reg.update().catch(function(){});
     return reg;
   }).catch(function(){return null;});
@@ -4826,17 +4819,47 @@ function renderMiniStock(el,items,emptyText){
   items.forEach(function(item){item=normaliseStockItem(item);var row=document.createElement('div');row.className='mini-stock-row'+(isStockLow(item)?' low':'');var name=document.createElement('div');name.className='mini-stock-name';name.textContent=item.name+' · '+stockSectionName(item.section);var dn=document.createElement('button');dn.className='srv-btn';dn.textContent='-';dn.addEventListener('click',function(){stockQty(item.id,-1);});var pill=document.createElement('div');pill.className='qty-pill';pill.textContent=item.qty;var up=document.createElement('button');up.className='srv-btn';up.textContent='+';up.addEventListener('click',function(){stockQty(item.id,1);});row.appendChild(name);row.appendChild(dn);row.appendChild(pill);row.appendChild(up);wrap.appendChild(row);});
   el.appendChild(wrap);
 }
-function stockNeedsForShopping(){
-  return sortedStockItems().filter(function(item){return isStockLow(item)||stockRestockNeed(item)>0||isStockExpiring(item);}).sort(function(a,b){return stockAlertLevel(b)-stockAlertLevel(a)||stockRestockNeed(b)-stockRestockNeed(a)||a.name.localeCompare(b.name);});
+function consolidatedRestockItems(){
+  var items=sortedStockItems().filter(function(item){
+    return item.qty<=0||isStockLow(item)||stockRestockNeed(item)>0||isStockExpiring(item);
+  });
+  items.sort(function(a,b){
+    var aOut=(a.qty<=0)?1:0;
+    var bOut=(b.qty<=0)?1:0;
+    if(aOut!==bOut)return bOut-aOut;
+    var alertDiff=stockAlertLevel(b)-stockAlertLevel(a);
+    if(alertDiff!==0)return alertDiff;
+    var needDiff=stockRestockNeed(b)-stockRestockNeed(a);
+    if(needDiff!==0)return needDiff;
+    return a.name.localeCompare(b.name);
+  });
+  return items;
 }
-function renderShoppingNeeds(el){
+function renderConsolidatedRestock(el){
   if(!el)return;
-  var needs=stockNeedsForShopping();
-  if(!needs.length){el.innerHTML='<div style="font-size:13px;color:var(--ink3);padding:4px 0">No stock needs buying right now</div>';return;}
-  renderMiniStock(el,needs.slice(0,6),'No stock needs buying right now');
+  var items=consolidatedRestockItems();
+  if(!items.length){el.innerHTML='<div style="font-size:13px;color:var(--ink3);padding:4px 0">✓ Cupboards and freezer are fully stocked</div>';return;}
+  el.innerHTML='';var wrap=document.createElement('div');wrap.className='mini-stock-list';
+  items.slice(0,8).forEach(function(item){
+    item=normaliseStockItem(item);
+    var isOut=item.qty<=0;
+    var isLow=isStockLow(item);
+    var row=document.createElement('div');
+    row.className='mini-stock-row'+(isOut?' out-of-stock':(isLow?' low':''));
+    var name=document.createElement('div');
+    name.className='mini-stock-name';
+    var badgeHtml=isOut?'<span class="stock-badge-out">OUT</span>':(isLow?'<span class="stock-badge-low">LOW</span>':'');
+    name.innerHTML=escHtml(item.name)+' <span style="font-size:11px;opacity:0.75;font-weight:400">· '+escHtml(stockSectionName(item.section))+'</span>'+badgeHtml;
+    var dn=document.createElement('button');dn.className='srv-btn';dn.textContent='-';dn.addEventListener('click',function(){stockQty(item.id,-1);});
+    var pill=document.createElement('div');pill.className='qty-pill';pill.textContent=item.qty;
+    if(isOut)pill.style.cssText='background:var(--red);color:#fff;font-weight:700';
+    var up=document.createElement('button');up.className='srv-btn';up.textContent='+';up.addEventListener('click',function(){stockQty(item.id,1);});
+    row.appendChild(name);row.appendChild(dn);row.appendChild(pill);row.appendChild(up);wrap.appendChild(row);
+  });
+  el.appendChild(wrap);
 }
 function addLowStockToExtras(){
-  var needs=stockNeedsForShopping();
+  var needs=consolidatedRestockItems();
   if(!needs.length){showToast('Nothing low to add');return;}
   var added=[];
   needs.forEach(function(item){
@@ -4852,7 +4875,7 @@ function addLowStockToExtras(){
   if(added.length){
     addActivity('Added low stock to shopping',added.length+' item'+(added.length===1?'':'s')+' added','shopping');
     persist('extraItems',{type:'add',items:added});
-    renderShop();renderDashboard();showToast('Added to shopping');
+    renderShop();renderDashboard();showToast('Added '+added.length+' item'+(added.length===1?'':'s')+' to shopping list');
   } else {
     showToast('Already on shopping list');
   }
@@ -5497,9 +5520,6 @@ function executeNaturalCommand(rawText){
 function renderDashboard(){
   var stats=gr('dash-stats');if(!stats)return;
   renderStatusCard();
-  renderNightSnacks();
-  renderHydrationCard();
-  renderFreezerStashCard();
   var wp=getWeekPlanForOffset(0);var meals=Object.values(wp).reduce(function(s,a){return s+(a?a.length:0);},0);var low=stockItems.filter(isStockLow).length;var freezer=stockItems.filter(function(i){return normaliseStockItem(i).section==='freezer';}).length;
   stats.innerHTML='';
   [[meals,'Meals'],[stockItems.length,'Stock'],[low,'Low'],[freezer,'Freezer']].forEach(function(x){
@@ -5509,14 +5529,10 @@ function renderDashboard(){
   });
   renderDashboardPlannedMeals(gr('dash-planned'));
   renderActionList(gr('dash-actions'));
-  var quick=stockNeedsForShopping().slice(0,4);
-  if(!quick.length)quick=stockItems.map(normaliseStockItem).sort(function(a,b){return b.updatedAt-a.updatedAt;}).slice(0,4);
-  renderMiniStock(gr('dash-3am-stock'),quick,'No stock yet - quick add your staples');
-  renderShoppingNeeds(gr('dash-shopping-needs'));
-  renderMiniStock(gr('dash-low-stock'),sortedStockItems().filter(isStockLow).slice(0,5),'Nothing low right now');
+  renderConsolidatedRestock(gr('dash-restock-needs'));
+  renderFreezerStashCard();
   renderMiniStock(gr('dash-recent-stock'),stockItems.map(normaliseStockItem).sort(function(a,b){return b.updatedAt-a.updatedAt;}).slice(0,5),'No stock added yet');
   renderActivityFeed(gr('dash-activity'));
-  renderPartnerChanges(gr('dash-partner-changes'));
 }
 
 var iMode='url';var imgB64='';var imgMime='';var importedData=null;
@@ -6340,7 +6356,7 @@ setupKeyboardHandling();
       var nw=reg.installing;if(!nw)return;
       nw.addEventListener('statechange',function(){
         if(nw.state==='installed'&&navigator.serviceWorker.controller){
-          showToast('✓ Mise en Place updated to v5.60 — reloading...');
+          showToast('✓ Mise en Place updated to v5.61 — reloading...');
           setTimeout(function(){
             if(nw)nw.postMessage({type:'SKIP_WAITING'});
             window.location.reload();
