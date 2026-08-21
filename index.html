@@ -128,7 +128,7 @@ body.keyboard-open .sheet{height:calc(var(--vv-height, 100%) - env(safe-area-ins
 .s-foot{padding:12px 20px calc(12px + env(safe-area-inset-bottom,0px));background:var(--paper);border-top:1px solid var(--paper3);display:flex;gap:10px;justify-content:flex-end;align-items:center;flex-shrink:0}
 .fg{margin-bottom:14px}
 .fl{font-size:11px;font-weight:500;color:var(--ink3);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em}
-.fi{padding:11px 13px;border:1.5px solid var(--paper3);border-radius:var(--rs);font-size:16px;background:var(--cream);color:var(--ink);width:100%;font-family:'DM Sans',sans-serif;-webkit-appearance:none}
+.fi{padding:11px 13px;border:1.5px solid var(--paper3);border-radius:var(--rs);font-size:16px;background:var(--cream);color:var(--ink);width:100%;font-family:'DM Sans',sans-serif;-webkit-appearance:none;appearance:none}
 @media screen and (max-width:768px){input,select,textarea,.fi{font-size:16px !important}}
 .fi:focus{outline:none;border-color:var(--sage)}
 .frow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -329,7 +329,7 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
 .rc-img-wrap img{width:100%;height:180px;object-fit:cover;display:block}
 .rc-img-gradient{position:absolute;inset:0;background:linear-gradient(to bottom,transparent 30%,rgba(0,0,0,0.68) 100%);pointer-events:none}
 .rc-img-meta{position:absolute;bottom:0;left:0;right:0;padding:9px 12px;display:flex;justify-content:space-between;align-items:flex-end;gap:6px}
-.rc-img-name{font-family:'Playfair Display',serif;font-size:15px;font-style:italic;color:#fff;font-weight:500;line-height:1.25;text-shadow:0 1px 6px rgba(0,0,0,0.55);flex:1;min-width:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.rc-img-name{font-family:'Playfair Display',serif;font-size:15px;font-style:italic;color:#fff;font-weight:500;line-height:1.25;text-shadow:0 1px 6px rgba(0,0,0,0.55);flex:1;min-width:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical}
 .rc-time-chip{background:rgba(0,0,0,0.48);color:#fff;border-radius:20px;padding:3px 9px;font-size:10px;font-weight:700;white-space:nowrap;flex-shrink:0;letter-spacing:0.03em}
 .rc-cuisine-badge{position:absolute;top:9px;right:9px;width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,0.38);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;font-size:17px;line-height:1}
 /* Desktop hover effects — pointer devices only, never triggers on iPhone touch */
