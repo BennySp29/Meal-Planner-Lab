@@ -415,7 +415,14 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
 .cook-drawer{display:none;background:rgba(20,30,20,0.95);border:1.5px solid var(--sage-l);border-radius:var(--r);padding:14px;margin-top:14px;max-height:220px;overflow-y:auto}
 .cook-drawer.open{display:block}
 .cook-ing-check{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.08);font-size:14px}
-.cook-ing-check.done{opacity:0.5;text-decoration:line-through}
+/* Freezer Planner & Fresh Kits */
+.meal-freezer-badge{display:inline-flex;align-items:center;gap:4px;background:var(--sage-p);color:var(--sage);border:1px solid var(--sage-l);border-radius:12px;padding:2px 8px;font-size:10px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase}
+.meal-fresh-kit{font-size:12px;color:var(--ink2);margin-top:4px;display:flex;align-items:center;gap:5px;background:var(--paper2);border:1px solid var(--paper3);border-radius:var(--rs);padding:5px 8px}
+.freezer-pick-card{background:var(--paper2);border:1.5px solid var(--paper3);border-radius:var(--rs);padding:10px 12px;cursor:pointer;transition:all 0.15s;margin-bottom:8px}
+.freezer-pick-card:active{transform:scale(0.98)}
+.freezer-pick-card.on{background:var(--sage-p);border-color:var(--sage);box-shadow:0 0 0 2px var(--sage-l)}
+.freezer-use-btn{background:var(--sage-p);border:1px solid var(--sage-l);color:var(--sage);border-radius:var(--rs);padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:4px}
+.freezer-use-btn:active{background:var(--sage);color:#fff}
 
 </style>
 </head>
@@ -623,6 +630,7 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
         <div class="frow" style="margin-bottom:14px"><div><label class="fl">Use by</label><input class="fi" type="date" id="qs-expiry"/></div><div><label class="fl">Batch label</label><input class="fi" id="qs-batch" placeholder="e.g. cooked 1 Jul"/></div></div>
         <div class="fg"><label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer"><input type="checkbox" id="qs-notify" style="width:18px;height:18px;cursor:pointer"/> Notify when low</label></div>
         <div class="fg"><label class="fl">Make time</label><input class="fi" id="qs-time" placeholder="Freezer only, e.g. 45 min"/></div>
+        <div class="fg"><label class="fl">Fresh items to serve</label><input class="fi" id="qs-kit" placeholder="e.g. burger buns, lettuce, sour cream"/></div>
         <div class="fg"><label class="fl">Notes</label><textarea class="fi" id="qs-notes" placeholder="Anything useful when tired..." style="height:72px;resize:none"></textarea></div>
         <div class="fg"><label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer"><input type="checkbox" id="qs-template" style="width:18px;height:18px;cursor:pointer"/> Save as template</label></div>
       </div></div>
@@ -667,6 +675,7 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
     <div class="s-body">
       <div class="fg"><label class="fl">Name</label><input class="fi" id="rs-name"/></div>
       <div class="frow" style="margin-bottom:14px"><div><label class="fl">Portions</label><input class="fi" type="number" id="rs-qty" min="1" value="4"/></div><div><label class="fl">Make time</label><input class="fi" id="rs-time" placeholder="e.g. 45 min"/></div></div>
+      <div class="fg"><label class="fl">Fresh items needed to serve <span style="font-weight:300;text-transform:none;letter-spacing:0">(e.g. 4 burger buns, 1 lettuce, cheddar slices)</span></label><input class="fi" id="rs-kit" placeholder="e.g. burger buns, lettuce, cheese"/></div>
       <div class="frow" style="margin-bottom:14px"><div><label class="fl">Warn at</label><input class="fi" type="number" id="rs-alert1" min="0" placeholder="3"/></div><div><label class="fl">Urgent at</label><input class="fi" type="number" id="rs-alert2" min="0" placeholder="1"/></div></div>
       <div class="fg"><label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer"><input type="checkbox" id="rs-notify" style="width:18px;height:18px;cursor:pointer"/> Notify when low</label></div>
       <div class="fg"><label class="fl">Notes</label><textarea class="fi" id="rs-notes" style="height:72px;resize:none"></textarea></div>
@@ -779,6 +788,15 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
         <div class="fg"><input class="fi" id="am-search" placeholder="🔍 Search recipes…" oninput="renderAML()"/></div>
         <div id="am-list"></div>
       </div>
+      <div id="am-freezer-panel" style="display:none">
+        <div class="fg"><input class="fi" id="am-freezer-search" placeholder="🔍 Search freezer stash…" oninput="renderAMFreezerList()"/></div>
+        <div id="am-freezer-list"></div>
+        <div class="fg" id="am-freezer-fresh-wrap" style="display:none;background:var(--paper2);border:1px solid var(--paper3);border-radius:var(--rs);padding:12px;margin-top:12px">
+          <label class="fl" style="color:var(--sage);font-weight:700;margin-bottom:4px">🥗 Fresh items to buy for this meal</label>
+          <div style="font-size:12px;color:var(--ink3);margin-bottom:8px;line-height:1.4">These fresh items will be automatically added to your shopping list (e.g. burger buns, lettuce, cheese, sour cream).</div>
+          <input class="fi" id="am-freezer-fresh" placeholder="e.g. 4 burger buns, 1 lettuce, cheddar slices"/>
+        </div>
+      </div>
       <div id="am-manual-panel" style="display:none">
         <div class="fg"><label class="fl">Meal name</label><input class="fi" id="am-manual" placeholder="e.g. freezer pizza, beans on toast..."/></div>
         <div class="fg"><label class="fl">Cooking time <span style="font-weight:300;text-transform:none;letter-spacing:0">(min, optional)</span></label><input class="fi" type="number" id="am-manual-time" min="0" placeholder="e.g. 20"/></div>
@@ -829,6 +847,7 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
       <div class="frow" style="margin-bottom:14px"><div><label class="fl">Use by / expiry</label><input class="fi" type="date" id="st-expiry"/></div><div><label class="fl">Batch label</label><input class="fi" id="st-batch" placeholder="e.g. cooked 1 Jul"/></div></div>
       <div class="frow" style="margin-bottom:14px"><div><label class="fl">Warn me at</label><input class="fi" type="number" id="st-alert1" min="0" placeholder="e.g. 5"/></div><div><label class="fl">Urgent at</label><input class="fi" type="number" id="st-alert2" min="0" placeholder="e.g. 2"/></div></div>
       <div class="fg"><label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer"><input type="checkbox" id="st-notify" style="width:18px;height:18px;cursor:pointer"/> Notify when this runs low</label></div>
+      <div class="fg"><label class="fl">Fresh items needed to serve <span style="font-weight:300;text-transform:none;letter-spacing:0">(optional — e.g. burger buns, lettuce, sour cream, rice)</span></label><input class="fi" id="st-kit" placeholder="e.g. burger buns, lettuce, cheese"/></div>
       <div class="fg"><label class="fl">Variants <span style="font-weight:300;text-transform:none;letter-spacing:0">(one per line, e.g. Chicken: 2)</span></label><textarea class="fi" id="st-variants" placeholder="Chicken: 2&#10;Curry: 1" style="height:72px;resize:none"></textarea></div>
       <div class="fg"><label class="fl">Stock photo</label><input type="file" id="st-img-file" accept="image/*" style="display:none" onchange="handleStockImg(event)"/><div id="st-img-wrap"></div><button type="button" class="img-upload-btn" onclick="gr('st-img-file').click()">Add photo from camera roll</button></div>
       <div class="fg"><label class="fl">Notes</label><textarea class="fi" id="st-notes" placeholder="Anything useful when tired..." style="height:86px;resize:none"></textarea></div>
@@ -883,7 +902,7 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
       </div>
       <div class="fg" style="margin-top:16px;padding-top:14px;border-top:1.5px dashed var(--paper3);display:flex;justify-content:space-between;align-items:center">
         <div>
-          <div style="font-size:13px;font-weight:700;color:var(--ink)">Mise en Place <span style="color:var(--sage);font-weight:700">v5.62</span></div>
+          <div style="font-size:13px;font-weight:700;color:var(--ink)">Mise en Place <span style="color:var(--sage);font-weight:700">v5.63</span></div>
           <div style="font-size:11px;color:var(--ink3)">Tap if you don't see new updates on your iPhone</div>
         </div>
         <button class="btn btns" onclick="forceAppUpdate()" style="font-size:12px;padding:7px 12px">🔄 Force Update</button>
@@ -2629,6 +2648,67 @@ function renderPlanner(){
     } else {
       meals.forEach(function(m,i){
         var r=rec(m.recipeId);
+        if(m.isFreezer){
+          var freezerRow=mkEl('div','day-meal-row');
+          var freezerInfo=mkEl('div','meal-info');
+          
+          var freezerLabelWrap=mkEl('div');
+          freezerLabelWrap.style.cssText='display:flex;align-items:center;gap:6px;margin-bottom:2px';
+          freezerLabelWrap.appendChild(mkEl('span','meal-label',m.mealType||'Meal'));
+          freezerLabelWrap.appendChild(mkEl('span','meal-freezer-badge','🧊 Freezer Stash'));
+          freezerInfo.appendChild(freezerLabelWrap);
+          
+          var mealName = m.manualName || (r?r.name:'Freezer Meal');
+          freezerInfo.appendChild(mkEl('div','meal-title',mealName));
+          if(m.note)freezerInfo.appendChild(mkEl('div','meal-note','📝 '+m.note));
+          
+          var stItem = m.stockId ? stockItems.find(function(s){return String(s.id)===String(m.stockId);}) : null;
+          var metaParts = [];
+          if(stItem){
+            var normSt = normaliseStockItem(stItem);
+            metaParts.push('🧊 ' + normSt.qty + ' in freezer');
+            if(normSt.makeTime) metaParts.push(normSt.makeTime);
+          } else {
+            metaParts.push('Prepped freezer batch');
+          }
+          freezerInfo.appendChild(mkEl('div','meal-meta',metaParts.join(' · ')));
+          
+          var freshKitText = m.kit || (m.manualIngredients && m.manualIngredients.length ? m.manualIngredients.map(function(x){return x.name;}).join(', ') : '');
+          if(freshKitText){
+            var kitEl = mkEl('div','meal-fresh-kit');
+            kitEl.innerHTML = '<span style="color:var(--sage)">🥗</span> <span>Fresh items to buy: <strong>' + escHtml(freshKitText) + '</strong></span>';
+            freezerInfo.appendChild(kitEl);
+          }
+          
+          var mNoteBtnF=mkEl('button','meal-note-btn',m.note?'📝':'🖊');if(m.note)mNoteBtnF.classList.add('has-note');
+          (function(d2,idx){mNoteBtnF.addEventListener('click',function(e){e.stopPropagation();openMealNote(d2,idx);});})(day,i);
+          var mSwapBtnF=mkEl('button','meal-swap-btn','⇅');
+          (function(d2,idx){mSwapBtnF.addEventListener('click',function(e){e.stopPropagation();openSwapModal(d2,idx);});})(day,i);
+          
+          var usePortionBtn = null;
+          if(m.stockId){
+            usePortionBtn = mkEl('button','freezer-use-btn','🧊 Use 1');
+            (function(sid, mName){
+              usePortionBtn.addEventListener('click',function(e){
+                e.stopPropagation();
+                stockQty(sid, -1, 'Used planned freezer portion ('+mName+')');
+              });
+            })(m.stockId, mealName);
+          }
+          
+          var rmFreezer=mkEl('div','rm-btn','x');
+          (function(d2,idx){rmFreezer.addEventListener('click',function(){rmMeal(d2,idx);});})(day,i);
+          
+          freezerRow.style.flexDirection='column';
+          freezerRow.style.alignItems='stretch';
+          freezerRow.style.gap='6px';
+          var fActs=mkEl('div');fActs.style.cssText='display:flex;align-items:center;gap:8px;justify-content:flex-end';
+          if(usePortionBtn) fActs.appendChild(usePortionBtn);
+          fActs.appendChild(mNoteBtnF);fActs.appendChild(mSwapBtnF);fActs.appendChild(rmFreezer);
+          
+          freezerRow.appendChild(freezerInfo);freezerRow.appendChild(fActs);dayDiv.appendChild(freezerRow);
+          return;
+        }
         if(!r&&m.manualName){
           var manualRow=mkEl('div','day-meal-row');
           var manualInfo=mkEl('div','meal-info');
@@ -3153,6 +3233,14 @@ function consolidate(){
   Object.values(getWeekPlan()).forEach(function(meals){
     if(!meals)return;
     meals.forEach(function(m){
+      if(m.isFreezer){
+        if(m.manualIngredients&&m.manualIngredients.length){
+          m.manualIngredients.forEach(function(ing){addIngredientTotal(ing,1);});
+        }else if(m.kit){
+          parseFreshIngredientsString(m.kit).forEach(function(ing){addIngredientTotal(ing,1);});
+        }
+        return;
+      }
       var r=rec(m.recipeId);
       if(r){
         var baseServings=r.servings||4;
@@ -3879,6 +3967,9 @@ function openRV(id){
 }
 
 // ADD MEAL MODAL
+// ADD MEAL MODAL
+var amFreezerStockId = null;
+
 function renderAMD(){gr('am-days').innerHTML=DAYS.map(function(d){return'<button class="day-sel-btn'+(amDay===d?' on':'')+'" onclick="selAMD(\''+d+'\')">'+d.slice(0,3)+'</button>'}).join('');}
 function renderAMT(){gr('am-types').innerHTML=MT.map(function(t){return'<button class="tchip'+(amType===t?' on':'')+'" onclick="selAMT(\''+t+'\')">'+t+'</button>'}).join('');}
 function selAMD(d){amDay=d;renderAMD();}
@@ -3921,25 +4012,127 @@ function renderAML(){
   addAlphaRail(layout,letters,'am-recipe-letter-');
   el.appendChild(layout);
 }
-function resetAMForm(day,recipeId){
-  amDay=day||DAYS[0];amRecipe=recipeId||null;amType='Dinner';amMode='recipe';amIngN=0;
-  gr('am-search').value='';
+function renderAMFreezerList(){
+  var el=gr('am-freezer-list');if(!el)return;
+  var s=gr('am-freezer-search')?gr('am-freezer-search').value.toLowerCase().trim():'';
+  var freezerItems=stockItems.map(normaliseStockItem).filter(function(i){return i.section==='freezer';});
+  if(s){
+    freezerItems=freezerItems.filter(function(i){
+      return (i.name+' '+(i.type||'')+' '+(i.kit||'')+' '+(i.notes||'')).toLowerCase().indexOf(s)>=0;
+    });
+  }
+  if(!freezerItems.length){
+    el.innerHTML='<div style="padding:16px;text-align:center;color:var(--ink3);font-size:13px;background:var(--paper2);border-radius:var(--rs)">No freezer items found. Add batch meals in the Stock tab or from a recipe.</div>';
+    if(gr('am-freezer-fresh-wrap'))gr('am-freezer-fresh-wrap').style.display='none';
+    return;
+  }
+  el.innerHTML='';
+  freezerItems.sort(function(a,b){return b.qty-a.qty||a.name.localeCompare(b.name);});
+  freezerItems.forEach(function(st){
+    var sel=(String(amFreezerStockId)===String(st.id));
+    var card=document.createElement('div');
+    card.className='freezer-pick-card'+(sel?' on':'');
+    
+    var topRow=document.createElement('div');
+    topRow.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:4px';
+    var nameDiv=document.createElement('div');
+    nameDiv.style.cssText='font-size:14px;font-weight:600;color:var(--ink)';
+    nameDiv.textContent=st.name+(sel?' ✓':'');
+    var qtyBadge=document.createElement('span');
+    qtyBadge.className='meal-freezer-badge';
+    qtyBadge.textContent='🧊 '+st.qty+' in freezer';
+    if(st.qty<=0)qtyBadge.style.cssText='background:var(--red-p);border-color:var(--red-b);color:var(--red)';
+    topRow.appendChild(nameDiv);topRow.appendChild(qtyBadge);
+    card.appendChild(topRow);
+    
+    var metaParts=[];
+    if(st.makeTime)metaParts.push('⏱ '+st.makeTime);
+    if(st.batch)metaParts.push('Label: '+st.batch);
+    if(metaParts.length){
+      var metaDiv=document.createElement('div');
+      metaDiv.style.cssText='font-size:11px;color:var(--ink3);margin-bottom:4px';
+      metaDiv.textContent=metaParts.join(' · ');
+      card.appendChild(metaDiv);
+    }
+    if(st.kit){
+      var kitDiv=document.createElement('div');
+      kitDiv.style.cssText='font-size:12px;color:var(--ink2);display:flex;align-items:center;gap:4px;margin-top:4px';
+      kitDiv.innerHTML='<span style="color:var(--sage)">🥗</span> <span>Fresh kit: <strong>'+escHtml(st.kit)+'</strong></span>';
+      card.appendChild(kitDiv);
+    }
+    (function(stItem){
+      card.addEventListener('click',function(){
+        selAMFreezer(stItem.id);
+      });
+    })(st);
+    el.appendChild(card);
+  });
+}
+function selAMFreezer(id){
+  amFreezerStockId=id;
+  var st=stockItems.find(function(s){return String(s.id)===String(id);});
+  if(st&&gr('am-freezer-fresh')){
+    gr('am-freezer-fresh').value=st.kit||'';
+  }
+  if(gr('am-freezer-fresh-wrap'))gr('am-freezer-fresh-wrap').style.display='block';
+  renderAMFreezerList();
+}
+function parseFreshIngredientsString(str){
+  if(!str||!String(str).trim())return [];
+  var items=String(str).split(/,|\band\b/i).map(function(s){return s.trim();}).filter(Boolean);
+  return items.map(function(itemStr){
+    var itemQty=1;var unit='';var name=itemStr;
+    var qMatch=itemStr.match(/^(\d+(?:\.\d+)?|\ba\b|\ban\b|\bone\b|\btwo\b|\bthree\b|\bfour\b|\bfive\b|\bsix\b)\s+(?:(packs?|cans?|bottles?|bags?|boxes?|g|kg|ml|l|slices?|bunches?|heads?)\s+(?:of\s+)?)?(.+)$/i);
+    if(qMatch){
+      itemQty=parseWordNumber(qMatch[1]);
+      unit=qMatch[2]||'';
+      name=qMatch[3]||itemStr;
+    }
+    name=name.replace(/^(pack of|can of|bag of|bottle of)\s+/i,'').trim();
+    if(!name)return null;
+    return {name:name.charAt(0).toUpperCase()+name.slice(1),qty:itemQty,unit:unit};
+  }).filter(Boolean);
+}
+function resetAMForm(day,recipeId,freezerStockId){
+  amDay=day||DAYS[0];amRecipe=recipeId||null;amFreezerStockId=freezerStockId||null;amType='Dinner';
+  amMode=freezerStockId?'freezer':(recipeId?'recipe':'recipe');amIngN=0;
+  if(gr('am-search'))gr('am-search').value='';
+  if(gr('am-freezer-search'))gr('am-freezer-search').value='';
+  if(gr('am-freezer-fresh'))gr('am-freezer-fresh').value='';
+  if(gr('am-freezer-fresh-wrap'))gr('am-freezer-fresh-wrap').style.display='none';
   if(gr('am-manual'))gr('am-manual').value='';
   if(gr('am-manual-time'))gr('am-manual-time').value='';
   if(gr('am-ingredients'))gr('am-ingredients').innerHTML='';
   if(gr('am-note'))gr('am-note').value='';
   if(gr('mt-inline-panel'))gr('mt-inline-panel').style.display='none';
   if(gr('mt-toggle-btn'))gr('mt-toggle-btn').textContent='⚙ Customise';
-  renderAMD();renderAMT();renderAMMode();renderAML();
+  renderAMD();renderAMT();renderAMMode();renderAML();renderAMFreezerList();
+  if(freezerStockId)selAMFreezer(freezerStockId);
 }
-function openAM(day){resetAMForm(day,null);openM('modal-am');}
-function openAMForR(id){resetAMForm(DAYS[0],id);openM('modal-am');}
+function openAM(day){resetAMForm(day,null,null);openM('modal-am');}
+function openAMForR(id){resetAMForm(DAYS[0],id,null);openM('modal-am');}
+function openAMForFreezer(stockId){resetAMForm(DAYS[0],null,stockId);openM('modal-am');}
 function renderAMMode(){
-  var el=gr('am-mode');if(el)el.innerHTML=['recipe','manual'].map(function(m){return'<button class="tchip'+(amMode===m?' on':'')+'" onclick="setAMMode(\''+m+'\')">'+(m==='recipe'?'From recipes':'Manual')+'</button>';}).join('');
+  var modes=[{id:'recipe',name:'From recipes'},{id:'freezer',name:'🧊 Freezer Stash'},{id:'manual',name:'Manual'}];
+  var el=gr('am-mode');
+  if(el){
+    el.innerHTML=modes.map(function(m){
+      return'<button class="tchip'+(amMode===m.id?' on':'')+'" onclick="setAMMode(\''+m.id+'\')">'+m.name+'</button>';
+    }).join('');
+  }
   if(gr('am-recipe-panel'))gr('am-recipe-panel').style.display=amMode==='recipe'?'block':'none';
+  if(gr('am-freezer-panel'))gr('am-freezer-panel').style.display=amMode==='freezer'?'block':'none';
   if(gr('am-manual-panel'))gr('am-manual-panel').style.display=amMode==='manual'?'block':'none';
 }
-function setAMMode(mode){amMode=mode;amRecipe=null;if(mode==='manual'&&gr('am-ingredients')&&!gr('am-ingredients').children.length)addAMIngredient();renderAMMode();renderAML();}
+function setAMMode(mode){
+  amMode=mode;
+  if(mode!=='recipe')amRecipe=null;
+  if(mode!=='freezer')amFreezerStockId=null;
+  if(mode==='manual'&&gr('am-ingredients')&&!gr('am-ingredients').children.length)addAMIngredient();
+  renderAMMode();
+  if(mode==='recipe')renderAML();
+  if(mode==='freezer')renderAMFreezerList();
+}
 function selAMR(id){amRecipe=id;amMode='recipe';renderAMMode();renderAML();}
 function addAMIngredient(name,qty,unit){
   amIngN++;var div=document.createElement('div');div.className='ingrow';div.id='am-ing-'+amIngN;
@@ -3963,7 +4156,20 @@ function confirmAM(){
   var k=planKey(amDay);if(!plan[k])plan[k]=[];
   var note=(gr('am-note')?gr('am-note').value.trim():'');
   var meal={id:newId('meal'),mealType:amType,updatedAt:Date.now()};
-  if(amMode==='manual'){
+  if(amMode==='freezer'){
+    if(!amFreezerStockId){showToast('Select a freezer meal first');return;}
+    var stItem=stockItems.find(function(s){return String(s.id)===String(amFreezerStockId);});
+    if(!stItem){showToast('Freezer item not found');return;}
+    var freshStr=(gr('am-freezer-fresh')?gr('am-freezer-fresh').value.trim():'');
+    var parsedFresh=parseFreshIngredientsString(freshStr);
+    meal.isFreezer=true;
+    meal.stockId=stItem.id;
+    meal.manualName=stItem.name;
+    if(stItem.recipeId)meal.recipeId=stItem.recipeId;
+    if(stItem.makeTime)meal.manualTime=parseInt(stItem.makeTime,10)||undefined;
+    if(freshStr)meal.kit=freshStr;
+    if(parsedFresh.length)meal.manualIngredients=parsedFresh;
+  }else if(amMode==='manual'){
     var manual=(gr('am-manual')?gr('am-manual').value.trim():'');
     if(!manual){showToast('Add a meal name');return;}
     meal.manualName=manual;
@@ -3976,7 +4182,7 @@ function confirmAM(){
     meal.recipeId=typeof amRecipe==='string'?parseInt(amRecipe,10):amRecipe;
   }
   if(note)meal.note=note;
-  plan[k].push(meal);closeM('modal-am');renderPlanner();renderShop();renderDashboard();persist('plan',k);showToast('Added to '+amDay);
+  plan[k].push(meal);closeM('modal-am');renderPlanner();renderShop();renderDashboard();persist('plan',k);showToast('Added to '+amDay+' ✓');
 }
 
 // ADD/EDIT RECIPE
@@ -4317,8 +4523,18 @@ function stockCard(item){
   var up=document.createElement('button');up.className='srv-btn';up.textContent='+';up.addEventListener('click',function(){stockQty(item.id,1);});
   qty.appendChild(dn);qty.appendChild(pill);qty.appendChild(up);
   var acts=document.createElement('div');acts.style.cssText='display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end';
+  if(item.section==='freezer'){
+    var planB=document.createElement('button');
+    planB.className='btn btns btnp';
+    planB.textContent='+ Plan';
+    planB.title='Add this freezer batch to meal plan';
+    (function(sid){
+      planB.addEventListener('click',function(){openAMForFreezer(sid);});
+    })(item.id);
+    acts.appendChild(planB);
+  }
   var edit=document.createElement('button');edit.className='btn btns';edit.textContent='Edit';edit.addEventListener('click',function(){openStockModal(item.id);});
-  var use=document.createElement('button');use.className='btn btns btnp';use.textContent='Use';use.addEventListener('click',function(){openUseStockModal(item.id);});
+  var use=document.createElement('button');use.className='btn btns btnw';use.textContent='Use';use.addEventListener('click',function(){openUseStockModal(item.id);});
   var restock=document.createElement('button');restock.className='btn btns';restock.textContent='Restock';restock.addEventListener('click',function(){restockStock(item.id);});
   var dup=document.createElement('button');dup.className='btn btns btndup';dup.textContent='Duplicate';dup.addEventListener('click',function(){duplicateStockItem(item.id);});
   var tpl=document.createElement('button');tpl.className='btn btns';tpl.textContent='Template';tpl.addEventListener('click',function(){saveStockTemplate(item.id);});
@@ -4362,7 +4578,7 @@ function applyStockTemplate(id){
   var t=stockTemplates.find(function(x){return String(x.id)===String(id);});if(!t)return;
   t=normaliseStockTemplate(t);
   stockQuickSection=t.section||'snack';renderQuickStockSectionPicker(stockQuickSection);
-  gr('qs-name').value=t.name||'';gr('qs-type').value=t.type||'';gr('qs-qty').value=t.qty||1;gr('qs-target').value=t.targetQty!==null&&t.targetQty!==undefined?t.targetQty:'';gr('qs-time').value=t.makeTime||'';gr('qs-expiry').value=t.expiry||'';gr('qs-batch').value=t.batch||'';gr('qs-alert1').value=t.alert1!==null&&t.alert1!==undefined?t.alert1:'';gr('qs-alert2').value=t.alert2!==null&&t.alert2!==undefined?t.alert2:'';gr('qs-notify').checked=!!t.notify;gr('qs-notes').value=t.notes||'';renderStockDuplicateHint('qs');
+  gr('qs-name').value=t.name||'';gr('qs-type').value=t.type||'';gr('qs-qty').value=t.qty||1;gr('qs-target').value=t.targetQty!==null&&t.targetQty!==undefined?t.targetQty:'';gr('qs-time').value=t.makeTime||'';gr('qs-expiry').value=t.expiry||'';gr('qs-batch').value=t.batch||'';gr('qs-alert1').value=t.alert1!==null&&t.alert1!==undefined?t.alert1:'';gr('qs-alert2').value=t.alert2!==null&&t.alert2!==undefined?t.alert2:'';gr('qs-notify').checked=!!t.notify;if(gr('qs-kit'))gr('qs-kit').value=t.kit||'';gr('qs-notes').value=t.notes||'';renderStockDuplicateHint('qs');
 }
 function openQuickStockModal(templateId){
   var section=['all','low','recent'].indexOf(stockFilter)>=0?'snack':stockFilter;
@@ -4378,13 +4594,14 @@ function openStockModal(id){
   item=item?normaliseStockItem(item):{section:['all','low','recent'].indexOf(stockFilter)>=0?'snack':stockFilter,qty:1};
   gr('stock-title').textContent=id?'Edit stock item':'New stock item';
   stockImgB64=item.image||'';
-  gr('st-name').value=item.name||'';gr('st-type').value=item.type||'';gr('st-qty').value=item.qty===0?0:(item.qty||1);gr('st-target').value=item.targetQty!==null&&item.targetQty!==undefined?item.targetQty:'';gr('st-time').value=item.makeTime||'';gr('st-expiry').value=item.expiry||'';gr('st-batch').value=item.batch||'';gr('st-alert1').value=item.alert1!==null&&item.alert1!==undefined?item.alert1:'';gr('st-alert2').value=item.alert2!==null&&item.alert2!==undefined?item.alert2:'';gr('st-notify').checked=!!item.notify;gr('st-variants').value=variantText(item.variants);renderStockImg(stockImgB64);gr('st-notes').value=item.notes||'';
+  gr('st-name').value=item.name||'';gr('st-type').value=item.type||'';gr('st-qty').value=item.qty===0?0:(item.qty||1);gr('st-target').value=item.targetQty!==null&&item.targetQty!==undefined?item.targetQty:'';gr('st-time').value=item.makeTime||'';gr('st-expiry').value=item.expiry||'';gr('st-batch').value=item.batch||'';gr('st-alert1').value=item.alert1!==null&&item.alert1!==undefined?item.alert1:'';gr('st-alert2').value=item.alert2!==null&&item.alert2!==undefined?item.alert2:'';gr('st-notify').checked=!!item.notify;if(gr('st-kit'))gr('st-kit').value=item.kit||'';gr('st-variants').value=variantText(item.variants);renderStockImg(stockImgB64);gr('st-notes').value=item.notes||'';
   renderStockDuplicateHint('st',stockEditId);
   renderStockSectionPicker(item.section||'snack');openM('modal-stock');
 }
 function saveQuickStockItem(){
   var name=gr('qs-name').value.trim();if(!name){showToast('Add a stock name');return;}
-  var item=normaliseStockItem({id:newId('stock'),name:name,section:stockQuickSection,type:gr('qs-type').value,qty:gr('qs-qty').value,targetQty:gr('qs-target').value,makeTime:gr('qs-time').value,expiry:gr('qs-expiry').value,batch:gr('qs-batch').value,alert1:gr('qs-alert1').value,alert2:gr('qs-alert2').value,notify:gr('qs-notify').checked,kit:'',notes:gr('qs-notes').value,updatedAt:Date.now(),updatedBy:fbCfg.who||'Someone'});
+  var kitStr=gr('qs-kit')?gr('qs-kit').value.trim():'';
+  var item=normaliseStockItem({id:newId('stock'),name:name,section:stockQuickSection,type:gr('qs-type').value,qty:gr('qs-qty').value,targetQty:gr('qs-target').value,makeTime:gr('qs-time').value,expiry:gr('qs-expiry').value,batch:gr('qs-batch').value,alert1:gr('qs-alert1').value,alert2:gr('qs-alert2').value,notify:gr('qs-notify').checked,kit:kitStr,notes:gr('qs-notes').value,updatedAt:Date.now(),updatedBy:fbCfg.who||'Someone'});
   stockItems.push(item);
   if(gr('qs-template').checked)upsertStockTemplate(item,false);
   addActivity('Added '+item.name,item.qty+' in '+stockSectionName(item.section),'stock');
@@ -4393,7 +4610,8 @@ function saveQuickStockItem(){
 }
 function saveStockItem(){
   var name=gr('st-name').value.trim();if(!name){showToast('Add a stock name');return;}
-  var item=normaliseStockItem({id:stockEditId||newId('stock'),name:name,section:gr('st-section').getAttribute('data-value')||'snack',type:gr('st-type').value,qty:gr('st-qty').value,targetQty:gr('st-target').value,makeTime:gr('st-time').value,expiry:gr('st-expiry').value,batch:gr('st-batch').value,variants:parseVariantText(gr('st-variants').value),image:stockImgB64,alert1:gr('st-alert1').value,alert2:gr('st-alert2').value,notify:gr('st-notify').checked,kit:'',notes:gr('st-notes').value,updatedAt:Date.now(),updatedBy:fbCfg.who||'Someone'});
+  var kitStr=gr('st-kit')?gr('st-kit').value.trim():'';
+  var item=normaliseStockItem({id:stockEditId||newId('stock'),name:name,section:gr('st-section').getAttribute('data-value')||'snack',type:gr('st-type').value,qty:gr('st-qty').value,targetQty:gr('st-target').value,makeTime:gr('st-time').value,expiry:gr('st-expiry').value,batch:gr('st-batch').value,variants:parseVariantText(gr('st-variants').value),image:stockImgB64,alert1:gr('st-alert1').value,alert2:gr('st-alert2').value,notify:gr('st-notify').checked,kit:kitStr,notes:gr('st-notes').value,updatedAt:Date.now(),updatedBy:fbCfg.who||'Someone'});
   var idx=stockItems.findIndex(function(x){return String(x.id)===String(item.id);});
   if(idx>=0)stockItems[idx]=item;else stockItems.push(item);
   addActivity((idx>=0?'Updated ':'Added ')+item.name,item.qty+' left','stock');
@@ -4455,14 +4673,15 @@ function openRecipeStockModal(id){
   gr('rs-name').value=r?r.name:'';
   gr('rs-qty').value=(r&&r.servings)?r.servings:4;
   gr('rs-time').value=(r&&r.time)?(r.time+' min'):'';
-
+  if(gr('rs-kit'))gr('rs-kit').value='';
   gr('rs-alert1').value=3;gr('rs-alert2').value=1;gr('rs-notify').checked=false;
   gr('rs-notes').value=r?'Batch cooked from recipe':'Prepped freezer meal';
   openM('modal-recipe-stock');
 }
 function saveRecipeStockBatch(){
   var name=gr('rs-name').value.trim();if(!name){showToast('Add a freezer stock name');return;}
-  var item=normaliseStockItem({id:newId('stock'),name:name,section:'freezer',type:'meal',qty:gr('rs-qty').value,makeTime:gr('rs-time').value,alert1:gr('rs-alert1').value,alert2:gr('rs-alert2').value,notify:gr('rs-notify').checked,kit:'',notes:gr('rs-notes').value,recipeId:recipeStockId,updatedAt:Date.now(),updatedBy:fbCfg.who||'Someone'});
+  var kitStr=gr('rs-kit')?gr('rs-kit').value.trim():'';
+  var item=normaliseStockItem({id:newId('stock'),name:name,section:'freezer',type:'meal',qty:gr('rs-qty').value,makeTime:gr('rs-time').value,alert1:gr('rs-alert1').value,alert2:gr('rs-alert2').value,notify:gr('rs-notify').checked,kit:kitStr,notes:gr('rs-notes').value,recipeId:recipeStockId,updatedAt:Date.now(),updatedBy:fbCfg.who||'Someone'});
   stockItems.push(item);
   addActivity('Added freezer batch '+item.name,item.qty+' portions','stock');
   function finish(){closeM('modal-recipe-stock');persist('stockItems',{type:'update',item:item});checkStockAlert(item);renderStock();renderDashboard();showToast('Freezer stock added');}
@@ -4968,7 +5187,8 @@ function renderDashboardPlannedMeals(el){
       group.meals.forEach(function(m){
         var row=document.createElement('div');
         row.className='mini-stock-row';
-        row.innerHTML='<div class="mini-stock-name">'+escHtml(m.mealType||'Meal')+' - '+escHtml(mealDisplayName(m))+'</div>';
+        var freezerBadge = m.isFreezer ? ' <span class="meal-freezer-badge" style="font-size:9px;padding:1px 6px">🧊 Freezer</span>' : '';
+        row.innerHTML='<div class="mini-stock-name">'+escHtml(m.mealType||'Meal')+' - '+escHtml(mealDisplayName(m))+freezerBadge+'</div>';
         wrap.appendChild(row);
       });
     }
@@ -6469,7 +6689,7 @@ setupKeyboardHandling();
       var nw=reg.installing;if(!nw)return;
       nw.addEventListener('statechange',function(){
         if(nw.state==='installed'&&navigator.serviceWorker.controller){
-          showToast('✓ Mise en Place updated to v5.62 — reloading...');
+          showToast('✓ Mise en Place updated to v5.63 — reloading...');
           setTimeout(function(){
             if(nw)nw.postMessage({type:'SKIP_WAITING'});
             window.location.reload();
