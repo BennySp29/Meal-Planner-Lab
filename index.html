@@ -874,6 +874,13 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
         <div style="font-size:12px;color:var(--ink3);margin-bottom:10px;line-height:1.5">Used to estimate your weekly shop cost. Prices are rough UK averages — actual costs will vary.</div>
         <div class="sm-grid" id="prof-sm"></div>
       </div>
+      <div class="fg" style="margin-top:16px;padding-top:14px;border-top:1.5px dashed var(--paper3);display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--ink)">Mise en Place <span style="color:var(--sage);font-weight:700">v5.60</span></div>
+          <div style="font-size:11px;color:var(--ink3)">Tap if you don't see new updates on your iPhone</div>
+        </div>
+        <button class="btn btns" onclick="forceAppUpdate()" style="font-size:12px;padding:7px 12px">🔄 Force Update</button>
+      </div>
     </div>
     <div class="s-foot"><button class="btn btnp" onclick="saveProfile()">Save</button></div>
   </div>
@@ -1575,7 +1582,22 @@ function loadRemoteRecipeImages(){
 }
 function registerAppServiceWorker(){
   if(!('serviceWorker' in navigator))return Promise.resolve(null);
-  return navigator.serviceWorker.register('sw.js',{scope:'./'}).catch(function(){return null;});
+  return navigator.serviceWorker.register('sw.js?v=5.60',{scope:'./'}).then(function(reg){
+    if(reg&&typeof reg.update==='function')reg.update().catch(function(){});
+    return reg;
+  }).catch(function(){return null;});
+}
+function forceAppUpdate(){
+  showToast('Clearing caches & updating app...');
+  try{sessionStorage.clear();localStorage.removeItem('cache-nuked');}catch(e){}
+  var p1=('caches' in window)?caches.keys().then(function(keys){return Promise.all(keys.map(function(k){return caches.delete(k);}));}):Promise.resolve();
+  var p2=('serviceWorker' in navigator)?navigator.serviceWorker.getRegistrations().then(function(regs){return Promise.all(regs.map(function(r){return r.unregister();}));}):Promise.resolve();
+  Promise.all([p1,p2]).then(function(){
+    var sep=window.location.href.indexOf('?')>=0?'&':'?';
+    window.location.href=window.location.pathname+sep+'v='+Date.now();
+  }).catch(function(){
+    window.location.reload(true);
+  });
 }
 function applySharedState(state,force){
   if(!state||typeof state!=='object')return false;
@@ -6299,22 +6321,43 @@ initImportButtons();
 handleShareTarget();
 setupKeyboardHandling();
 
-// SERVICE WORKER
+// SERVICE WORKER & APP UPDATE SYSTEM
 (function(){
+  var refreshing=false;
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.addEventListener('controllerchange',function(){
+      if(!refreshing){
+        refreshing=true;
+        window.location.reload();
+      }
+    });
+  }
+
   registerAppServiceWorker().then(function(reg){
     if(!reg)return;
+    if(typeof reg.update==='function')reg.update().catch(function(){});
     reg.addEventListener('updatefound',function(){
       var nw=reg.installing;if(!nw)return;
       nw.addEventListener('statechange',function(){
         if(nw.state==='installed'&&navigator.serviceWorker.controller){
-          if(confirm('A new version of Mise en Place is ready. Reload now?')){
-            navigator.serviceWorker.controller.postMessage({type:'SKIP_WAITING'});
+          showToast('✓ Mise en Place updated to v5.60 — reloading...');
+          setTimeout(function(){
+            if(nw)nw.postMessage({type:'SKIP_WAITING'});
             window.location.reload();
-          }
+          },600);
         }
       });
     });
   }).catch(function(){});
+
+  window.addEventListener('pageshow',function(){
+    if('serviceWorker' in navigator){
+      navigator.serviceWorker.getRegistration().then(function(reg){
+        if(reg&&typeof reg.update==='function')reg.update().catch(function(){});
+      });
+    }
+  });
+
   navigator.serviceWorker.addEventListener('message',function(e){
     if(e.data&&e.data.type==='UPDATE_AVAILABLE'){showToast('✓ Updated to '+e.data.version);}
   });

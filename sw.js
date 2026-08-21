@@ -2,11 +2,10 @@ var CACHE = 'mep-v5.60';
 var CORE_ASSETS = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', function(event) {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE).then(function(cache) {
       return cache.addAll(CORE_ASSETS).catch(function() {});
-    }).then(function() {
-      return self.skipWaiting();
     })
   );
 });
@@ -14,10 +13,10 @@ self.addEventListener('install', function(event) {
 self.addEventListener('activate', function(event) {
   event.waitUntil(
     caches.keys().then(function(keys) {
-      return Promise.all(keys.filter(function(key) {
-        return key !== CACHE;
-      }).map(function(key) {
-        return caches.delete(key);
+      return Promise.all(keys.map(function(key) {
+        if (key !== CACHE) {
+          return caches.delete(key);
+        }
       }));
     }).then(function() {
       return self.clients.claim();
@@ -31,14 +30,29 @@ self.addEventListener('activate', function(event) {
   );
 });
 
+self.addEventListener('message', function(event) {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+  if (event.data && event.data.type === 'CLEAR_ALL_CACHES') {
+    caches.keys().then(function(keys) {
+      return Promise.all(keys.map(function(k) { return caches.delete(k); }));
+    });
+  }
+});
+
 self.addEventListener('fetch', function(event) {
   if (event.request.method !== 'GET') return;
   var url = new URL(event.request.url);
+
+  // Network-first for navigation and HTML documents so users always get the latest build
   if (event.request.mode === 'navigate' || url.pathname.endsWith('index.html') || url.pathname === '/' || url.pathname.endsWith('/')) {
     event.respondWith(
-      fetch(event.request, { cache: 'no-store' }).then(function(response) {
-        var copy = response.clone();
-        caches.open(CACHE).then(function(cache) { cache.put(event.request, copy); }).catch(function(){});
+      fetch(event.request, { cache: 'no-cache' }).then(function(response) {
+        if (response && response.status === 200) {
+          var copy = response.clone();
+          caches.open(CACHE).then(function(cache) { cache.put(event.request, copy); }).catch(function(){});
+        }
         return response;
       }).catch(function() {
         return caches.match(event.request);
@@ -46,15 +60,27 @@ self.addEventListener('fetch', function(event) {
     );
     return;
   }
+
+  // Cache-first with background revalidation for other assets
   event.respondWith(
-    fetch(event.request).then(function(response) {
-      var copy = response.clone();
-      caches.open(CACHE).then(function(cache) {
-        cache.put(event.request, copy);
-      }).catch(function() {});
-      return response;
-    }).catch(function() {
-      return caches.match(event.request);
+    caches.match(event.request).then(function(cached) {
+      if (cached) {
+        fetch(event.request).then(function(res) {
+          if (res && res.status === 200) {
+            caches.open(CACHE).then(function(cache) { cache.put(event.request, res); });
+          }
+        }).catch(function(){});
+        return cached;
+      }
+      return fetch(event.request).then(function(response) {
+        if (response && response.status === 200) {
+          var copy = response.clone();
+          caches.open(CACHE).then(function(cache) {
+            cache.put(event.request, copy);
+          }).catch(function() {});
+        }
+        return response;
+      });
     })
   );
 });
