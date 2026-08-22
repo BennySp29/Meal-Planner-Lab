@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v1.0.0 -->
+<!-- v1.0.1 -->
 
 <html lang="en">
 <head>
@@ -921,7 +921,7 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
       </div>
       <div class="fg" style="margin-top:16px;padding-top:14px;border-top:1.5px dashed var(--paper3);display:flex;justify-content:space-between;align-items:center">
         <div>
-          <div style="font-size:13px;font-weight:700;color:var(--ink)">Mise en Place <span style="color:var(--sage);font-weight:700">v1.0.0</span></div>
+          <div style="font-size:13px;font-weight:700;color:var(--ink)">Mise en Place <span style="color:var(--sage);font-weight:700">v1.0.1</span></div>
           <div style="font-size:11px;color:var(--ink3)">Tap if you don't see new updates on your iPhone</div>
         </div>
         <button class="btn btns" onclick="forceAppUpdate()" style="font-size:12px;padding:7px 12px">🔄 Force Update</button>
@@ -1386,11 +1386,13 @@ function mergeStockLists(localItems,remoteItems,localDeleted,remoteDeleted){
   var needsPush=false,merged=[];
   order.forEach(function(id){
     var l=localById[id],r=remoteById[id];
-    var deleteTs=Math.max(localDeleted[id]||0,remoteDeleted[id]||0);
+    var nameKey=(l&&l.name)?('name:'+stockNameKey(l.name)):((r&&r.name)?('name:'+stockNameKey(r.name)):'');
+    var deleteTs=Math.max(localDeleted[id]||0,remoteDeleted[id]||0,nameKey?(localDeleted[nameKey]||0):0,nameKey?(remoteDeleted[nameKey]||0):0);
     var itemTs=Math.max(stockUpdatedAt(l),stockUpdatedAt(r));
     if(deleteTs&&deleteTs>=itemTs){
       mergedDeleted[id]=deleteTs;
-      if((localDeleted[id]||0)>(remoteDeleted[id]||0))needsPush=true;
+      if(nameKey)mergedDeleted[nameKey]=deleteTs;
+      if((localDeleted[id]||0)>(remoteDeleted[id]||0)||(nameKey&&(localDeleted[nameKey]||0)>(remoteDeleted[nameKey]||0)))needsPush=true;
       return;
     }
     if(l&&!r){needsPush=true;merged.push(l);return;}
@@ -1667,6 +1669,9 @@ function applySharedState(state,force){
   extraItems=Array.isArray(state.extraItems)?state.extraItems:extraItems;
   stockItems=Array.isArray(state.stockItems)?state.stockItems.map(normaliseStockItem):stockItems;
   stockDeletes=normaliseStampMap(state.stockDeletes);
+  var appliedStock=mergeStockLists(stockItems,[],stockDeletes,{});
+  stockItems=appliedStock.items;
+  stockDeletes=appliedStock.deleted;
   var appliedTemplates=mergeStockTemplateLists(Array.isArray(state.stockTemplates)?state.stockTemplates:stockTemplates,[],normaliseStampMap(state.stockTemplateDeletes),{});
   stockTemplates=appliedTemplates.items;
   stockTemplateDeletes=appliedTemplates.deleted;
@@ -1877,6 +1882,8 @@ function mergeSharedState(remote, local, changedKey, changedDateKey, ts){
   var mergedTemplates=mergeStockTemplateLists(local.stockTemplates,remote.stockTemplates,local.stockTemplateDeletes,remote.stockTemplateDeletes);
   out.recipes=mergedRecipes.items;
   out.recipeDeletes=mergedRecipes.deleted;
+  out.stockItems=mergedStock.items;
+  out.stockDeletes=mergedStock.deleted;
   out.stockTemplates=mergedTemplates.items;
   out.stockTemplateDeletes=mergedTemplates.deleted;
   out.planMealDeletes=Object.assign({},remote.planMealDeletes);
@@ -4438,7 +4445,7 @@ function stockFreshIngredientsSummary(list){
 function normaliseStockTemplate(item){
   item=item&&typeof item==='object'?item:{};
   var base=normaliseStockItem(item);
-  return{id:item.id||newId('tpl'),name:base.name,section:base.section,type:base.type,qty:base.qty||1,targetQty:base.targetQty,notes:base.notes,kit:base.kit,freshIngredients:base.freshIngredients||[],makeTime:base.makeTime,expiry:base.expiry,batch:base.batch,alert1:base.alert1,alert2:base.alert2,notify:!!base.notify,updatedAt:parseInt(item.updatedAt,10)||Date.now(),updatedBy:item.updatedBy||item.who||''};
+  return{id:item.id||newId('tpl'),name:base.name,section:base.section,type:base.type,qty:base.qty||1,targetQty:base.targetQty,notes:base.notes,kit:base.kit,freshIngredients:base.freshIngredients||[],makeTime:base.makeTime,expiry:base.expiry,batch:base.batch,alert1:base.alert1,alert2:base.alert2,notify:!!base.notify,updatedAt:parseInt(item.updatedAt,10)||0,updatedBy:item.updatedBy||item.who||''};
 }
 function ensureDefaultStockTemplates(){
   DEFAULT_STOCK_TEMPLATES.forEach(function(tpl){
@@ -4459,7 +4466,7 @@ function normaliseChecklistItem(item){
   if(!item||typeof item!=='object')return null;
   var text=String(item.text||'').trim();
   if(!text)return null;
-  return{id:item.id||newId('nb'),text:text,done:!!item.done,deleted:!!item.deleted,order:parseInt(item.order,10)||0,updatedAt:parseInt(item.updatedAt,10)||Date.now(),updatedBy:item.updatedBy||item.who||''};
+  return{id:item.id||newId('nb'),text:text,done:!!item.done,deleted:!!item.deleted,order:parseInt(item.order,10)||0,updatedAt:parseInt(item.updatedAt,10)||0,updatedBy:item.updatedBy||item.who||''};
 }
 function addActivity(label,detail,kind){
   var row=normaliseActivity({id:newId('act'),label:label,detail:detail||'',kind:kind||'stock',ts:Date.now(),who:fbCfg.who||'Someone',clientId:fbClientId});
@@ -4486,7 +4493,7 @@ function normaliseStockItem(item){
   var target=item.targetQty===undefined||item.targetQty===null||item.targetQty===''?null:Math.max(0,parseInt(item.targetQty,10)||0);
   var freshIngredients=normaliseStockIngredients(item.freshIngredients||item.ingredients||(item.kit?parseFreshIngredientsString(item.kit):[]));
   var kitStr=freshIngredients.length?stockFreshIngredientsSummary(freshIngredients):String(item.kit||item.kitchenItems||'').trim();
-  return{id:item.id||newId('stock'),name:String(item.name||'').trim(),section:item.section||'snack',type:String(item.type||'').trim(),qty:qty,targetQty:target,variants:variants,notes:String(item.notes||'').trim(),kit:kitStr,freshIngredients:freshIngredients,makeTime:String(item.makeTime||'').trim(),expiry:String(item.expiry||'').trim(),batch:String(item.batch||item.batchLabel||'').trim(),image:String(item.image||'').trim(),usage:Array.isArray(item.usage)?item.usage.slice(-20):[],alert1:a1,alert2:a2,notify:!!item.notify,recipeId:item.recipeId||null,updatedAt:parseInt(item.updatedAt,10)||Date.now(),updatedBy:item.updatedBy||item.who||''};
+  return{id:item.id||newId('stock'),name:String(item.name||'').trim(),section:item.section||'snack',type:String(item.type||'').trim(),qty:qty,targetQty:target,variants:variants,notes:String(item.notes||'').trim(),kit:kitStr,freshIngredients:freshIngredients,makeTime:String(item.makeTime||'').trim(),expiry:String(item.expiry||'').trim(),batch:String(item.batch||item.batchLabel||'').trim(),image:String(item.image||'').trim(),usage:Array.isArray(item.usage)?item.usage.slice(-20):[],alert1:a1,alert2:a2,notify:!!item.notify,recipeId:item.recipeId||null,updatedAt:parseInt(item.updatedAt,10)||0,updatedBy:item.updatedBy||item.who||''};
 }
 function sortedStockItems(){return stockItems.map(normaliseStockItem).filter(function(i){return i.name;}).sort(function(a,b){return a.name.localeCompare(b.name);});}
 function stockNameKey(name){return String(name||'').toLowerCase().replace(/\s+/g,' ').trim();}
@@ -4915,12 +4922,14 @@ function deleteStock(id,skipConfirm){
   var ts=Date.now();
   stockItems=stockItems.filter(function(x){return String(x.id)!==String(id);});
   stockDeletes[String(id)]=ts;
+  if(existing&&existing.name)stockDeletes['name:'+stockNameKey(existing.name)]=ts;
   delete stockAlertState[String(id)];saveL('stockAlertState',stockAlertState);
   addActivity('Deleted '+(existing?existing.name:'stock item'),'Removed from stock','stock');
   persist('stockItems',{type:'remove',id:id,deletedAt:ts});
   renderStock();renderDashboard();
   showToast('Stock deleted',existing?function(){
     delete stockDeletes[String(id)];
+    if(existing&&existing.name)delete stockDeletes['name:'+stockNameKey(existing.name)];
     existing.updatedAt=Date.now();
     stockItems.push(existing);
     addActivity('Restored '+existing.name,'Undo delete','stock');
@@ -7258,7 +7267,7 @@ window.addEventListener('beforeunload',function(){
 
 function registerAppServiceWorker(){
   if(!('serviceWorker' in navigator))return Promise.resolve(null);
-  return navigator.serviceWorker.register('sw.js?v=1.0.0',{scope:'./'}).then(function(reg){
+  return navigator.serviceWorker.register('sw.js?v=1.0.1',{scope:'./'}).then(function(reg){
     if(reg&&typeof reg.update==='function')reg.update().catch(function(){});
     return reg;
   }).catch(function(){return null;});
@@ -7295,7 +7304,7 @@ function forceAppUpdate(){
       var nw=reg.installing;if(!nw)return;
       nw.addEventListener('statechange',function(){
         if(nw.state==='installed'&&navigator.serviceWorker.controller){
-          showToast('✓ Mise en Place updated to v1.0.0 — reloading...');
+          showToast('✓ Mise en Place updated to v1.0.1 — reloading...');
           setTimeout(function(){
             if(nw)nw.postMessage({type:'SKIP_WAITING'});
             window.location.reload();
