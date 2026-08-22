@@ -22,12 +22,7 @@ html = html.replace(
 // JS Keyboard handling
 html = html.replace(
   /function setupKeyboardHandling\(\)\{[\s\S]*?lastH=h;\s*\}\);\s*document\.addEventListener\('focusin',function\(e\)\{/m,
-  unction setupKeyboardHandling(){
-  if(!window.visualViewport)return;
-  function updateVV(){ document.documentElement.style.setProperty('--vv-height', window.visualViewport.height + 'px'); }
-  window.visualViewport.addEventListener('resize', updateVV);
-  updateVV();
-  document.addEventListener('focusin',function(e){
+  `function setupKeyboardHandling(){\n  if(!window.visualViewport)return;\n  function updateVV(){ document.documentElement.style.setProperty('--vv-height', window.visualViewport.height + 'px'); }\n  window.visualViewport.addEventListener('resize', updateVV);\n  updateVV();\n  document.addEventListener('focusin',function(e){`
 );
 
 // HTML Removes

@@ -1,0 +1,5 @@
+# Node / scratch testing files
+scratch/
+node_modules/
+.DS_Store
+Thumbs.db
