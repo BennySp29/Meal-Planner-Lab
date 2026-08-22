@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v1.0.2 -->
+<!-- v1.0.3 -->
 
 <html lang="en">
 <head>
@@ -487,9 +487,8 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
         <div id="dash-restock-needs"></div>
       </div>
 
-      <!-- Postpartum Freezer Stash Goal & Daily Hydration -->
+      <!-- Postpartum Freezer Stash Goal -->
       <div id="dash-freezer-stash" style="margin-bottom:18px"></div>
-      <div id="dash-hydration" style="margin-bottom:18px"></div>
 
       <div class="dash-section">
         <div class="sec-hdr"><div class="sec-title">Recent Stock</div></div>
@@ -921,7 +920,7 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
       </div>
       <div class="fg" style="margin-top:16px;padding-top:14px;border-top:1.5px dashed var(--paper3);display:flex;justify-content:space-between;align-items:center">
         <div>
-          <div style="font-size:13px;font-weight:700;color:var(--ink)">Mise en Place <span style="color:var(--sage);font-weight:700">v1.0.2</span></div>
+          <div style="font-size:13px;font-weight:700;color:var(--ink)">Mise en Place <span style="color:var(--sage);font-weight:700">v1.0.3</span></div>
           <div style="font-size:11px;color:var(--ink3)">Tap if you don't see new updates on your iPhone</div>
         </div>
         <button class="btn btns" onclick="forceAppUpdate()" style="font-size:12px;padding:7px 12px">🔄 Force Update</button>
@@ -1101,7 +1100,6 @@ var frequentCommands=[];
 // ── PREGNANCY & NEWBORN UPGRADE STATE ───────────────────────────────────────
 var userAversions=[]; // e.g. ['peppers', 'garlic', 'chicken']
 var freezerGoal=20;   // Postpartum freezer meal goal
-var hydrationLog={date:'',ml:0,target:2500};
 var activeWakeLock=null;
 var cookRecipe=null;
 var cookStepIndex=0;
@@ -2430,9 +2428,6 @@ function loadPersisted(){
     userAversions=pf.userAversions||[];
     freezerGoal=parseInt(pf.freezerGoal,10)||20;
   }
-  var hyd=loadL('hydrationLog');
-  if(hyd&&hyd.date===todayDateKey())hydrationLog=hyd;
-  else hydrationLog={date:todayDateKey(),ml:0,target:2500};
   var fc=loadL('frequentCommands');if(Array.isArray(fc))frequentCommands=fc;
   var ak=loadL('apiKey');if(ak)API_KEY=ak;
   var cfg=ensureFBCfgWorkspace(normaliseFBCfg(loadL('fbCfg')));if(cfg&&cfg.url&&cfg.key&&cfg.proj&&cfg.workspace){fbCfg=cfg;saveL('fbCfg',fbCfg);loadFBSDK().then(initFB).catch(function(){});}
@@ -5624,56 +5619,7 @@ function removeAversion(idx){
 }
 function avKD(e){if(e.key==='Enter'){e.preventDefault();addAversionFromProfile();}}
 
-// 2. Hydration Barometer
-function todayDateKey(){
-  var d=new Date();
-  return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
-}
-function ensureHydrationToday(){
-  var tk=todayDateKey();
-  if(!hydrationLog||hydrationLog.date!==tk){
-    hydrationLog={date:tk,ml:0,target:2500};
-    saveL('hydrationLog',hydrationLog);
-  }
-}
-function renderHydrationCard(){
-  var el=gr('dash-hydration');if(!el)return;
-  ensureHydrationToday();
-  var pct=Math.min(100,Math.round((hydrationLog.ml/hydrationLog.target)*100));
-  var litres=(hydrationLog.ml/1000).toFixed(2).replace(/\.00$/,'');
-  var targetL=(hydrationLog.target/1000).toFixed(1);
-  el.innerHTML=
-    '<div class="hydration-card">' +
-      '<div class="hydration-hdr">' +
-        '<div class="hydration-title">💧 Daily Hydration Barometer</div>' +
-        '<div style="font-size:12px;font-weight:700;color:var(--sage)">'+litres+' / '+targetL+' L ('+pct+'%)</div>' +
-      '</div>' +
-      '<div class="hydration-progress-wrap"><div class="hydration-progress-bar" style="width:'+pct+'%"></div></div>' +
-      '<div class="hydration-btns">' +
-        '<button class="btn btns btnp" onclick="addHydration(250)">+250ml Water</button>' +
-        '<button class="btn btns btnw" onclick="addHydration(500)">+500ml Electrolytes</button>' +
-        '<button class="btn btns" onclick="addHydration(-250)" style="font-size:11px">-250ml</button>' +
-        '<button class="btn btns" onclick="resetHydration()" style="font-size:11px;margin-left:auto">Reset</button>' +
-      '</div>' +
-    '</div>';
-}
-function addHydration(amount){
-  ensureHydrationToday();
-  hydrationLog.ml=Math.max(0,hydrationLog.ml+amount);
-  saveL('hydrationLog',hydrationLog);
-  renderHydrationCard();
-  if(amount>0)showToast('💧 Logged +'+amount+'ml (Total: '+(hydrationLog.ml/1000).toFixed(2)+'L)');
-}
-function resetHydration(){
-  if(!confirm('Reset today\'s hydration counter to 0ml?'))return;
-  ensureHydrationToday();
-  hydrationLog.ml=0;
-  saveL('hydrationLog',hydrationLog);
-  renderHydrationCard();
-  showToast('Hydration reset to 0');
-}
-
-// 3. Postpartum Freezer Stash Goal
+// 2. Postpartum Freezer Stash Goal
 function renderFreezerStashCard(){
   var el=gr('dash-freezer-stash');if(!el)return;
   var freezerItems=stockItems.map(normaliseStockItem).filter(function(i){return i.section==='freezer';});
@@ -6405,7 +6351,6 @@ function renderDashboard(){
   renderActionList(gr('dash-actions'));
   renderConsolidatedRestock(gr('dash-restock-needs'));
   renderFreezerStashCard();
-  renderHydrationCard();
   renderNightSnacks();
   renderMiniStock(gr('dash-recent-stock'),stockItems.map(normaliseStockItem).sort(function(a,b){return b.updatedAt-a.updatedAt;}).slice(0,5),'No stock added yet');
   renderFrequentCommandChips();
@@ -7267,7 +7212,7 @@ window.addEventListener('beforeunload',function(){
 
 function registerAppServiceWorker(){
   if(!('serviceWorker' in navigator))return Promise.resolve(null);
-  return navigator.serviceWorker.register('sw.js?v=1.0.2',{scope:'./'}).then(function(reg){
+  return navigator.serviceWorker.register('sw.js?v=1.0.3',{scope:'./'}).then(function(reg){
     if(reg&&typeof reg.update==='function')reg.update().catch(function(){});
     return reg;
   }).catch(function(){return null;});
@@ -7304,7 +7249,7 @@ function forceAppUpdate(){
       var nw=reg.installing;if(!nw)return;
       nw.addEventListener('statechange',function(){
         if(nw.state==='installed'&&navigator.serviceWorker.controller){
-          showToast('✓ Mise en Place updated to v1.0.2 — reloading...');
+          showToast('✓ Mise en Place updated to v1.0.3 — reloading...');
           setTimeout(function(){
             if(nw)nw.postMessage({type:'SKIP_WAITING'});
             window.location.reload();
