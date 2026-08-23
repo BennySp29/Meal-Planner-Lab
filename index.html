@@ -939,7 +939,7 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
       </div>
       <div class="fg" style="margin-top:16px;padding-top:14px;border-top:1.5px dashed var(--paper3);display:flex;justify-content:space-between;align-items:center">
         <div>
-          <div style="font-size:13px;font-weight:700;color:var(--ink)">Mise en Place <span style="color:var(--sage);font-weight:700">v1.0.3</span></div>
+          <div style="font-size:13px;font-weight:700;color:var(--ink)">Mise en Place <span style="color:var(--sage);font-weight:700">v1.0.4</span></div>
           <div style="font-size:11px;color:var(--ink3)">Tap if you don't see new updates on your iPhone</div>
         </div>
         <button class="btn btns" onclick="forceAppUpdate()" style="font-size:12px;padding:7px 12px">🔄 Force Update</button>
@@ -1047,7 +1047,7 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
 // ── CACHE NUKE v3.0: clears stale SW + caches, one-time reload ─────────────
 (function(){
   if(typeof window==='undefined'||typeof sessionStorage==='undefined')return;
-  var CURRENT='mep-app-v5.62';
+  var CURRENT='mep-app-v1.0.4';
   var nuked=sessionStorage.getItem('cache-nuked');
   if(nuked===CURRENT)return; // already done this session
   function doNuke(){
@@ -7302,6 +7302,13 @@ initImportButtons();
 handleShareTarget();
 setupKeyboardHandling();
 
+function checkAppUpdate(){
+  if(!('serviceWorker' in navigator))return;
+  navigator.serviceWorker.getRegistration().then(function(reg){
+    if(reg&&typeof reg.update==='function')reg.update().catch(function(){});
+  }).catch(function(){});
+}
+
 // PWA & iOS Safari lifecycle sync management
 document.addEventListener('visibilitychange',function(){
   if(document.visibilityState==='visible'){
@@ -7310,6 +7317,7 @@ document.addEventListener('visibilitychange',function(){
     }
     syncWeekAnchor();
     renderAll();
+    checkAppUpdate();
     if(fbConn&&fbRef&&loadL('sharedDirty')){
       publishSharedState();
     }
@@ -7323,6 +7331,7 @@ window.addEventListener('pageshow',function(){
   }
   syncWeekAnchor();
   renderAll();
+  checkAppUpdate();
   if(fbConn&&fbRef&&loadL('sharedDirty')){
     publishSharedState();
   }
@@ -7333,6 +7342,7 @@ window.addEventListener('focus',function(){
   }
   syncWeekAnchor();
   renderAll();
+  checkAppUpdate();
   if(fbConn&&fbRef&&loadL('sharedDirty')){
     publishSharedState();
   }
