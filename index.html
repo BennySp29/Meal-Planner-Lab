@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v1.0.3 -->
+<!-- v1.0.4 -->
 
 <html lang="en">
 <head>
@@ -809,7 +809,26 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
     <div class="sh"></div><div class="s-title" id="ar-title">New Recipe</div>
     <div class="s-body">
       <div class="fg"><label class="fl">Name</label><input class="fi" id="nr-name" placeholder="Recipe name"/></div>
-      <div class="frow" style="margin-bottom:14px"><div><label class="fl">Cuisine</label><select class="fi" id="nr-cuisine"></select></div><div><label class="fl">Cook time (min)</label><input class="fi" type="number" id="nr-time" value="30" min="1"/></div></div>
+      <div class="frow" style="margin-bottom:14px">
+        <div><label class="fl">Cuisine</label><select class="fi" id="nr-cuisine"></select></div>
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <label class="fl" style="margin-bottom:0">Cook time</label>
+            <span id="nr-time-preview" style="font-size:12px;color:var(--sage);font-weight:600">30 min</span>
+          </div>
+          <input class="fi" type="number" id="nr-time" value="30" min="1" oninput="updateNRTimePreview()" style="margin-top:4px"/>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">
+            <button type="button" class="tchip" style="font-size:11px;padding:2px 7px" onclick="setNRTime(15)">15m</button>
+            <button type="button" class="tchip" style="font-size:11px;padding:2px 7px" onclick="setNRTime(30)">30m</button>
+            <button type="button" class="tchip" style="font-size:11px;padding:2px 7px" onclick="setNRTime(45)">45m</button>
+            <button type="button" class="tchip" style="font-size:11px;padding:2px 7px" onclick="setNRTime(60)">1h</button>
+            <button type="button" class="tchip" style="font-size:11px;padding:2px 7px" onclick="setNRTime(120)">2h</button>
+            <button type="button" class="tchip" style="font-size:11px;padding:2px 7px" onclick="setNRTime(240)">4h Slow Cook</button>
+            <button type="button" class="tchip" style="font-size:11px;padding:2px 7px" onclick="setNRTime(360)">6h</button>
+            <button type="button" class="tchip" style="font-size:11px;padding:2px 7px" onclick="setNRTime(480)">8h Slow Cook</button>
+          </div>
+        </div>
+      </div>
       <div class="fg"><label class="fl">Serves <span style="font-weight:300;text-transform:none;letter-spacing:0">(default portion)</span></label><input class="fi" type="number" id="nr-servings" value="4" min="1" style="width:120px"/></div>
       <div class="fg"><label class="fl">Description</label><input class="fi" id="nr-desc" placeholder="Brief description…"/></div>
       <div class="fg">
@@ -2548,6 +2567,87 @@ function rec(id){var nid=typeof id==='string'?parseInt(id,10):id;var found=recip
 function rha(r){return normaliseRecipe(r).allergens.some(function(a){return userAllergens.indexOf(a)>=0})}
 function frac(v){if(!v||v===0)return'0';var w=Math.floor(v),f=v-w;var m={'0':'','0.25':'¼','0.5':'½','0.75':'¾','0.33':'⅓','0.67':'⅔'};var bk='0',bd=1;for(var k in m){var d=Math.abs(f-parseFloat(k));if(d<bd){bd=d;bk=k;}}var fp=m[bk]||'';if(w===0)return fp||(v%1===0?''+v:v.toFixed(1));return fp?w+fp:''+w;}
 function fmt(q,u){return u?frac(q)+' '+u:frac(q)}
+function formatCookTime(mins, format){
+  if(!mins || isNaN(mins)) return '';
+  mins = parseInt(mins, 10);
+  if(mins <= 0) return '';
+  var h = Math.floor(mins / 60);
+  var m = mins % 60;
+  if(format === 'short'){
+    if(h > 0 && m > 0) return h + 'h ' + m + 'm';
+    if(h > 0) return h + 'h';
+    return m + 'm';
+  }
+  if(h > 0 && m > 0){
+    return h + (h === 1 ? ' hr ' : ' hrs ') + m + ' min';
+  }
+  if(h > 0){
+    return h + (h === 1 ? ' hr' : ' hrs');
+  }
+  return m + ' min';
+}
+function updateNRTimePreview(){
+  var inp = gr('nr-time');
+  var val = inp ? parseInt(inp.value, 10) : 30;
+  var prev = gr('nr-time-preview');
+  if(prev) prev.textContent = formatCookTime(val) || (val ? val + ' min' : '30 min');
+}
+function setNRTime(mins){
+  var inp = gr('nr-time');
+  if(inp){
+    inp.value = mins;
+    updateNRTimePreview();
+  }
+}
+function currentShopWeekKey(){
+  return formatLocalDate(getViewedWeekStart());
+}
+function shopItemKey(rawKey){
+  if(typeof rawKey !== 'string') rawKey = String(rawKey || '');
+  if(rawKey.indexOf(':') >= 0) return rawKey;
+  return currentShopWeekKey() + ':' + rawKey;
+}
+function isShopItemChecked(rawKey){
+  var k = shopItemKey(rawKey);
+  if(checked[k] !== undefined) return !!checked[k];
+  if(weekOffset === 0 && checked[rawKey] !== undefined) return !!checked[rawKey];
+  return false;
+}
+function getWeekTickedCount(){
+  var prefix = currentShopWeekKey() + ':';
+  var count = 0;
+  Object.keys(checked).forEach(function(k){
+    if(checked[k]){
+      if(k.startsWith(prefix)) count++;
+      else if(weekOffset === 0 && k.indexOf(':') === -1) count++;
+    }
+  });
+  return count;
+}
+function isStockItemOnShoppingList(itemOrName){
+  var label = typeof itemOrName === 'string' ? itemOrName : (itemOrName ? itemOrName.name : '');
+  if(!label) return false;
+  return extraItems.some(function(e){ return extraItemMatches(e, label); });
+}
+function addStockItemToShopping(itemId){
+  var item = stockItems.find(function(x){ return String(x.id) === String(itemId); });
+  if(!item){ showToast('Item not found'); return; }
+  item = normaliseStockItem(item);
+  var label = item.name;
+  if(isStockItemOnShoppingList(label)){
+    showToast('"' + label + '" is already on shopping list');
+    return;
+  }
+  var needQty = stockRestockNeed(item);
+  var obj = { name: label, qty: needQty > 0 ? needQty : 1, unit: item.unit || '' };
+  extraItems.push(obj);
+  addActivity('Added ' + label + ' to shopping', 'Restock item (' + (obj.qty + (obj.unit ? ' ' + obj.unit : '')) + ')', 'shopping');
+  persist('extraItems', { type: 'add', items: [obj] });
+  renderShop();
+  renderDashboard();
+  if(gr('panel-stock') && gr('panel-stock').classList.contains('active')) renderStock();
+  showToast('Added "' + label + '" to shopping list');
+}
 function todayIdx(){return(new Date().getDay()+6)%7;}
 // Returns DAYS reordered from weekStart
 function orderedDays(){return DAYS.slice(weekStart).concat(DAYS.slice(0,weekStart));}
@@ -2687,7 +2787,7 @@ function renderPlanner(){
   var grps=consolidate();
   var ti=Object.values(grps).reduce(function(s,a){return s+a.length;},0);
   var sg=gr('stats-grid');sg.innerHTML='';
-  [[tot,'Meals'],[ti,'Ingredients'],[recipes.length,'Recipes'],[Object.values(checked).filter(Boolean).length,'Ticked']].forEach(function(x){
+  [[tot,'Meals'],[ti,'Ingredients'],[recipes.length,'Recipes'],[getWeekTickedCount(),'Ticked']].forEach(function(x){
     var c=mkEl('div','stat-card');var numEl=mkEl('div','stat-n','0');c.appendChild(numEl);c.appendChild(mkEl('div','stat-l',x[1]));sg.appendChild(c);
     countUp(numEl,x[0],600);
   });
@@ -2700,7 +2800,7 @@ function renderPlanner(){
     var dayTitleEl=mkEl('div','day-exp-title',day);
     if(isToday){var tb=mkEl('small');tb.textContent=' (today)';tb.style.cssText='font-size:12px;color:var(--sage);font-style:italic';dayTitleEl.appendChild(tb);}
     var totalMins=meals.reduce(function(s,m){var r2=rec(m.recipeId);return s+(r2&&r2.time?r2.time:0);},0);
-    if(totalMins>0){var ctBadge=mkEl('span','day-cook-time','~'+totalMins+'min');dayTitleEl.appendChild(ctBadge);}
+    if(totalMins>0){var ctBadge=mkEl('span','day-cook-time','~'+formatCookTime(totalMins,'short'));dayTitleEl.appendChild(ctBadge);}
     tw.appendChild(dayTitleEl);
     var addBtn=mkEl('button','btn btns','+');
     (function(d){addBtn.addEventListener('click',function(){openAM(d);});})(day);
@@ -2828,7 +2928,7 @@ function renderPlanner(){
         if(m.note)info.appendChild(mkEl('div','meal-note','📝 '+m.note));
         if(ha){info.appendChild(mkEl('div','meal-warn','! Contains '+hits.join(', ')));}
         var baseServings=r.servings||4;var planServings=m.servings||baseServings;
-        var metaTxt=r.cuisine+' - '+r.time+' min'+(r.steps&&r.steps.length?' - '+r.steps.length+' steps':'');
+        var metaTxt=r.cuisine+' - '+formatCookTime(r.time)+(r.steps&&r.steps.length?' - '+r.steps.length+' steps':'');
         info.appendChild(mkEl('div','meal-meta',metaTxt));
         (function(rid){info.addEventListener('click',function(){openRV(rid);});})(m.recipeId);
         // Servings stepper
@@ -3066,7 +3166,6 @@ function estimateCost(){
     var q=item?item.qty:1;
     return sum+q*(AISLE_BASE_COST.Pantry*sm.mult);
   },0);
-  total+=stockNeedsForShopping().length*(AISLE_BASE_COST.Pantry*sm.mult);
   return{total:Math.round(total*100)/100,sm:sm};
 }
 function renderCostBanner(){
@@ -3074,7 +3173,7 @@ function renderCostBanner(){
   wrap.innerHTML='';
   var wp=getWeekPlan();
   var tot=Object.values(wp).reduce(function(s,a){return s+(a?a.length:0);},0);
-  if(tot===0&&!stockNeedsForShopping().length)return;
+  if(tot===0&&!extraItems.length)return;
   var est=estimateCost();
   var tierClass=est.sm.tier==='budget'?' budget':est.sm.tier==='premium'?' premium':'';
   var banner=document.createElement('div');banner.className='cost-banner'+tierClass;
@@ -3385,19 +3484,21 @@ function renderShop(){
   renderCostBanner();
   var el=gr('shop-content');
   var tot=Object.values(getWeekPlan()).reduce(function(s,a){return s+(a?a.length:0);},0);
-  var stockHtml=renderStockShoppingHtml();
-  if(tot===0&&stockHtml){el.innerHTML=stockHtml;renderExtras();return;}
-  if(tot===0){el.innerHTML='<div class="empty"><span class="empty-icon">🛒</span><div class="empty-title">Your list is empty</div><div class="empty-text">Add meals in the Planner tab to generate your shopping list</div></div>';renderExtras();return;}
-  var grps=consolidate();var html=stockHtml;
+  if(tot===0&&extraItems.length===0){
+    el.innerHTML='<div class="empty"><span class="empty-icon">🛒</span><div class="empty-title">Your list is empty</div><div class="empty-text">Add meals in the Planner tab or add extras below to generate your shopping list</div></div>';
+    renderExtras();
+    return;
+  }
+  var grps=consolidate();var html='';
   Object.entries(grps).forEach(function(e){
     var cat=e[0],items=e[1];if(!items.length)return;
     html+='<div class="shop-cat"><div class="shop-cat-hdr"><span>'+cat+'</span><span>'+items.length+' item'+(items.length!==1?'s':'')+'</span></div>';
     items.sort(function(a,b){return a.name.localeCompare(b.name);}).forEach(function(item){
-      var k=item.name.toLowerCase().replace(/\s/g,'_');var on=!!checked[k];
+      var rawK=item.name.toLowerCase().replace(/\s/g,'_');var on=isShopItemChecked(rawK);
       var sn=item.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
       var qtyText=item.isCustomQty?item.qty:fmt(item.qty,item.unit);
-      html+='<div class="shop-item'+(on?' done':'')+'" id="si-'+k+'">'
-           +'<div class="chk'+(on?' on':'')+'" onclick="toggleChk(\''+k+'\')">'
+      html+='<div class="shop-item'+(on?' done':'')+'" id="si-'+rawK+'">'
+           +'<div class="chk'+(on?' on':'')+'" onclick="toggleChk(\''+rawK+'\')">'
            +'<span class="chk-tick">&#10003;</span></div>'
            +'<div class="si-name">'+escHtml(item.name)+'</div>'
            +'<div class="si-qty">'+escHtml(qtyText)+'</div>'
@@ -3410,23 +3511,7 @@ function renderShop(){
   renderExtras();
 }
 function renderStockShoppingHtml(){
-  var needs=stockNeedsForShopping();
-  if(!needs.length)return '';
-  var html='<div class="shop-cat"><div class="shop-cat-hdr"><span>Stock restock</span><span>'+needs.length+' item'+(needs.length!==1?'s':'')+'</span></div>';
-  needs.forEach(function(item){
-    item=normaliseStockItem(item);
-    var k='stock_'+item.id;var on=!!checked[k];
-    var need=stockRestockNeed(item);
-    var qty=need>0?'buy '+need:(item.qty+' left');
-    var note=item.expiry&&isStockExpiring(item)?'Use soon':(stockAlertLevel(item)===2?'Urgent':stockAlertLevel(item)===1?'Low':'Restock');
-    html+='<div class="shop-item'+(on?' done':'')+'" id="si-'+k+'">'
-         +'<div class="chk'+(on?' on':'')+'" onclick="toggleChk(\''+k+'\')"><span class="chk-tick">&#10003;</span></div>'
-         +'<div class="si-name">'+escHtml(item.name)+' <span style="color:var(--ink3);font-size:11px">('+escHtml(note)+')</span></div>'
-         +'<div class="si-qty">'+escHtml(qty)+'</div>'
-         +'</div>';
-  });
-  html+='</div>';
-  return html;
+  return '';
 }
 function removeShopItem(ev, name) {
   ev.stopPropagation();
@@ -3480,7 +3565,7 @@ function renderExtras(){
   el.innerHTML=extraItems.map(function(raw,i){
     var item=normaliseExtraItem(raw);
     if(!item)return '';
-    var k='extra_'+i;var on=!!checked[k];
+    var k='extra_'+i;var on=isShopItemChecked(k);
     var qtyText=fmt(item.qty,item.unit);
     return '<div class="shop-item'+(on?' done':'')+'" id="si-'+k+'">'
           +'<div class="chk'+(on?' on':'')+'" onclick="toggleChk(\''+k+'\')">'
@@ -3526,8 +3611,37 @@ function removeExtra(i){
   }:null);
 }
 function extraKD(e){if(e.key==='Enter'){e.preventDefault();addExtra();}}
-function toggleChk(k){checked[k]=!checked[k];persist('checked',k);var el=gr('si-'+k);if(el){el.className='shop-item'+(checked[k]?' done':'');var chk=el.querySelector('.chk');chk.className='chk'+(checked[k]?' on':'');}}
-function clearChecks(){checked={};addActivity('Cleared ticked shopping items','','shopping');persist('checked','__clear__');renderShop();}
+function toggleChk(rawKey){
+  var fullKey=shopItemKey(rawKey);
+  var nextState=!isShopItemChecked(rawKey);
+  checked[fullKey]=nextState;
+  if(weekOffset===0&&checked[rawKey]!==undefined){
+    delete checked[rawKey];
+  }
+  persist('checked',fullKey);
+  var el=gr('si-'+rawKey);
+  if(el){
+    el.className='shop-item'+(nextState?' done':'');
+    var chk=el.querySelector('.chk');
+    if(chk)chk.className='chk'+(nextState?' on':'');
+  }
+  var tickedStat=document.querySelectorAll('.stat-card');
+  if(tickedStat&&tickedStat.length>=4){
+    var numEl=tickedStat[3].querySelector('.stat-n');
+    if(numEl)numEl.textContent=getWeekTickedCount();
+  }
+}
+function clearChecks(){
+  var prefix=currentShopWeekKey()+':';
+  Object.keys(checked).forEach(function(k){
+    if(k.startsWith(prefix)||(weekOffset===0&&k.indexOf(':')===-1)){
+      delete checked[k];
+    }
+  });
+  addActivity('Cleared ticked shopping items','Week: '+weekLabel(),'shopping');
+  persist('checked','__clear__');
+  renderShop();
+}
 
 // RECIPES & CRAVINGS
 function stemWord(w){
@@ -3627,11 +3741,11 @@ function makeRCard(r){
     if(cuisineFlag){var badge=document.createElement('div');badge.className='rc-cuisine-badge';badge.textContent=cuisineFlag;imgWrap.appendChild(badge);}
     var imgMeta=document.createElement('div');imgMeta.className='rc-img-meta';
     var nameOvl=document.createElement('div');nameOvl.className='rc-img-name';nameOvl.textContent=r.name;imgMeta.appendChild(nameOvl);
-    if(r.time){var tChip=document.createElement('div');tChip.className='rc-time-chip';tChip.textContent=r.time+'min';imgMeta.appendChild(tChip);}
+    if(r.time){var tChip=document.createElement('div');tChip.className='rc-time-chip';tChip.textContent=formatCookTime(r.time,'short');imgMeta.appendChild(tChip);}
     imgWrap.appendChild(imgMeta);card.appendChild(imgWrap);
   }
   var nm=document.createElement('div');nm.className='rc-name';nm.textContent=(cuisineFlag&&!r.image?cuisineFlag+' ':'')+r.name;card.appendChild(nm);
-  var metaParts=[r.cuisine,r.time+' min','serves '+(r.servings||4),r.ingredients.length+' ingredients'];
+  var metaParts=[r.cuisine,formatCookTime(r.time),'serves '+(r.servings||4),r.ingredients.length+' ingredients'];
   if(r.steps&&r.steps.length)metaParts.push(r.steps.length+' steps');
   var meta=document.createElement('div');meta.className='rc-meta';meta.textContent=metaParts.join(' - ');card.appendChild(meta);
   if(r.rating||r.cookCount){
@@ -3786,7 +3900,6 @@ function markCooked(id,btn,starEl){
 // ─── SHARE SHOPPING LIST ───────────────────────────────────────────────────────
 function shareShopList(){
   var grps=consolidate();
-  var stockNeeds=stockNeedsForShopping();
   var lines=['🛒 Shopping list — '+weekLabel(),''];
   aisleOrder.forEach(function(cat){
     var items=grps[cat];if(!items||!items.length)return;
@@ -3794,27 +3907,17 @@ function shareShopList(){
     items.sort(function(a,b){return a.name.localeCompare(b.name);}).forEach(function(item){
       var k=item.name.toLowerCase().replace(/\s/g,'_');
       var qtyText=item.isCustomQty?item.qty:fmt(item.qty,item.unit);
-      lines.push((checked[k]?'✓ ':'  ')+item.name+(qtyText?'  ('+qtyText+')':''));
+      lines.push((isShopItemChecked(k)?'✓ ':'  ')+item.name+(qtyText?'  ('+qtyText+')':''));
     });
     lines.push('');
   });
-  if(stockNeeds.length){
-    lines.push('-- Stock restock --');
-    stockNeeds.forEach(function(item){
-      item=normaliseStockItem(item);
-      var need=stockRestockNeed(item);
-      var reason=item.expiry&&isStockExpiring(item)?'use soon':(stockAlertLevel(item)===2?'urgent':stockAlertLevel(item)===1?'low':'restock');
-      lines.push('  '+item.name+' ('+(need>0?'buy '+need:item.qty+' left')+', '+reason+')');
-    });
-    lines.push('');
-  }
   if(extraItems.length){
     lines.push('── Extras ──');
     extraItems.forEach(function(raw,i){
       var item=normaliseExtraItem(raw);
       if(!item)return;
       var k='extra_'+i;
-      var mark=checked[k]?'✓ ':'  ';
+      var mark=isShopItemChecked(k)?'✓ ':'  ';
       var qtyText=fmt(item.qty,item.unit);
       lines.push(mark+item.name+(qtyText?'  ('+qtyText+')':''));
     });
@@ -3993,7 +4096,7 @@ function openRV(id){
   if(r.image){var rvi=document.createElement('img');rvi.className='rv-img';rvi.src='data:image/jpeg;base64,'+r.image;rvi.alt=r.name;cont.appendChild(rvi);}
   var hero=mkEl('div','rv-hero');
   hero.appendChild(mkEl('div','rv-title',r.name));
-  var meta=[r.cuisine,r.time+' min','serves '+(r.servings||4)];
+  var meta=[r.cuisine,formatCookTime(r.time),'serves '+(r.servings||4)];
   if(r.ingredients.length)meta.push(r.ingredients.length+' ingredients');
   if(r.steps&&r.steps.length)meta.push(r.steps.length+' steps');
   hero.appendChild(mkEl('div','rv-meta',meta.join(' - ')));
@@ -4090,7 +4193,7 @@ function renderAML(){
     var nameDiv=document.createElement('div');nameDiv.style.cssText='font-size:13px;font-weight:500;margin-bottom:2px';
     nameDiv.textContent=r.name+(sel?' ✓':'');
     var metaDiv=document.createElement('div');metaDiv.style.cssText='font-size:11px;color:var(--ink3)';
-    metaDiv.textContent=r.cuisine+' · '+r.time+' min';
+    metaDiv.textContent=r.cuisine+' · '+formatCookTime(r.time);
     card.appendChild(nameDiv);card.appendChild(metaDiv);
     if(ha){
       var haDiv=document.createElement('div');haDiv.style.cssText='font-size:11px;color:var(--red);margin-top:3px';
@@ -4309,6 +4412,7 @@ function openAddRecipe(pf){
   else{addIR();addIR();addIR();}
   if(pf&&pf.steps&&pf.steps.length)pf.steps.forEach(function(s){addSR(s);});
   else{addSR();addSR();}
+  updateNRTimePreview();
   openM('modal-ar');
 }
 function openEditR(id){
@@ -4326,6 +4430,7 @@ function openEditR(id){
   r.ingredients.forEach(function(i){addIR(i.name,i.qty,i.unit);});
   if(r.steps&&r.steps.length)r.steps.forEach(function(s){addSR(s);});
   else{addSR();addSR();}
+  updateNRTimePreview();
   openM('modal-ar');
 }
 function renderNRD(){gr('nr-diets').innerHTML=DIETS.map(function(d){return'<button class="tchip'+(nrDiets.indexOf(d)>=0?' on':'')+'" onclick="togND(\''+d+'\')">'+d+'</button>'}).join('');}
@@ -4771,6 +4876,8 @@ function openStockViewModal(id){
   if(isFreezer){
     html+='<button class="btn btnp" style="flex:1;min-width:140px" onclick="closeM(\'modal-stock-view\');openAMForFreezer(\''+escHtml(item.id)+'\')">📅 + Add to Meal Plan</button>';
   }
+  var inShop=isStockItemOnShoppingList(item.name);
+  html+='<button class="btn '+(inShop?'btnw':'btns')+'" style="flex:1;min-width:130px" onclick="addStockItemToShopping(\''+escHtml(item.id)+'\');openStockViewModal(\''+escHtml(item.id)+'\')">'+(inShop?'✓ In Shopping List':'🛒 + Add to Shopping')+'</button>';
   html+='<button class="btn btnw" style="flex:1;min-width:110px" onclick="openUseStockModal(\''+escHtml(item.id)+'\');closeM(\'modal-stock-view\')">🍽️ Use Portion</button>';
   html+='<button class="btn btns" onclick="closeM(\'modal-stock-view\');openStockModal(\''+escHtml(item.id)+'\')">✏️ Edit</button>';
   html+='</div>';
@@ -4813,6 +4920,19 @@ function stockCard(item){
   viewBtn.title='View freezer details, make time & fresh ingredients';
   (function(sid){viewBtn.addEventListener('click',function(e){e.stopPropagation();openStockViewModal(sid);});})(item.id);
   acts.appendChild(viewBtn);
+
+  var inShop=isStockItemOnShoppingList(item.name);
+  var shopBtn=document.createElement('button');
+  shopBtn.className='btn btns'+(inShop?' btnw':'');
+  shopBtn.textContent=inShop?'✓ In List':'+ Shop';
+  shopBtn.title=inShop?'Already on shopping list':'Add to shopping list';
+  (function(sid){
+    shopBtn.addEventListener('click',function(e){
+      e.stopPropagation();
+      addStockItemToShopping(sid);
+    });
+  })(item.id);
+  acts.appendChild(shopBtn);
 
   if(item.section==='freezer'){
     var planB=document.createElement('button');
@@ -4967,7 +5087,7 @@ function openRecipeStockModal(id){
   recipeStockId=r?r.id:null;
   gr('rs-name').value=r?r.name:'';
   gr('rs-qty').value=(r&&r.servings)?r.servings:4;
-  gr('rs-time').value=(r&&r.time)?(r.time+' min'):'';
+  gr('rs-time').value=(r&&r.time)?formatCookTime(r.time):'';
   if(gr('rs-kit'))gr('rs-kit').value='';
   gr('rs-alert1').value=3;gr('rs-alert2').value=1;gr('rs-notify').checked=false;
   gr('rs-notes').value=r?'Batch cooked from recipe':'Prepped freezer meal';
@@ -5372,6 +5492,7 @@ function renderConsolidatedRestock(el){
     item=normaliseStockItem(item);
     var isOut=item.qty<=0;
     var isLow=isStockLow(item);
+    var inShop=isStockItemOnShoppingList(item.name);
     var row=document.createElement('div');
     row.className='mini-stock-row'+(isOut?' out-of-stock':(isLow?' low':''));
     var name=document.createElement('div');
@@ -5382,7 +5503,20 @@ function renderConsolidatedRestock(el){
     var pill=document.createElement('div');pill.className='qty-pill';pill.textContent=item.qty;
     if(isOut)pill.style.cssText='background:var(--red);color:#fff;font-weight:700';
     var up=document.createElement('button');up.className='srv-btn';up.textContent='+';up.addEventListener('click',function(){stockQty(item.id,1);});
-    row.appendChild(name);row.appendChild(dn);row.appendChild(pill);row.appendChild(up);wrap.appendChild(row);
+    
+    var shopBtn=document.createElement('button');
+    shopBtn.className='btn btns'+(inShop?' btnw':'');
+    shopBtn.style.cssText='padding:4px 8px;font-size:11.5px;white-space:nowrap;margin-left:4px;flex-shrink:0';
+    shopBtn.innerHTML=inShop?'✓ In List':'+ 🛒';
+    shopBtn.title=inShop?'Already on shopping list':'Add to shopping list';
+    (function(sid){
+      shopBtn.addEventListener('click',function(e){
+        e.stopPropagation();
+        addStockItemToShopping(sid);
+      });
+    })(item.id);
+
+    row.appendChild(name);row.appendChild(dn);row.appendChild(pill);row.appendChild(up);row.appendChild(shopBtn);wrap.appendChild(row);
   });
   el.appendChild(wrap);
 }
@@ -6467,7 +6601,7 @@ function processImport(text) {
   div.innerHTML =
     '<div style="font-size:11px;font-weight:500;color:var(--sage);margin-bottom:8px">✓ Recipe extracted!</div>' +
     '<div class="rc-name">' + escHtml(data.name) + '</div>' +
-    '<div class="rc-meta">' + escHtml(data.cuisine || '?') + ' · ' + (data.time || '?') + ' min · ' + (data.ingredients || []).length + ' ingredients · ' + (data.steps || []).length + ' steps</div>' +
+    '<div class="rc-meta">' + escHtml(data.cuisine || '?') + ' · ' + (data.time ? formatCookTime(data.time) : '?') + ' · ' + (data.ingredients || []).length + ' ingredients · ' + (data.steps || []).length + ' steps</div>' +
     (data.desc ? '<div style="font-size:13px;color:var(--ink2);margin:8px 0">' + escHtml(data.desc) + '</div>' : '') +
     '<div style="font-size:12px;color:var(--ink2);margin-top:8px"><strong>Ingredients preview:</strong> ' +
     escHtml((data.ingredients || []).slice(0, 6).map(function(i){ return i.name; }).join(', ') + ((data.ingredients && data.ingredients.length > 6) ? '…' : '')) +
@@ -7212,7 +7346,7 @@ window.addEventListener('beforeunload',function(){
 
 function registerAppServiceWorker(){
   if(!('serviceWorker' in navigator))return Promise.resolve(null);
-  return navigator.serviceWorker.register('sw.js?v=1.0.3',{scope:'./'}).then(function(reg){
+  return navigator.serviceWorker.register('sw.js?v=1.0.4',{scope:'./'}).then(function(reg){
     if(reg&&typeof reg.update==='function')reg.update().catch(function(){});
     return reg;
   }).catch(function(){return null;});
@@ -7249,7 +7383,7 @@ function forceAppUpdate(){
       var nw=reg.installing;if(!nw)return;
       nw.addEventListener('statechange',function(){
         if(nw.state==='installed'&&navigator.serviceWorker.controller){
-          showToast('✓ Mise en Place updated to v1.0.3 — reloading...');
+          showToast('✓ Mise en Place updated to v1.0.4 — reloading...');
           setTimeout(function(){
             if(nw)nw.postMessage({type:'SKIP_WAITING'});
             window.location.reload();
