@@ -5,7 +5,15 @@ self.addEventListener('install', function(event) {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE).then(function(cache) {
-      return cache.addAll(CORE_ASSETS).catch(function() {});
+      return Promise.all(
+        CORE_ASSETS.map(function(asset) {
+          return fetch(asset, { cache: 'reload' }).then(function(res) {
+            if (res && res.status === 200) {
+              return cache.put(asset, res);
+            }
+          }).catch(function() {});
+        })
+      );
     })
   );
 });
@@ -24,6 +32,7 @@ self.addEventListener('activate', function(event) {
       return self.clients.matchAll({ type: 'window' }).then(function(clients) {
         clients.forEach(function(client) {
           client.postMessage({ type: 'UPDATE_AVAILABLE', version: CACHE });
+          client.postMessage({ type: 'FORCE_RELOAD', version: CACHE });
         });
       });
     })
@@ -45,8 +54,21 @@ self.addEventListener('fetch', function(event) {
   if (event.request.method !== 'GET') return;
   var url = new URL(event.request.url);
 
+  // Always fetch version check fresh from network
+  if (url.pathname.endsWith('version.json')) {
+    event.respondWith(fetch(event.request, { cache: 'no-store' }));
+    return;
+  }
+
   // Network-first for navigation and HTML documents so users always get the latest build
-  if (event.request.mode === 'navigate' || url.pathname.endsWith('index.html') || url.pathname === '/' || url.pathname.endsWith('/')) {
+  var isNav = event.request.mode === 'navigate' ||
+              event.request.destination === 'document' ||
+              url.pathname.endsWith('index.html') ||
+              url.pathname === '/' ||
+              url.pathname.endsWith('/') ||
+              url.pathname.endsWith('/Meal-Planner-Lab');
+
+  if (isNav) {
     event.respondWith(
       fetch(event.request, { cache: 'no-cache' }).then(function(response) {
         if (response && response.status === 200) {
@@ -55,7 +77,9 @@ self.addEventListener('fetch', function(event) {
         }
         return response;
       }).catch(function() {
-        return caches.match(event.request);
+        return caches.match(event.request).then(function(res) {
+          return res || caches.match('./') || caches.match('./index.html');
+        });
       })
     );
     return;

@@ -8499,7 +8499,24 @@ function forceAppUpdate(){
     });
   }).catch(function(){});
 
+  function checkAppVersionOnServer(){
+    fetch('version.json?t=' + Date.now(), { cache: 'no-store' })
+      .then(function(res){ return res.json(); })
+      .then(function(data){
+        if(data && data.version && data.version !== '1.1.0'){
+          showToast('✓ Updating to v' + data.version + '...');
+          setTimeout(function(){
+            forceAppUpdate();
+          }, 800);
+        }
+      })
+      .catch(function(){});
+  }
+
+  checkAppVersionOnServer();
+
   window.addEventListener('pageshow',function(){
+    checkAppVersionOnServer();
     if('serviceWorker' in navigator){
       navigator.serviceWorker.getRegistration().then(function(reg){
         if(reg&&typeof reg.update==='function')reg.update().catch(function(){});
@@ -8507,8 +8524,17 @@ function forceAppUpdate(){
     }
   });
 
+  document.addEventListener('visibilitychange',function(){
+    if(!document.hidden) checkAppVersionOnServer();
+  });
+  setInterval(checkAppVersionOnServer, 60000);
+
   navigator.serviceWorker.addEventListener('message',function(e){
     if(e.data&&e.data.type==='UPDATE_AVAILABLE'){showToast('✓ Updated to '+e.data.version);}
+    if(e.data&&e.data.type==='FORCE_RELOAD'){
+      showToast('✓ Updating app to '+e.data.version+'...');
+      setTimeout(function(){ window.location.reload(); }, 600);
+    }
   });
 })();
 </script>
