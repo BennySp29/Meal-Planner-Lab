@@ -4,7 +4,10 @@
 - **Visual Smoothness**: Prioritize high-performance, smooth transitions, and complete layout integrity. Never break existing UI structures, flex/grid alignments, or spacing patterns.
 - **Ease of Use**: Layouts must be intuitive and clean. Avoid unnecessary visual noise. Keep interactive elements easily accessible and interactive states (hover, active, loading) visually obvious.
 - **Visual Verification**: Use your built-in browser capability (`/browser`) and screenshots to visually verify UI adjustments before generating your final walkthrough artifact.
-- **Phone friendly**: the project is going to be used as a PWA, added to homescreen from safari on Iphone, so we need to make sure all changes are made with this in mind and that we make sure any changes appear on the current users versions on their phones.
+- **Cross-Platform Phone Friendly (Pixel 11 Pro & iPhone 17)**:
+  - **Primary User:** Google Pixel 11 Pro (Android / Chrome PWA). Must support Android gesture navigation, Chrome PWA lifecycle, dynamic Android status/nav bar integration, and Android push/badge capabilities.
+  - **Partner (Wife):** iPhone 17 (iOS Safari PWA added to Home Screen). Must account for standalone WebKit caching quirks, Dynamic Island & home bar safe-area insets (`env(safe-area-inset-top)` / `env(safe-area-inset-bottom)`), smooth iOS momentum scrolling, and touch target sizing.
+  - **Real-Time Cross-Device Sync:** Both phones share data in real-time via Firebase. Every change must seamlessly propagate between Pixel (Android) and iPhone (iOS) without stale cache states on either device.
 
 ## 2. Live-Sync & Data Freshness
 - **Real-Time Data State**: When working with state and database syncing (e.g., Firebase), prioritize robust, real-time listeners over single-get calls to eliminate stale data issues across concurrent users.
