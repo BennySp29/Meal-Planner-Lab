@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v1.1.0 -->
+<!-- v1.2.0 -->
 
 <html lang="en">
 <head>
@@ -295,8 +295,13 @@ body.dark{--ink:#dce4ff;--ink2:#9baad0;--ink3:#546080;--paper:#0d0f1a;--paper2:#
 .stock-dupe-hint{display:none;background:var(--warm-p);border:1px solid var(--warm);border-radius:var(--rs);padding:9px 10px;margin-top:8px;font-size:12px;color:#5a3a10;line-height:1.45}
 .quick-more{display:none;background:var(--paper2);border-radius:var(--rs);padding:12px;margin-top:10px}
 .variant-list{background:var(--paper2);border-radius:var(--rs);padding:8px;margin-bottom:8px}
-.variant-row{display:flex;align-items:center;gap:8px;padding:5px 0}
-.variant-name{flex:1;font-size:12px;color:var(--ink2);font-weight:600}
+.variant-row{display:flex;align-items:center;gap:8px;padding:6px 2px;border-bottom:1px solid rgba(0,0,0,0.05)}
+.variant-row:last-child{border-bottom:none}
+.variant-name{flex:1;font-size:12.5px;color:var(--ink);font-weight:600}
+.variant-edit-row{display:flex;align-items:center;gap:6px;background:var(--cream);border:1px solid var(--paper3);border-radius:var(--rs);padding:6px 8px;transition:border-color 0.15s ease}
+.variant-edit-row:focus-within{border-color:var(--sage)}
+.variant-badge{background:var(--sage-p);color:var(--sage);padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:4px}
+.si-recipe-sources{font-size:11px;color:var(--ink3);margin-top:2px;font-style:italic;line-height:1.25}
 .stock-img-wrap{position:relative;margin-bottom:8px}
 .stock-img-wrap img{width:100%;max-height:170px;object-fit:cover;border-radius:var(--rs);border:1px solid var(--paper3)}
 .sleepy-toggle.on{background:var(--warm-p);border-color:var(--warm);color:#6b4c1e}
@@ -632,8 +637,22 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
       <div id="qs-templates" class="stock-template-row"></div>
       <div class="fg"><label class="fl">Section</label><div class="cwrap" id="qs-section"></div></div>
       <div class="fg" id="qs-drawer-wrap" style="display:none"><label class="fl">🧊 Freezer drawer</label><div class="cwrap" id="qs-drawer"></div></div>
-      <div class="fg"><label class="fl">Name</label><input class="fi" id="qs-name" placeholder="e.g. Pot Noodle - Chicken" oninput="renderStockDuplicateHint('qs')"/><div class="stock-dupe-hint" id="qs-dupe-hint"></div></div>
+      <div class="fg"><label class="fl">Name</label><input class="fi" id="qs-name" placeholder="e.g. Pot Noodle, Soup, Crisps" oninput="renderStockDuplicateHint('qs')"/><div class="stock-dupe-hint" id="qs-dupe-hint"></div></div>
       <div class="frow" style="margin-bottom:14px"><div><label class="fl">Quantity</label><input class="fi" type="number" id="qs-qty" min="0" value="1" oninput="onStockModalQtyChange('qs')"/></div><div><label class="fl">Type</label><input class="fi" id="qs-type" placeholder="e.g. snack, dinner"/></div></div>
+      <div class="fg">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <label class="fl" style="margin-bottom:0">🍜 Sub-items &amp; Flavours <span style="font-weight:300;text-transform:none;letter-spacing:0">(optional)</span></label>
+          <button type="button" class="btn btns" id="qs-var-toggle" onclick="toggleStockVariantsWrap('qs')" style="font-size:11px;padding:3px 9px">+ Add flavours</button>
+        </div>
+        <div id="qs-variants-wrap" style="display:none;background:var(--paper);border:1px solid var(--paper3);border-radius:var(--rs);padding:10px;margin-bottom:12px">
+          <div style="font-size:11.5px;color:var(--ink3);margin-bottom:8px">Track quantities of each flavour (e.g. Chicken: 2, Curry: 3)</div>
+          <div id="qs-variants-list" style="display:flex;flex-direction:column;gap:8px"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+            <button type="button" class="btn btns" onclick="addStockVariantRow('qs','',1)" style="font-size:12px;padding:5px 10px">+ Add flavour</button>
+            <div id="qs-variants-total" style="font-size:11.5px;color:var(--ink2);font-weight:600"></div>
+          </div>
+        </div>
+      </div>
       <div class="fg"><label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer"><input type="checkbox" id="qs-isbag" style="width:18px;height:18px;cursor:pointer" onchange="toggleStockBagWrap('qs')"/> 🥔 Bag / bulk item (track fullness slider)</label></div>
       <div id="qs-fullness-wrap" style="display:none;background:var(--paper);padding:12px;border-radius:var(--rs);border:1px solid var(--paper3);margin-bottom:14px">
         <div id="qs-bags-container"></div>
@@ -931,7 +950,20 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
         <div id="st-steps"></div>
         <button type="button" class="btn btns" onclick="addStockStepRow('','st-steps')" style="margin-top:6px;font-size:12px;padding:6px 12px">+ Step</button>
       </div>
-      <div class="fg"><label class="fl">Variants <span style="font-weight:300;text-transform:none;letter-spacing:0">(one per line, e.g. Chicken: 2)</span></label><textarea class="fi" id="st-variants" placeholder="Chicken: 2&#10;Curry: 1" style="height:72px;resize:none"></textarea></div>
+      <div class="fg">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <label class="fl" style="margin-bottom:0">🍜 Sub-items &amp; Flavours <span style="font-weight:300;text-transform:none;letter-spacing:0">(e.g. Chicken &amp; Mushroom, Curry, Beef)</span></label>
+          <button type="button" class="btn btns" onclick="addStockVariantRow('st','',1)" style="font-size:11px;padding:3px 9px">+ Add flavour</button>
+        </div>
+        <div id="st-variants-wrap" style="background:var(--paper);border:1px solid var(--paper3);border-radius:var(--rs);padding:10px;margin-bottom:10px">
+          <div style="font-size:11.5px;color:var(--ink3);margin-bottom:8px">Track quantities for each flavour or variation:</div>
+          <div id="st-variants-list" style="display:flex;flex-direction:column;gap:8px"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+            <button type="button" class="btn btns" onclick="addStockVariantRow('st','',1)" style="font-size:12px;padding:5px 10px">+ Add flavour</button>
+            <div id="st-variants-total" style="font-size:11.5px;color:var(--ink2);font-weight:600"></div>
+          </div>
+        </div>
+      </div>
       <div class="fg"><label class="fl">Stock photo</label><input type="file" id="st-img-file" accept="image/*" style="display:none" onchange="handleStockImg(event)"/><div id="st-img-wrap"></div><button type="button" class="img-upload-btn" onclick="gr('st-img-file').click()">Add photo from camera roll</button></div>
       <div class="fg"><label class="fl">Notes</label><textarea class="fi" id="st-notes" placeholder="Anything useful when tired..." style="height:86px;resize:none"></textarea></div>
     </div>
@@ -951,12 +983,38 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
   </div>
 </div>
 
+<!-- STOCK VARIANTS QUICK ADJUST MODAL -->
+<div class="overlay" id="modal-stock-variants-adjust">
+  <div class="sheet">
+    <div class="sh"></div>
+    <div class="s-title" id="sva-title">Adjust Flavours</div>
+    <div class="s-body">
+      <div id="sva-sub" style="font-size:12.5px;color:var(--ink3);margin-bottom:12px"></div>
+      <div id="sva-list" class="variant-list" style="margin-bottom:14px"></div>
+      <div id="sva-add-box" style="display:none;background:var(--paper);border:1px solid var(--paper3);border-radius:var(--rs);padding:10px;margin-bottom:12px">
+        <label class="fl" style="margin-bottom:4px">New flavour or sub-item</label>
+        <div style="display:flex;gap:6px">
+          <input class="fi" id="sva-new-name" placeholder="e.g. Chicken &amp; Mushroom" style="flex:1;font-size:13px;padding:8px 10px"/>
+          <input type="number" min="1" value="1" class="fi" id="sva-new-qty" style="width:55px;text-align:center;font-size:13px;font-weight:700;padding:8px 4px"/>
+          <button type="button" class="btn btnp" onclick="submitQuickNewVariant()" style="font-size:12px;padding:8px 12px">Add</button>
+        </div>
+      </div>
+      <button type="button" class="btn btns" id="sva-show-add-btn" onclick="toggleSvaAddBox()" style="width:100%;font-size:13px;padding:8px">+ Add new flavour to this item</button>
+    </div>
+    <div class="s-foot"><button class="btn btnp" onclick="closeM('modal-stock-variants-adjust')">Done</button></div>
+  </div>
+</div>
+
 <!-- USE STOCK -->
 <div class="overlay" id="modal-stock-use">
   <div class="sheet">
     <div class="sh"></div><div class="s-title">Use stock</div>
     <div class="s-body">
-      <div id="use-stock-name" style="font-size:14px;font-weight:700;margin-bottom:12px"></div>
+      <div id="use-stock-name" style="font-size:15px;font-weight:700;margin-bottom:6px"></div>
+      <div id="use-stock-variant-section" style="display:none;margin-bottom:14px;background:var(--paper);border:1px solid var(--paper3);border-radius:var(--rs);padding:10px">
+        <label class="fl" style="margin-bottom:6px">Which flavour did you use?</label>
+        <div id="use-stock-variants-chips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+      </div>
       <div class="dash-quick">
         <button class="dash-btn" onclick="confirmUseStock('Ate')"><strong>Ate</strong><span>Snack or meal used now.</span></button>
         <button class="dash-btn" onclick="confirmUseStock('Packed hospital bag')"><strong>Packed</strong><span>Moved into hospital bag.</span></button>
@@ -992,7 +1050,7 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
       <div class="fg"><label class="fl">Week starts on</label><div class="cwrap" id="prof-wk"></div></div>
       <div class="fg" style="margin-top:16px;padding-top:14px;border-top:1.5px dashed var(--paper3);display:flex;justify-content:space-between;align-items:center">
         <div>
-          <div style="font-size:13px;font-weight:700;color:var(--ink)">Mise en Place <span style="color:var(--sage);font-weight:700">v1.1.0</span></div>
+          <div style="font-size:13px;font-weight:700;color:var(--ink)">Mise en Place <span style="color:var(--sage);font-weight:700">v1.2.0</span></div>
           <div style="font-size:11px;color:var(--ink3)">Tap if you don't see new updates on your iPhone</div>
         </div>
         <button class="btn btns" onclick="forceAppUpdate()" style="font-size:12px;padding:7px 12px">🔄 Force Update</button>
@@ -1097,22 +1155,25 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
 </div>
 
 <script>
-// ── CACHE NUKE v3.0: clears stale SW + caches, one-time reload ─────────────
+var APP_VERSION = '1.2.0';
+// ── CACHE NUKE: clears stale SW + caches, one-time reload on version upgrade ─
 (function(){
-  if(typeof window==='undefined'||typeof sessionStorage==='undefined')return;
-  var CURRENT='mep-app-v1.1.0';
-  var nuked=sessionStorage.getItem('cache-nuked');
-  if(nuked===CURRENT)return; // already done this session
+  if(typeof window==='undefined')return;
+  var CURRENT='mep-app-v'+APP_VERSION;
+  var nuked=null;
+  try{nuked=localStorage.getItem('cache-nuked');}catch(e){}
+  if(!nuked){try{nuked=sessionStorage.getItem('cache-nuked');}catch(e){}}
+  if(nuked===CURRENT)return; // already upgraded to this version
   function doNuke(){
     var p1=('caches' in window)?caches.keys().then(function(keys){return Promise.all(keys.map(function(k){return caches.delete(k);}));}):Promise.resolve();
     var p2=navigator.serviceWorker?navigator.serviceWorker.getRegistrations().then(function(regs){return Promise.all(regs.map(function(r){return r.unregister();}));}):Promise.resolve();
     return Promise.all([p1,p2]);
   }
   doNuke().then(function(){
-    sessionStorage.setItem('cache-nuked',CURRENT);
+    try{localStorage.setItem('cache-nuked',CURRENT);sessionStorage.setItem('cache-nuked',CURRENT);}catch(e){}
     window.location.reload(true);
   }).catch(function(){
-    sessionStorage.setItem('cache-nuked',CURRENT);
+    try{localStorage.setItem('cache-nuked',CURRENT);sessionStorage.setItem('cache-nuked',CURRENT);}catch(e){}
   });
 })();
 // ────────────────────────────────────────────────────────────────────────────
@@ -1649,6 +1710,18 @@ function checkedFromState(map){
   Object.keys(map).forEach(function(k){out[decodeFBKey(k)]=!!map[k];});
   return out;
 }
+function dismissedForState(map){
+  var out={};
+  if(!map||typeof map!=='object'||Array.isArray(map))return out;
+  Object.keys(map).forEach(function(k){out[encodeFBKey(k)]=!!map[k];});
+  return out;
+}
+function dismissedFromState(map){
+  var out={};
+  if(!map||typeof map!=='object'||Array.isArray(map))return out;
+  Object.keys(map).forEach(function(k){out[decodeFBKey(k)]=!!map[k];});
+  return out;
+}
 function cleanForFirebase(value){
   if(value===undefined)return undefined;
   if(value===null||typeof value!=='object')return value;
@@ -1668,6 +1741,7 @@ function cleanForFirebase(value){
 function stateForFirebase(state){
   state=state||{};
   state.checked=checkedForState(state.checked);
+  state.dismissedShopItems=dismissedForState(state.dismissedShopItems);
   return cleanForFirebase(state);
 }
 function syncErrorMessage(error,prefix){
@@ -1741,7 +1815,7 @@ function loadRemoteRecipeImages(){
 }
 function registerAppServiceWorker(){
   if(!('serviceWorker' in navigator))return Promise.resolve(null);
-  return navigator.serviceWorker.register('sw.js?v=1.1.0',{scope:'./'}).then(function(reg){
+  return navigator.serviceWorker.register('sw.js?v='+(typeof APP_VERSION!=='undefined'?APP_VERSION:'1.2.0'),{scope:'./'}).then(function(reg){
     if(reg&&typeof reg.update==='function')reg.update().catch(function(){});
     return reg;
   }).catch(function(){return null;});
@@ -1758,10 +1832,14 @@ function forceAppUpdate(){
     window.location.reload(true);
   });
 }
+var lastSkippedRemoteState=null;
 function applySharedState(state,force){
   if(!state||typeof state!=='object')return false;
   if(!force&&fbStateLoaded&&state.clientId===fbClientId)return false;
-  if(!force&&pendingSharedWrites>0&&state.clientId!==fbClientId)return false;
+  if(!force&&pendingSharedWrites>0&&state.clientId!==fbClientId){
+    lastSkippedRemoteState=state;
+    return false;
+  }
   
   var isDirty=!!loadL('sharedDirty');
   if(!force&&isDirty&&state.clientId!==fbClientId){
@@ -1777,7 +1855,7 @@ function applySharedState(state,force){
   planMeta=cleanPlanMeta(state.planMeta);
   planMealDeletes=normaliseStampMap(state.planMealDeletes);
   checked=checkedFromState(state.checked);
-  dismissedShopItems=(state.dismissedShopItems&&typeof state.dismissedShopItems==='object'&&!Array.isArray(state.dismissedShopItems))?state.dismissedShopItems:(dismissedShopItems||{});
+  dismissedShopItems=dismissedFromState(state.dismissedShopItems);
   extraItems=Array.isArray(state.extraItems)?state.extraItems:extraItems;
   stockItems=Array.isArray(state.stockItems)?state.stockItems.map(normaliseStockItem):stockItems;
   stockDeletes=normaliseStampMap(state.stockDeletes);
@@ -1843,8 +1921,13 @@ function applySharedState(state,force){
   saveSharedLocal();
   if(state.clientId!==fbClientId)loadRemoteRecipeImages();
   if(state.ts)saveL('sharedStateTs',state.ts);
-  fbStateLoaded=true;
   renderAll();
+  if(typeof stockAdjustingItemId!=='undefined'&&stockAdjustingItemId&&gr('modal-stock-variants-adjust')&&gr('modal-stock-variants-adjust').classList.contains('open')){
+    refreshAdjustStockVariantsModal(stockAdjustingItemId);
+  }
+  if(typeof stockUseId!=='undefined'&&stockUseId&&gr('modal-stock-use')&&gr('modal-stock-use').classList.contains('open')){
+    openUseStockModal(stockUseId);
+  }
   if(state.who&&state.clientId!==fbClientId)showToast(state.who+' updated planner');
   if(shouldCheckStockAlerts)checkAllStockAlerts();
   if(!force&&isDirty&&state.clientId!==fbClientId){
@@ -1966,6 +2049,7 @@ function mergeWholeSharedState(remote,local,ts){
   out.planMeta=mergedPlan.meta;
   out.planMealDeletes=mergedPlan.deletes;
   out.checked=Object.assign({},remote.checked,local.checked);
+  out.dismissedShopItems=Object.assign({},remote.dismissedShopItems,local.dismissedShopItems);
   out.extraItems=mergeSimpleList(remote.extraItems,local.extraItems);
   out.stockItems=mergedStock.items;
   out.stockDeletes=mergedStock.deleted;
@@ -2077,6 +2161,14 @@ function mergeSharedState(remote, local, changedKey, changedDateKey, ts){
     else if(mtOp.type==='remove')out.customMT=remote.customMT.filter(function(item){return item!==mtOp.item;});
     else out.customMT=mergeSimpleList(remote.customMT,local.customMT);
   }
+  if(changedKey==='dismissedShopItems'){
+    if(changedDateKey==='__clear__')out.dismissedShopItems=local.dismissedShopItems;
+    else if(changedDateKey){
+      out.dismissedShopItems=Object.assign({},remote.dismissedShopItems);
+      if(local.dismissedShopItems[changedDateKey])out.dismissedShopItems[changedDateKey]=true;
+      else delete out.dismissedShopItems[changedDateKey];
+    }else out.dismissedShopItems=local.dismissedShopItems;
+  }
   if(changedKey==='recipes'){out.recipes=mergedRecipes.items;out.recipeDeletes=mergedRecipes.deleted;}
   out.version=2;out.ts=ts;out.clientId=fbClientId;out.who=fbCfg.who||'Someone';
   return stateForFirebase(out);
@@ -2089,7 +2181,14 @@ function finishSharedWrite(error){
     showToast(msg);
     return false;
   }
-  if(pendingSharedWrites===0)saveL('sharedDirty',0);
+  if(pendingSharedWrites===0){
+    saveL('sharedDirty',0);
+    if(lastSkippedRemoteState){
+      var st=lastSkippedRemoteState;
+      lastSkippedRemoteState=null;
+      applySharedState(st,true);
+    }
+  }
   return true;
 }
 function publishSharedState(changedKey,changedDateKey){
@@ -3398,6 +3497,27 @@ function cleanIngredientName(raw){
     return 'tinned tomatoes';
   }
 
+  // Sweet potatoes check (MUST NOT be merged into standard potato!)
+  if(/^sweet\s+potatoes?$/i.test(s)||/^sweet\s+potato\s+(mash|puree)$/i.test(s)){
+    return 'sweet potato';
+  }
+
+  // Specific processed potato items (keep distinct, do not collapse to fresh potato)
+  if(/^potato\s+(waffles?|cakes?|scones?|croquettes?|gnocchi|starch|flour|chips?|crisps?|bread)$/i.test(s)){
+    return (s.endsWith('s') && !s.endsWith('gnocchi') && !s.endsWith('starch') && !s.endsWith('flour') && !s.endsWith('bread')) ? s.slice(0,-1) : s;
+  }
+
+  // Standard potato varieties, cooking types, and descriptors -> normalize to 'potato'
+  // Handles: baking potatoes, jacket potatoes, maris piper, king edward, russet, rooster, yukon gold,
+  // charlotte, jersey royal, new potatoes, baby potatoes, salad potatoes, white potatoes, red potatoes,
+  // floury potatoes, waxy potatoes, mashing potatoes, roasting potatoes, boiled potatoes, fingerling, etc.
+  if(/^(baking|jacket|maris\s+piper|king\s+edward|russet|rooster|yukon\s+gold|charlotte|jersey\s+royal|salad|new|baby(\s+new)?|white|red|yellow|floury|waxy|mashing|roasting|roast|boiled|boiling|fingerling|heritage)\s+potatoes?$/i.test(s)
+     || /^(maris\s+pipers?|king\s+edwards?|russets?|roosters?|yukon\s+golds?|jersey\s+royals?|fingerlings?)$/i.test(s)
+     || /^(baking|jacket|roasting|mashing|boiled)\s+spuds?$/i.test(s)
+     || /^potatoes?\s*[-–(]\s*(baking|jacket|maris|king|russet|rooster|new|baby|white|red|floury|waxy|salad)[^)]*\)?$/i.test(s)){
+    return 'potato';
+  }
+
   var removeWords=[
     'finely diced','roughly diced','coarsely diced','diced',
     'finely chopped','roughly chopped','coarsely chopped','chopped',
@@ -3408,6 +3528,7 @@ function cleanIngredientName(raw){
     'halved','quartered','cubed',
     'melted','softened','chilled','cold','warm','hot','boiling','frozen','thawed','room temperature',
     'cooked','uncooked','raw','roasted','toasted','fried','baked','steamed',
+    'baking','jacket','roasting','mashing','boiled','floury','waxy',
     'drained and rinsed','rinsed and drained','drained','rinsed',
     'freshly ground','freshly grated','freshly squeezed','fresh',
     'small','medium','large','extra large','xl','baby','big',
@@ -3460,7 +3581,67 @@ function cleanIngredientName(raw){
     'can of tomatoes':'tinned tomatoes',
     'chopped tomatoes':'tinned tomatoes',
     'tinned chopped tomatoes':'tinned tomatoes',
+    'potato':'potato',
     'potatoes':'potato',
+    'baking potato':'potato',
+    'baking potatoes':'potato',
+    'jacket potato':'potato',
+    'jacket potatoes':'potato',
+    'maris piper':'potato',
+    'maris pipers':'potato',
+    'maris piper potato':'potato',
+    'maris piper potatoes':'potato',
+    'king edward':'potato',
+    'king edwards':'potato',
+    'king edward potato':'potato',
+    'king edward potatoes':'potato',
+    'russet':'potato',
+    'russets':'potato',
+    'russet potato':'potato',
+    'russet potatoes':'potato',
+    'rooster':'potato',
+    'roosters':'potato',
+    'rooster potato':'potato',
+    'rooster potatoes':'potato',
+    'yukon gold':'potato',
+    'yukon golds':'potato',
+    'yukon gold potato':'potato',
+    'yukon gold potatoes':'potato',
+    'charlotte potato':'potato',
+    'charlotte potatoes':'potato',
+    'jersey royal':'potato',
+    'jersey royals':'potato',
+    'jersey royal potato':'potato',
+    'jersey royal potatoes':'potato',
+    'new potato':'potato',
+    'new potatoes':'potato',
+    'baby potato':'potato',
+    'baby potatoes':'potato',
+    'baby new potato':'potato',
+    'baby new potatoes':'potato',
+    'salad potato':'potato',
+    'salad potatoes':'potato',
+    'white potato':'potato',
+    'white potatoes':'potato',
+    'red potato':'potato',
+    'red potatoes':'potato',
+    'yellow potato':'potato',
+    'yellow potatoes':'potato',
+    'floury potato':'potato',
+    'floury potatoes':'potato',
+    'waxy potato':'potato',
+    'waxy potatoes':'potato',
+    'mashing potato':'potato',
+    'mashing potatoes':'potato',
+    'roasting potato':'potato',
+    'roasting potatoes':'potato',
+    'boiled potato':'potato',
+    'boiled potatoes':'potato',
+    'fingerling potato':'potato',
+    'fingerling potatoes':'potato',
+    'spud':'potato',
+    'spuds':'potato',
+    'sweet potato':'sweet potato',
     'sweet potatoes':'sweet potato',
     'mushrooms':'mushroom',
     'button mushrooms':'button mushroom',
@@ -3512,6 +3693,9 @@ function cleanIngredientName(raw){
 
   if(directMap[s])return directMap[s];
 
+  if(s==='potato'||s==='potatoes')return 'potato';
+  if(/^potatoes?$/i.test(s))return 'potato';
+
   if(s.endsWith('ies'))s=s.slice(0,-3)+'y';
   else if(s.endsWith('es')&&!s.endsWith('cheese')&&!s.endsWith('olives')){
     if(s.endsWith('toes'))s=s.slice(0,-2);
@@ -3520,6 +3704,8 @@ function cleanIngredientName(raw){
   }else if(s.endsWith('s')&&!s.endsWith('ss')&&!s.endsWith('us')&&!s.endsWith('is')&&!s.endsWith('couscous')&&!s.endsWith('hummus')&&!s.endsWith('molasses')&&!s.endsWith('oats')&&!s.endsWith('peas')&&!s.endsWith('olives')&&!s.endsWith('flakes')&&!s.endsWith('leaves')){
     s=s.slice(0,-1);
   }
+
+  if(s==='potato')return 'potato';
 
   return s.trim();
 }
@@ -3658,10 +3844,23 @@ function renderShop(){
       var rawK=item.name.toLowerCase().replace(/\s/g,'_');var on=isShopItemChecked(rawK);
       var sn=item.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
       var qtyText=item.isCustomQty?item.qty:fmt(item.qty,item.unit);
+      var subText='';
+      if(item.rawNames&&item.rawNames.length>1){
+        var uniqueRaws=[];
+        item.rawNames.forEach(function(rn){
+          var rClean=String(rn||'').trim();
+          if(rClean&&uniqueRaws.map(function(x){return x.toLowerCase();}).indexOf(rClean.toLowerCase())<0){
+            uniqueRaws.push(rClean);
+          }
+        });
+        if(uniqueRaws.length>1){
+          subText='<div class="si-recipe-sources" style="font-size:11px;color:var(--ink3);margin-top:2px;font-style:italic">Includes: '+escHtml(uniqueRaws.join(', '))+'</div>';
+        }
+      }
       html+='<div class="shop-item'+(on?' done':'')+'" id="si-'+rawK+'">'
            +'<div class="chk'+(on?' on':'')+'" onclick="toggleChk(\''+rawK+'\')">'
            +'<span class="chk-tick">&#10003;</span></div>'
-           +'<div class="si-name">'+escHtml(item.name)+'</div>'
+           +'<div class="si-name">'+escHtml(item.name)+subText+'</div>'
            +'<div class="si-qty">'+escHtml(qtyText)+'</div>'
            +'<button class="rm-btn" onclick="removeShopItem(event,\''+sn+'\')" title="Dismiss / already have">x</button>'
            +'</div>';
@@ -5143,6 +5342,218 @@ function parseVariantText(text){
 function variantText(vars){
   return normaliseStockVariants(vars).sort(function(a,b){return a.order-b.order;}).map(function(v){return v.name+': '+v.qty;}).join('\n');
 }
+
+function toggleStockVariantsWrap(pfx){
+  var wrap=gr(pfx+'-variants-wrap');
+  var btn=gr(pfx+'-var-toggle');
+  if(!wrap)return;
+  var isHidden=wrap.style.display==='none'||!wrap.style.display;
+  wrap.style.display=isHidden?'block':'none';
+  if(btn)btn.textContent=isHidden?'Hide flavours':'+ Add flavours';
+  if(isHidden){
+    var list=gr(pfx+'-variants-list');
+    if(list&&!list.children.length){
+      addStockVariantRow(pfx,'',1);
+    }
+  }
+}
+
+function addStockVariantRow(pfx,name,qty,varId){
+  var cont=gr(pfx+'-variants-list');
+  if(!cont)return;
+  var row=document.createElement('div');
+  row.className='variant-edit-row';
+  if(varId)row.setAttribute('data-var-id',varId);
+  var rowId=newId('vr');
+  row.id=rowId;
+  row.innerHTML='<input class="fi variant-name-input" type="text" placeholder="Flavour (e.g. Chicken &amp; Mushroom)" value="'+escHtml(name||'')+'" style="flex:1;min-width:110px;font-size:13px;padding:7px 8px" oninput="onVariantInputsChange(\''+pfx+'\')"/>'
+    +'<div style="display:flex;align-items:center;gap:3px">'
+    +'<button type="button" class="srv-btn" onclick="stepVariantInput(this,-1,\''+pfx+'\')" style="width:28px;height:28px;font-size:14px">-</button>'
+    +'<input type="number" min="0" class="fi variant-qty-input" value="'+(qty!==undefined&&qty!==null?qty:1)+'" style="width:48px;padding:6px 2px;text-align:center;font-size:13px;font-weight:700" oninput="onVariantInputsChange(\''+pfx+'\')"/>'
+    +'<button type="button" class="srv-btn" onclick="stepVariantInput(this,1,\''+pfx+'\')" style="width:28px;height:28px;font-size:14px">+</button>'
+    +'</div>'
+    +'<button type="button" class="rm-btn" onclick="removeVariantRow(this,\''+pfx+'\')" title="Remove flavour" style="width:28px;height:28px;font-size:14px">&times;</button>';
+  cont.appendChild(row);
+  onVariantInputsChange(pfx);
+  var nameInp=row.querySelector('.variant-name-input');
+  if(!name&&nameInp)nameInp.focus();
+}
+
+function removeVariantRow(btn,pfx){
+  var row=btn.closest('.variant-edit-row');
+  if(row)row.remove();
+  onVariantInputsChange(pfx);
+}
+
+function stepVariantInput(btn,delta,pfx){
+  var row=btn.closest('.variant-edit-row');
+  if(!row)return;
+  var inp=row.querySelector('.variant-qty-input');
+  if(!inp)return;
+  var cur=Math.max(0,parseInt(inp.value,10)||0);
+  inp.value=Math.max(0,cur+delta);
+  onVariantInputsChange(pfx);
+}
+
+function onVariantInputsChange(pfx){
+  var cont=gr(pfx+'-variants-list');
+  if(!cont)return;
+  var rows=cont.querySelectorAll('.variant-edit-row');
+  var total=0;
+  var count=0;
+  rows.forEach(function(r){
+    var nameInp=r.querySelector('.variant-name-input');
+    var qtyInp=r.querySelector('.variant-qty-input');
+    var name=nameInp?nameInp.value.trim():'';
+    var qty=qtyInp?Math.max(0,parseInt(qtyInp.value,10)||0):0;
+    if(name||qty>0){
+      total+=qty;
+      count++;
+    }
+  });
+  var totalEl=gr(pfx+'-variants-total');
+  if(totalEl){
+    totalEl.textContent=count>0?('Total: '+total+' across '+count+' flavour'+(count===1?'':'s')):'No flavours added yet';
+  }
+  var qtyInp=gr(pfx+'-qty');
+  if(qtyInp&&count>0){
+    qtyInp.value=total;
+  }
+}
+
+function collectStockVariants(pfx){
+  var cont=gr(pfx+'-variants-list');
+  if(!cont)return [];
+  var rows=cont.querySelectorAll('.variant-edit-row');
+  var out=[];
+  rows.forEach(function(r,idx){
+    var nameInp=r.querySelector('.variant-name-input');
+    var qtyInp=r.querySelector('.variant-qty-input');
+    var varId=r.getAttribute('data-var-id');
+    var name=nameInp?nameInp.value.trim():'';
+    var qty=qtyInp?Math.max(0,parseInt(qtyInp.value,10)||0):0;
+    if(name){
+      out.push({
+        id:varId||newId('var'),
+        name:name,
+        qty:qty,
+        order:idx
+      });
+    }
+  });
+  return out;
+}
+
+function renderStockVariantsEditor(pfx,variants){
+  var cont=gr(pfx+'-variants-list');
+  if(!cont)return;
+  cont.innerHTML='';
+  variants=normaliseStockVariants(variants);
+  if(variants.length){
+    variants.forEach(function(v){
+      addStockVariantRow(pfx,v.name,v.qty,v.id);
+    });
+    if(pfx==='qs'){
+      var wrap=gr('qs-variants-wrap');
+      if(wrap)wrap.style.display='block';
+      var tBtn=gr('qs-var-toggle');
+      if(tBtn)tBtn.textContent='Hide flavours';
+    }
+  } else {
+    if(pfx==='qs'){
+      var wrap=gr('qs-variants-wrap');
+      if(wrap)wrap.style.display='none';
+      var tBtn=gr('qs-var-toggle');
+      if(tBtn)tBtn.textContent='+ Add flavours';
+    }
+  }
+  onVariantInputsChange(pfx);
+}
+
+var activeAdjustStockId=null;
+function openAdjustStockVariantsModal(id){
+  var item=stockItems.find(function(x){return String(x.id)===String(id);});
+  if(!item)return;
+  item=normaliseStockItem(item);
+  activeAdjustStockId=id;
+  gr('sva-title').textContent='🍜 '+item.name+' — Flavours';
+  refreshAdjustStockVariantsModal();
+  var addBox=gr('sva-add-box');
+  if(addBox)addBox.style.display='none';
+  var addBtn=gr('sva-show-add-btn');
+  if(addBtn)addBtn.style.display='block';
+  var newNameInp=gr('sva-new-name');
+  if(newNameInp)newNameInp.value='';
+  var newQtyInp=gr('sva-new-qty');
+  if(newQtyInp)newQtyInp.value='1';
+  openM('modal-stock-variants-adjust');
+}
+
+function refreshAdjustStockVariantsModal(){
+  if(!activeAdjustStockId)return;
+  var item=stockItems.find(function(x){return String(x.id)===String(activeAdjustStockId);});
+  if(!item){closeM('modal-stock-variants-adjust');return;}
+  item=normaliseStockItem(item);
+  gr('sva-sub').textContent=item.variants.length?(item.qty+' total portions across '+item.variants.length+' flavour'+(item.variants.length===1?'':'s')):'No flavours configured yet';
+  var list=gr('sva-list');
+  if(!list)return;
+  list.innerHTML='';
+  if(item.variants.length){
+    item.variants.sort(function(a,b){return a.order-b.order;}).forEach(function(v){
+      var row=document.createElement('div');
+      row.className='variant-row';
+      row.innerHTML='<div class="variant-name">'+escHtml(v.name)+'</div>'
+        +'<button type="button" class="srv-btn" onclick="stockVariantQty(\''+escHtml(item.id)+'\',\''+escHtml(v.id)+'\',-1);refreshAdjustStockVariantsModal()">-</button>'
+        +'<div class="qty-pill">'+v.qty+'</div>'
+        +'<button type="button" class="srv-btn" onclick="stockVariantQty(\''+escHtml(item.id)+'\',\''+escHtml(v.id)+'\',1);refreshAdjustStockVariantsModal()">+</button>';
+      list.appendChild(row);
+    });
+  } else {
+    list.innerHTML='<div style="font-size:12.5px;color:var(--ink3);padding:10px 0;text-align:center">No flavours added to this item yet.<br>Click below to add your first flavour.</div>';
+  }
+}
+
+function toggleSvaAddBox(){
+  var box=gr('sva-add-box');
+  var btn=gr('sva-show-add-btn');
+  if(!box)return;
+  var isHidden=box.style.display==='none'||!box.style.display;
+  box.style.display=isHidden?'block':'none';
+  if(btn)btn.style.display=isHidden?'none':'block';
+  if(isHidden){
+    var inp=gr('sva-new-name');
+    if(inp)inp.focus();
+  }
+}
+
+function submitQuickNewVariant(){
+  if(!activeAdjustStockId)return;
+  var nameInp=gr('sva-new-name');
+  var qtyInp=gr('sva-new-qty');
+  var name=nameInp?nameInp.value.trim():'';
+  var qty=qtyInp?Math.max(0,parseInt(qtyInp.value,10)||1):1;
+  if(!name){showToast('Please enter a flavour name');return;}
+  var item=stockItems.find(function(x){return String(x.id)===String(activeAdjustStockId);});
+  if(!item)return;
+  item=normaliseStockItem(item);
+  var existing=item.variants.find(function(v){return v.name.toLowerCase()===name.toLowerCase();});
+  if(existing){
+    existing.qty+=qty;
+  } else {
+    item.variants.push({
+      id:newId('var'),
+      name:name,
+      qty:qty,
+      order:item.variants.length
+    });
+  }
+  updateStockItem(item,'Added '+name+' ('+qty+') to '+item.name,'Flavour added');
+  if(nameInp)nameInp.value='';
+  toggleSvaAddBox();
+  refreshAdjustStockVariantsModal();
+  showToast('✓ Added '+name+' ('+qty+')');
+}
+
 function resizeImageFile(file,cb){
   if(!file)return;
   var reader=new FileReader();
@@ -5212,11 +5623,60 @@ function stockVariantQty(id,varId,delta,reason){
   var norm=normaliseStockItem(item);
   updateStockItem(norm,(delta<0?(reason||'Used')+' ':'Added ')+Math.abs(delta)+' '+norm.name+' - '+v.name,norm.qty+' total left');
 }
+var stockUseVariantId = null;
 function openUseStockModal(id){
   var item=stockItems.find(function(x){return String(x.id)===String(id);});if(!item)return;
-  stockUseId=id;gr('use-stock-name').textContent=normaliseStockItem(item).name;openM('modal-stock-use');
+  item=normaliseStockItem(item);
+  stockUseId=id;
+  stockUseVariantId=null;
+  gr('use-stock-name').textContent=item.name;
+  var varSec=gr('use-stock-variant-section');
+  var chips=gr('use-stock-variants-chips');
+  if(item.variants&&item.variants.length){
+    if(varSec)varSec.style.display='block';
+    var activeV=item.variants.find(function(v){return v.qty>0;})||item.variants[0];
+    stockUseVariantId=activeV?activeV.id:null;
+    if(chips){
+      chips.innerHTML=item.variants.map(function(v){
+        var isSel=(stockUseVariantId===v.id);
+        var isOut=v.qty<=0;
+        return '<button type="button" class="tchip'+(isSel?' on':'')+'" style="'+(isOut?'opacity:0.5;':'')+'" onclick="selectUseStockVariant(\''+escHtml(v.id)+'\')">'
+          +escHtml(v.name)+' ('+v.qty+')'+'</button>';
+      }).join('');
+    }
+  } else {
+    if(varSec)varSec.style.display='none';
+    if(chips)chips.innerHTML='';
+  }
+  openM('modal-stock-use');
 }
-function confirmUseStock(reason){if(!stockUseId)return;stockQty(stockUseId,-1,reason);closeM('modal-stock-use');stockUseId=null;}
+
+function selectUseStockVariant(varId){
+  stockUseVariantId=varId;
+  var item=stockItems.find(function(x){return String(x.id)===String(stockUseId);});
+  if(!item)return;
+  item=normaliseStockItem(item);
+  var chips=gr('use-stock-variants-chips');
+  if(!chips)return;
+  chips.innerHTML=item.variants.map(function(v){
+    var isSel=(stockUseVariantId===v.id);
+    var isOut=v.qty<=0;
+    return '<button type="button" class="tchip'+(isSel?' on':'')+'" style="'+(isOut?'opacity:0.5;':'')+'" onclick="selectUseStockVariant(\''+escHtml(v.id)+'\')">'
+      +escHtml(v.name)+' ('+v.qty+')'+'</button>';
+  }).join('');
+}
+
+function confirmUseStock(reason){
+  if(!stockUseId)return;
+  if(stockUseVariantId){
+    stockVariantQty(stockUseId,stockUseVariantId,-1,reason);
+  } else {
+    stockQty(stockUseId,-1,reason);
+  }
+  closeM('modal-stock-use');
+  stockUseId=null;
+  stockUseVariantId=null;
+}
 function restockStock(id){
   var item=stockItems.find(function(x){return String(x.id)===String(id);});if(!item)return;
   item=normaliseStockItem(item);
@@ -5536,16 +5996,18 @@ function openStockViewModal(id){
   }
 
   // Variants (if any)
+  html+='<div class="rv-section">';
+  html+='<div class="sec-hdr" style="margin-bottom:8px"><div class="rv-section-title" style="margin-bottom:0">🍜 Sub-items &amp; Flavours</div><button type="button" class="btn btns" style="font-size:11.5px;padding:3px 9px" onclick="openAdjustStockVariantsModal(\''+escHtml(item.id)+'\')">'+(item.variants&&item.variants.length?'+ Manage flavours':'+ Add flavours')+'</button></div>';
   if(item.variants&&item.variants.length){
-    html+='<div class="rv-section">';
-    html+='<div class="rv-section-title">Variants Breakdown</div>';
     html+='<div class="variant-list">';
-    item.variants.forEach(function(v){
+    item.variants.sort(function(a,b){return a.order-b.order;}).forEach(function(v){
       html+='<div class="variant-row"><div class="variant-name">'+escHtml(v.name)+'</div><button class="srv-btn" onclick="stockVariantQty(\''+escHtml(item.id)+'\',\''+escHtml(v.id)+'\',-1);openStockViewModal(\''+escHtml(item.id)+'\')">-</button><div class="qty-pill">'+v.qty+'</div><button class="srv-btn" onclick="stockVariantQty(\''+escHtml(item.id)+'\',\''+escHtml(v.id)+'\',1);openStockViewModal(\''+escHtml(item.id)+'\')">+</button></div>';
     });
     html+='</div>';
-    html+='</div>';
+  } else {
+    html+='<div style="font-size:12.5px;color:var(--ink3);font-style:italic;padding:4px 0">No individual flavours set. Single item tracking ('+item.qty+' total).</div>';
   }
+  html+='</div>';
 
   // Notes & Serving instructions
   if(item.notes){
@@ -5633,7 +6095,37 @@ function stockCard(item){
     }
     card.appendChild(fWrap);
   }
-  if(item.variants.length){var vl=document.createElement('div');vl.className='variant-list';item.variants.sort(function(a,b){return a.order-b.order;}).forEach(function(v){var vr=document.createElement('div');vr.className='variant-row';var vn=document.createElement('div');vn.className='variant-name';vn.textContent=v.name;var vd=document.createElement('button');vd.className='srv-btn';vd.textContent='-';vd.addEventListener('click',function(){stockVariantQty(item.id,v.id,-1);});var vp=document.createElement('div');vp.className='qty-pill';vp.textContent=v.qty;var vu=document.createElement('button');vu.className='srv-btn';vu.textContent='+';vu.addEventListener('click',function(){stockVariantQty(item.id,v.id,1);});vr.appendChild(vn);vr.appendChild(vd);vr.appendChild(vp);vr.appendChild(vu);vl.appendChild(vr);});card.appendChild(vl);}
+  if(item.variants.length){
+    var vl=document.createElement('div');
+    vl.className='variant-list';
+    item.variants.sort(function(a,b){return a.order-b.order;}).forEach(function(v){
+      var vr=document.createElement('div');vr.className='variant-row';
+      var vn=document.createElement('div');vn.className='variant-name';vn.textContent=v.name;
+      var vd=document.createElement('button');vd.type='button';vd.className='srv-btn';vd.textContent='-';
+      vd.addEventListener('click',function(e){e.stopPropagation();stockVariantQty(item.id,v.id,-1);});
+      var vp=document.createElement('div');vp.className='qty-pill';vp.textContent=v.qty;
+      var vu=document.createElement('button');vu.type='button';vu.className='srv-btn';vu.textContent='+';
+      vu.addEventListener('click',function(e){e.stopPropagation();stockVariantQty(item.id,v.id,1);});
+      vr.appendChild(vn);vr.appendChild(vd);vr.appendChild(vp);vr.appendChild(vu);
+      vl.appendChild(vr);
+    });
+    var addRow=document.createElement('div');
+    addRow.style.cssText='padding-top:6px;display:flex;justify-content:flex-end';
+    var addBtn=document.createElement('button');
+    addBtn.type='button';
+    addBtn.className='btn btns';
+    addBtn.style.cssText='font-size:11px;padding:3px 9px';
+    addBtn.textContent='+ Add flavour';
+    (function(sid){
+      addBtn.addEventListener('click',function(e){
+        e.stopPropagation();
+        openAdjustStockVariantsModal(sid);
+      });
+    })(item.id);
+    addRow.appendChild(addBtn);
+    vl.appendChild(addRow);
+    card.appendChild(vl);
+  }
   var row=document.createElement('div');row.style.cssText='display:flex;align-items:center;gap:8px;justify-content:space-between';
   var qty=document.createElement('div');qty.className='qty-step';
   var dn=document.createElement('button');dn.className='srv-btn';dn.textContent='-';dn.addEventListener('click',function(){stockQty(item.id,-1);});
@@ -5777,6 +6269,22 @@ function stockGridCard(item){
   name.textContent=item.name;
   card.appendChild(name);
 
+  // Sub-items / Variants Preview
+  if(item.variants && item.variants.length){
+    var vBadge=document.createElement('div');
+    vBadge.className='stock-grid-variants-preview';
+    vBadge.style.cssText='font-size:10.5px;margin:3px 0 6px;display:flex;gap:4px;flex-wrap:wrap;align-items:center';
+    var vSummary = item.variants.map(function(v){ return v.name + ': ' + v.qty; }).join(' · ');
+    vBadge.innerHTML = '<span style="background:var(--sage-p);color:var(--sage);padding:2px 6px;border-radius:10px;font-weight:600;font-size:10px;cursor:pointer">🍜 ' + item.variants.length + ' flavours</span> <span style="font-size:10.5px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px;cursor:pointer" title="' + escHtml(vSummary) + '">' + escHtml(vSummary) + '</span>';
+    (function(sid){
+      vBadge.addEventListener('click',function(e){
+        e.stopPropagation();
+        openAdjustStockVariantsModal(sid);
+      });
+    })(item.id);
+    card.appendChild(vBadge);
+  }
+
   // 4. Footer with Stepper
   var footer=document.createElement('div');
   footer.className='stock-grid-footer';
@@ -5790,7 +6298,11 @@ function stockGridCard(item){
   dn.textContent='-';
   dn.onclick=function(e){
     e.stopPropagation();
-    stockQty(item.id,-1);
+    if(item.variants && item.variants.length > 1){
+      openAdjustStockVariantsModal(item.id);
+    } else {
+      stockQty(item.id,-1);
+    }
   };
 
   var qty=document.createElement('div');
@@ -5810,7 +6322,11 @@ function stockGridCard(item){
   up.textContent='+';
   up.onclick=function(e){
     e.stopPropagation();
-    stockQty(item.id,1);
+    if(item.variants && item.variants.length > 1){
+      openAdjustStockVariantsModal(item.id);
+    } else {
+      stockQty(item.id,1);
+    }
   };
 
   stepper.appendChild(dn);
@@ -5927,6 +6443,7 @@ function applyStockTemplate(id){
   renderModalBagInputs('qs',t.bags||(t.fullness!==null?[t.fullness]:[100]),t.qty||1);
   renderStockIngredients(t.freshIngredients||(t.kit?parseFreshIngredientsString(t.kit):[]),'qs-ings');
   renderStockSteps(t.steps||[],'qs-steps');
+  renderStockVariantsEditor('qs',t.variants||[]);
   gr('qs-notes').value=t.notes||'';renderStockDuplicateHint('qs');
 }
 function openQuickStockModal(templateId){
@@ -5940,6 +6457,7 @@ function openQuickStockModal(templateId){
   renderModalBagInputs('qs',[100],1);
   renderStockIngredients([],'qs-ings');
   renderStockSteps([],'qs-steps');
+  renderStockVariantsEditor('qs',[]);
   gr('qs-qty').value=1;gr('qs-notify').checked=false;gr('qs-template').checked=false;gr('qs-more').style.display='none';renderStockDuplicateHint('qs');
   openM('modal-stock-quick');if(templateId)applyStockTemplate(templateId);
 }
@@ -5957,7 +6475,8 @@ function openStockModal(id){
   renderModalBagInputs('st',item.bags||(item.fullness!==null?[item.fullness]:[100]),item.qty===0?0:(item.qty||1));
   renderStockIngredients(item.freshIngredients||(item.kit?parseFreshIngredientsString(item.kit):[]),'st-ings');
   renderStockSteps(item.steps||[],'st-steps');
-  gr('st-variants').value=variantText(item.variants);renderStockImg(stockImgB64);gr('st-notes').value=item.notes||'';
+  renderStockVariantsEditor('st',item.variants||[]);
+  renderStockImg(stockImgB64);gr('st-notes').value=item.notes||'';
   renderStockDuplicateHint('st',stockEditId);
   renderStockDrawerPicker('st-drawer',item.freezerDrawer||'','pickStockDrawer');
   renderStockSectionPicker(item.section||'snack');openM('modal-stock');
@@ -5968,11 +6487,12 @@ function saveQuickStockItem(){
   var steps=collectStockSteps('qs-steps');
   var kitStr=stockFreshIngredientsSummary(freshIngredients);
   var isBag=gr('qs-isbag')?gr('qs-isbag').checked:false;
-  var qtyVal=Math.max(0,parseInt(gr('qs-qty').value,10)||0);
+  var variants=collectStockVariants('qs');
+  var qtyVal=variants.length?variants.reduce(function(s,v){return s+v.qty;},0):Math.max(0,parseInt(gr('qs-qty').value,10)||0);
   var bags=isBag?collectModalBags('qs',qtyVal):null;
   var fullness=(bags&&bags.length)?Math.round(bags.reduce(function(s,b){return s+b;},0)/bags.length):(isBag?100:null);
   var qsDrawer=stockQuickSection==='freezer'&&gr('qs-drawer')?(gr('qs-drawer').getAttribute('data-value')||''):'';
-  var item=normaliseStockItem({id:newId('stock'),name:name,section:stockQuickSection,freezerDrawer:qsDrawer,type:gr('qs-type').value,qty:qtyVal,targetQty:gr('qs-target').value,makeTime:gr('qs-time').value,expiry:gr('qs-expiry').value,batch:gr('qs-batch').value,alert1:gr('qs-alert1').value,alert2:gr('qs-alert2').value,notify:gr('qs-notify').checked,isBag:isBag,bags:bags,fullness:fullness,freshIngredients:freshIngredients,steps:steps,kit:kitStr,notes:gr('qs-notes').value,updatedAt:Date.now(),updatedBy:fbCfg.who||'Someone'});
+  var item=normaliseStockItem({id:newId('stock'),name:name,section:stockQuickSection,freezerDrawer:qsDrawer,type:gr('qs-type').value,qty:qtyVal,targetQty:gr('qs-target').value,makeTime:gr('qs-time').value,expiry:gr('qs-expiry').value,batch:gr('qs-batch').value,variants:variants,alert1:gr('qs-alert1').value,alert2:gr('qs-alert2').value,notify:gr('qs-notify').checked,isBag:isBag,bags:bags,fullness:fullness,freshIngredients:freshIngredients,steps:steps,kit:kitStr,notes:gr('qs-notes').value,updatedAt:Date.now(),updatedBy:fbCfg.who||'Someone'});
   stockItems.push(item);
   if(gr('qs-template').checked)upsertStockTemplate(item,false);
   addActivity('Added '+item.name,item.qty+' in '+stockSectionName(item.section),'stock');
@@ -5985,12 +6505,13 @@ function saveStockItem(){
   var steps=collectStockSteps('st-steps');
   var kitStr=stockFreshIngredientsSummary(freshIngredients);
   var isBag=gr('st-isbag')?gr('st-isbag').checked:false;
-  var qtyVal=Math.max(0,parseInt(gr('st-qty').value,10)||0);
+  var variants=collectStockVariants('st');
+  var qtyVal=variants.length?variants.reduce(function(s,v){return s+v.qty;},0):Math.max(0,parseInt(gr('st-qty').value,10)||0);
   var bags=isBag?collectModalBags('st',qtyVal):null;
   var fullness=(bags&&bags.length)?Math.round(bags.reduce(function(s,b){return s+b;},0)/bags.length):(isBag?100:null);
   var stSection=gr('st-section').getAttribute('data-value')||'snack';
   var stDrawer=stSection==='freezer'&&gr('st-drawer')?(gr('st-drawer').getAttribute('data-value')||''):'';
-  var item=normaliseStockItem({id:stockEditId||newId('stock'),name:name,section:stSection,freezerDrawer:stDrawer,type:gr('st-type').value,qty:qtyVal,targetQty:gr('st-target').value,makeTime:gr('st-time').value,expiry:gr('st-expiry').value,batch:gr('st-batch').value,variants:parseVariantText(gr('st-variants').value),image:stockImgB64,alert1:gr('st-alert1').value,alert2:gr('st-alert2').value,notify:gr('st-notify').checked,isBag:isBag,bags:bags,fullness:fullness,freshIngredients:freshIngredients,steps:steps,kit:kitStr,notes:gr('st-notes').value,updatedAt:Date.now(),updatedBy:fbCfg.who||'Someone'});
+  var item=normaliseStockItem({id:stockEditId||newId('stock'),name:name,section:stSection,freezerDrawer:stDrawer,type:gr('st-type').value,qty:qtyVal,targetQty:gr('st-target').value,makeTime:gr('st-time').value,expiry:gr('st-expiry').value,batch:gr('st-batch').value,variants:variants,image:stockImgB64,alert1:gr('st-alert1').value,alert2:gr('st-alert2').value,notify:gr('st-notify').checked,isBag:isBag,bags:bags,fullness:fullness,freshIngredients:freshIngredients,steps:steps,kit:kitStr,notes:gr('st-notes').value,updatedAt:Date.now(),updatedBy:fbCfg.who||'Someone'});
   var idx=stockItems.findIndex(function(x){return String(x.id)===String(item.id);});
   if(idx>=0)stockItems[idx]=item;else stockItems.push(item);
   addActivity((idx>=0?'Updated ':'Added ')+item.name,item.qty+' left','stock');
@@ -7273,15 +7794,18 @@ function parseWordNumber(w){
   var map={'a':1,'an':1,'one':1,'two':2,'three':3,'four':4,'five':5,'six':6,'seven':7,'eight':8,'nine':9,'ten':10,'half a dozen':6,'dozen':12};
   return map[w.toLowerCase()]||parseInt(w,10)||1;
 }
-function findSimilarStockItems(query){
+function findSimilarStockItems(query,excludeId){
   if(!query||!stockItems.length)return [];
+  var pool=stockItems.map(normaliseStockItem).filter(function(i){
+    return !excludeId || String(i.id)!==String(excludeId);
+  });
   var q=String(query).toLowerCase().trim();
   var qClean=cleanIngredientName(q);
   var qWords=qClean.split(/\s+/).filter(Boolean);
   var qStems=qWords.map(stemWord);
   
   // 1. Exact match (name or cleaned name)
-  var exact=stockItems.map(normaliseStockItem).filter(function(i){
+  var exact=pool.filter(function(i){
     var n=String(i.name||'').toLowerCase().trim();
     var nClean=cleanIngredientName(n);
     return n===q || nClean===q || n===qClean || nClean===qClean;
@@ -7289,7 +7813,7 @@ function findSimilarStockItems(query){
   if(exact.length)return exact;
 
   // 2. Substring match
-  var substr=stockItems.map(normaliseStockItem).filter(function(i){
+  var substr=pool.filter(function(i){
     var n=String(i.name||'').toLowerCase().trim();
     var nClean=cleanIngredientName(n);
     return n.indexOf(q)>=0 || q.indexOf(n)>=0 || nClean.indexOf(qClean)>=0 || qClean.indexOf(nClean)>=0;
@@ -7298,7 +7822,7 @@ function findSimilarStockItems(query){
 
   // 3. Word & Stem intersection
   if(qWords.length){
-    var scored=stockItems.map(normaliseStockItem).map(function(i){
+    var scored=pool.map(function(i){
       var n=String(i.name||'').toLowerCase().trim();
       var nClean=cleanIngredientName(n);
       var nWords=nClean.split(/\s+/).filter(Boolean);
@@ -7339,6 +7863,26 @@ function executeNaturalCommand(rawText){
     if(matches.length){
       var targetItem=matches[0];
       var prevQty=targetItem.qty;
+      var matchedVar=null;
+      if(targetItem.variants && targetItem.variants.length){
+        var clLower=cleaned.toLowerCase();
+        matchedVar=targetItem.variants.find(function(v){
+          var vl=v.name.toLowerCase();
+          return clLower.indexOf(vl)>=0 || vl.indexOf(clLower)>=0;
+        });
+      }
+      if(matchedVar){
+        stockVariantQty(targetItem.id, matchedVar.id, -qty, 'Voice/Quick command');
+        recordFrequentCommand('used '+qty+' '+targetItem.name+' - '+matchedVar.name);
+        var msg='✓ Used '+qty+' × '+targetItem.name+' ('+matchedVar.name+', '+(targetItem.qty-qty)+' total left)';
+        showToast(msg,function(){
+          stockVariantQty(targetItem.id, matchedVar.id, qty, 'Undo');
+        });
+        setNlFeedback('success',msg,function(){
+          stockVariantQty(targetItem.id, matchedVar.id, qty, 'Undo');
+        });
+        return;
+      }
       stockQty(targetItem.id,-qty,'Voice/Quick command');
       recordFrequentCommand('used '+qty+' '+targetItem.name);
       var leftQty=Math.max(0,prevQty-qty);
@@ -7379,6 +7923,26 @@ function executeNaturalCommand(rawText){
     var existingMatches=findSimilarStockItems(addClean);
     if(existingMatches.length){
       var exItem=existingMatches[0];
+      var matchedAddVar=null;
+      if(exItem.variants && exItem.variants.length){
+        var alLower=addClean.toLowerCase();
+        matchedAddVar=exItem.variants.find(function(v){
+          var vl=v.name.toLowerCase();
+          return alLower.indexOf(vl)>=0 || vl.indexOf(alLower)>=0;
+        });
+      }
+      if(matchedAddVar){
+        stockVariantQty(exItem.id, matchedAddVar.id, addQty, 'Restocked');
+        recordFrequentCommand('add '+addQty+' '+exItem.name+' - '+matchedAddVar.name+' to stock');
+        var msg='✓ Added '+addQty+' × '+exItem.name+' ('+matchedAddVar.name+', '+(exItem.qty+addQty)+' in '+stockSectionName(exItem.section)+')';
+        showToast(msg,function(){
+          stockVariantQty(exItem.id, matchedAddVar.id, -addQty, 'Undo');
+        });
+        setNlFeedback('success',msg,function(){
+          stockVariantQty(exItem.id, matchedAddVar.id, -addQty, 'Undo');
+        });
+        return;
+      }
       stockQty(exItem.id,addQty,'Restocked');
       recordFrequentCommand('add '+addQty+' '+exItem.name+' to stock');
       var newTotal=exItem.qty+addQty;
@@ -7389,6 +7953,7 @@ function executeNaturalCommand(rawText){
       setNlFeedback('success',msg,function(){
         stockQty(exItem.id,-addQty,'Undo');
       });
+      return;
     }else{
       var newStItem=normaliseStockItem({
         id:newId('stock'),
@@ -8443,32 +9008,24 @@ window.addEventListener('focus',function(){
     publishSharedState();
   }
 });
+window.addEventListener('online',function(){
+  if(window.firebase&&firebase.database){
+    try{firebase.database().goOnline();}catch(e){}
+  }
+  syncWeekAnchor();
+  renderAll();
+  checkAppUpdate();
+  checkAppVersionOnServer();
+  if(fbConn&&fbRef&&loadL('sharedDirty')){
+    publishSharedState();
+  }
+});
 window.addEventListener('pagehide',function(){
   saveSharedLocal();
 });
 window.addEventListener('beforeunload',function(){
   saveSharedLocal();
 });
-
-function registerAppServiceWorker(){
-  if(!('serviceWorker' in navigator))return Promise.resolve(null);
-  return navigator.serviceWorker.register('sw.js?v=1.1.0',{scope:'./'}).then(function(reg){
-    if(reg&&typeof reg.update==='function')reg.update().catch(function(){});
-    return reg;
-  }).catch(function(){return null;});
-}
-function forceAppUpdate(){
-  showToast('Clearing caches & updating app...');
-  try{sessionStorage.clear();localStorage.removeItem('cache-nuked');}catch(e){}
-  var p1=('caches' in window)?caches.keys().then(function(keys){return Promise.all(keys.map(function(k){return caches.delete(k);}));}):Promise.resolve();
-  var p2=('serviceWorker' in navigator)?navigator.serviceWorker.getRegistrations().then(function(regs){return Promise.all(regs.map(function(r){return r.unregister();}));}):Promise.resolve();
-  Promise.all([p1,p2]).then(function(){
-    var sep=window.location.href.indexOf('?')>=0?'&':'?';
-    window.location.href=window.location.pathname+sep+'v='+Date.now();
-  }).catch(function(){
-    window.location.reload(true);
-  });
-}
 
 // SERVICE WORKER & APP UPDATE SYSTEM
 (function(){
@@ -8489,7 +9046,8 @@ function forceAppUpdate(){
       var nw=reg.installing;if(!nw)return;
       nw.addEventListener('statechange',function(){
         if(nw.state==='installed'&&navigator.serviceWorker.controller){
-          showToast('✓ Mise en Place updated to v1.1.0 — reloading...');
+          var curV=typeof APP_VERSION!=='undefined'?APP_VERSION:'1.2.0';
+          showToast('✓ Mise en Place updated to v'+curV+' — reloading...');
           setTimeout(function(){
             if(nw)nw.postMessage({type:'SKIP_WAITING'});
             window.location.reload();
@@ -8503,7 +9061,8 @@ function forceAppUpdate(){
     fetch('version.json?t=' + Date.now(), { cache: 'no-store' })
       .then(function(res){ return res.json(); })
       .then(function(data){
-        if(data && data.version && data.version !== '1.1.0'){
+        var curV=typeof APP_VERSION!=='undefined'?APP_VERSION:'1.2.0';
+        if(data && data.version && data.version !== curV){
           showToast('✓ Updating to v' + data.version + '...');
           setTimeout(function(){
             forceAppUpdate();
