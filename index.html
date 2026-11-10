@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v1.2.3 -->
+<!-- v1.2.4 -->
 
 <html lang="en">
 <head>
@@ -517,7 +517,7 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
         <div class="sec-hdr">
           <div class="sec-title">Restock &amp; Buy Soon</div>
           <div style="display:flex;gap:6px">
-            <button class="btn btns" onclick="addLowStockToExtras()">+ Add all to shopping</button>
+            <button class="btn btns" id="dash-add-low-btn" onclick="addLowStockToExtras()">+ Add all to shopping</button>
             <button class="btn btns" onclick="setStockFilter('low');showTab('stock')">Low Stock</button>
           </div>
         </div>
@@ -1085,7 +1085,7 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
       <div class="fg"><label class="fl">Week starts on</label><div class="cwrap" id="prof-wk"></div></div>
       <div class="fg" style="margin-top:16px;padding-top:14px;border-top:1.5px dashed var(--paper3);display:flex;justify-content:space-between;align-items:center">
         <div>
-          <div style="font-size:13px;font-weight:700;color:var(--ink)">Mise en Place <span style="color:var(--sage);font-weight:700">v1.2.3</span></div>
+          <div style="font-size:13px;font-weight:700;color:var(--ink)">Mise en Place <span style="color:var(--sage);font-weight:700">v1.2.4</span></div>
           <div style="font-size:11px;color:var(--ink3)">Tap if you don't see new updates on your iPhone</div>
         </div>
         <button class="btn btns" onclick="forceAppUpdate()" style="font-size:12px;padding:7px 12px">🔄 Force Update</button>
@@ -1137,7 +1137,7 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
   <div class="sheet">
     <div class="sh"></div>
     <div class="rv-close-bar">
-      <span style="font-family:'Playfair Display',serif;font-size:15px;color:var(--ink3)">Recipe</span>
+      <span id="rv-sheet-label" style="font-family:'Playfair Display',serif;font-size:15px;color:var(--ink3)">Recipe</span>
       <button id="rv-close-btn" class="rv-close-btn">&larr; Back</button>
     </div>
     <div id="rv-content" class="s-body"></div>
@@ -1190,7 +1190,7 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
 </div>
 
 <script>
-var APP_VERSION = '1.2.3';
+var APP_VERSION = '1.2.4';
 // ── CACHE NUKE: clears stale SW + caches, one-time reload on version upgrade ─
 (function(){
   if(typeof window==='undefined')return;
@@ -4558,6 +4558,7 @@ function mtKDInline(e){if(e.key==='Enter'){e.preventDefault();addMTInline();}}
 
 function openRV(id, customServings){
   var r=rec(id);if(!r)return;
+  var sheetLbl=gr('rv-sheet-label');if(sheetLbl)sheetLbl.textContent='Recipe';
   var ha=rha(r);var hits=r.allergens.filter(function(a){return userAllergens.indexOf(a)>=0;});
   var rAversions=checkRecipeAversions(r, userAversions);
   var cont=gr('rv-content');cont.innerHTML='';
@@ -4636,6 +4637,8 @@ function openManualMealView(day, idx, dateKeyOverride){
   if(!m) return;
   var cont = gr('rv-content');
   if(!cont) return;
+  var sheetLbl = gr('rv-sheet-label');
+  if(sheetLbl) sheetLbl.textContent = 'Planned Meal';
 
   function renderViewMode(){
     cont.innerHTML = '';
@@ -4704,7 +4707,11 @@ function openManualMealView(day, idx, dateKeyOverride){
       };
       recipes.push(newRec);
       m.recipeId = newRec.id;
+      delete m.manualName;
+      delete m.manualTime;
+      delete m.manualIngredients;
       m.updatedAt = Date.now();
+      addActivity('Saved manual meal ' + newRec.name + ' to Recipes', '', 'recipe');
       persist('recipes');
       persist('plan', k);
       renderAll();
@@ -7310,6 +7317,8 @@ function consolidatedRestockItems(){
 function renderConsolidatedRestock(el){
   if(!el)return;
   var items=consolidatedRestockItems();
+  var addLowBtn=gr('dash-add-low-btn');
+  if(addLowBtn)addLowBtn.style.display=items.length?'inline-flex':'none';
   if(!items.length){el.innerHTML='<div style="font-size:13px;color:var(--ink3);padding:4px 0">✓ Cupboards and freezer are fully stocked</div>';return;}
   el.innerHTML='';var wrap=document.createElement('div');wrap.className='mini-stock-list';
   items.slice(0,8).forEach(function(item){
