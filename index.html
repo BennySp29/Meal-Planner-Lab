@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- v1.2.1 -->
+<!-- v1.2.2 -->
 
 <html lang="en">
 <head>
@@ -1064,7 +1064,7 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
       <div class="fg"><label class="fl">Week starts on</label><div class="cwrap" id="prof-wk"></div></div>
       <div class="fg" style="margin-top:16px;padding-top:14px;border-top:1.5px dashed var(--paper3);display:flex;justify-content:space-between;align-items:center">
         <div>
-          <div style="font-size:13px;font-weight:700;color:var(--ink)">Mise en Place <span style="color:var(--sage);font-weight:700">v1.2.1</span></div>
+          <div style="font-size:13px;font-weight:700;color:var(--ink)">Mise en Place <span style="color:var(--sage);font-weight:700">v1.2.2</span></div>
           <div style="font-size:11px;color:var(--ink3)">Tap if you don't see new updates on your iPhone</div>
         </div>
         <button class="btn btns" onclick="forceAppUpdate()" style="font-size:12px;padding:7px 12px">🔄 Force Update</button>
@@ -1169,7 +1169,7 @@ body.sleepy .qty-pill{min-width:48px;font-size:16px;padding:8px 12px}
 </div>
 
 <script>
-var APP_VERSION = '1.2.1';
+var APP_VERSION = '1.2.2';
 // ── CACHE NUKE: clears stale SW + caches, one-time reload on version upgrade ─
 (function(){
   if(typeof window==='undefined')return;
@@ -3189,13 +3189,27 @@ function renderPlanner(){
         if(!r&&m.manualName){
           var manualRow=mkEl('div','day-meal-row');
           var manualInfo=mkEl('div','meal-info');
+          manualInfo.style.cursor='pointer';
+          manualInfo.title='Tap to view & edit manual meal details';
           manualInfo.appendChild(mkEl('div','meal-label',m.mealType||'Meal'));
           manualInfo.appendChild(mkEl('div','meal-title',m.manualName));
           if(m.note)manualInfo.appendChild(mkEl('div','meal-note','📝 '+m.note));
-          var manualMeta=['Manual addition'];
-          if(m.manualTime)manualMeta.push(m.manualTime+' min');
-          if(m.manualIngredients&&m.manualIngredients.length)manualMeta.push(m.manualIngredients.length+' shopping item'+(m.manualIngredients.length===1?'':'s'));
+          var manualMeta=['Manual meal'];
+          if(m.manualTime)manualMeta.push(formatCookTime(m.manualTime));
+          if(m.manualIngredients&&m.manualIngredients.length)manualMeta.push(m.manualIngredients.length+' ingredient'+(m.manualIngredients.length===1?'':'s'));
           manualInfo.appendChild(mkEl('div','meal-meta',manualMeta.join(' - ')));
+          if(m.manualIngredients&&m.manualIngredients.length){
+            var ingPreview=m.manualIngredients.map(function(x){
+              var qStr=fmt(x.qty,x.unit);
+              return (qStr&&qStr!=='1'?(qStr+' '):'')+x.name;
+            }).join(', ');
+            var kitElM=mkEl('div','meal-fresh-kit');
+            kitElM.innerHTML='<span style="color:var(--sage)">🛒</span> <span>Ingredients: <strong>'+escHtml(ingPreview)+'</strong></span>';
+            manualInfo.appendChild(kitElM);
+          }
+          (function(d2,idx){manualInfo.addEventListener('click',function(){openManualMealView(d2,idx);});})(day,i);
+          var vbM=mkEl('button','btn btns','View');vbM.style.cssText='flex-shrink:0;font-size:11px;padding:5px 9px';
+          (function(d2,idx){vbM.addEventListener('click',function(e){e.stopPropagation();openManualMealView(d2,idx);});})(day,i);
           var mNoteBtnM=mkEl('button','meal-note-btn',m.note?'📝':'🖊');if(m.note)mNoteBtnM.classList.add('has-note');
           (function(d2,idx){mNoteBtnM.addEventListener('click',function(e){e.stopPropagation();openMealNote(d2,idx);});})(day,i);
           var mSwapBtnM=mkEl('button','meal-swap-btn','⇅');
@@ -3207,7 +3221,7 @@ function renderPlanner(){
           manualRow.style.alignItems='stretch';
           manualRow.style.gap='6px';
           var mActs=mkEl('div');mActs.style.cssText='display:flex;align-items:center;gap:8px;justify-content:flex-end';
-          mActs.appendChild(mNoteBtnM);mActs.appendChild(mSwapBtnM);mActs.appendChild(rmManual);
+          mActs.appendChild(vbM);mActs.appendChild(mNoteBtnM);mActs.appendChild(mSwapBtnM);mActs.appendChild(rmManual);
           
           manualRow.appendChild(manualInfo);manualRow.appendChild(mActs);dayDiv.appendChild(manualRow);
           return;
@@ -3524,28 +3538,70 @@ function cleanIngredientName(raw){
   // Standard potato varieties, cooking types, and descriptors -> normalize to 'potato'
   // Handles: baking potatoes, jacket potatoes, maris piper, king edward, russet, rooster, yukon gold,
   // charlotte, jersey royal, new potatoes, baby potatoes, salad potatoes, white potatoes, red potatoes,
-  // floury potatoes, waxy potatoes, mashing potatoes, roasting potatoes, boiled potatoes, fingerling, etc.
-  if(/^(baking|jacket|maris\s+piper|king\s+edward|russet|rooster|yukon\s+gold|charlotte|jersey\s+royal|salad|new|baby(\s+new)?|white|red|yellow|floury|waxy|mashing|mashed|roasting|roast|boiled|boiling|fingerling|heritage)\s+potatoes?$/i.test(s)
+  // floury potatoes, waxy potatoes, mashing potatoes, mashed potatoes, roasting potatoes, boiled potatoes, fingerling, etc.
+  if(/^((baking|baked|jacket|maris\s+piper|king\s+edward|russet|rooster|yukon\s+gold|charlotte|jersey\s+royal|salad|new|baby|white|red|yellow|floury|waxy|mashing|mashed|roasting|roast|roasted|boiled|boiling|steamed|crushed|smashed|peeled|unpeeled|diced|chopped|sliced|cubed|halved|quartered|small|medium|large|fresh|raw|cooked|and|fingerling|heritage)\s+)+potato(es)?$/i.test(s)
      || /^(maris\s+pipers?|king\s+edwards?|russets?|roosters?|yukon\s+golds?|jersey\s+royals?|fingerlings?)$/i.test(s)
-     || /^(baking|jacket|roasting|mashing|mashed|boiled)\s+spuds?$/i.test(s)
-     || /^potatoes?\s*[-–(]\s*(baking|jacket|maris|king|russet|rooster|new|baby|white|red|floury|waxy|salad)[^)]*\)?$/i.test(s)){
+     || /^((baking|baked|jacket|roasting|roast|roasted|mashing|mashed|boiled|boiling|peeled|diced|chopped|small|medium|large|new|baby)\s+)*spuds?$/i.test(s)
+     || /^potatoes?\s*[-–(]\s*(baking|baked|jacket|maris|king|russet|rooster|new|baby|white|red|floury|waxy|salad|mashed|boiled|roast)[^)]*\)?$/i.test(s)){
     return 'potato';
   }
+
+  // Compound food names that must NEVER have their leading words stripped
+  var protectedDirectMap={
+    'hot dog':'hot dogs',
+    'hot dogs':'hot dogs',
+    'hotdog':'hot dogs',
+    'hotdogs':'hot dogs',
+    'hot dog bun':'hot dog buns',
+    'hot dog buns':'hot dog buns',
+    'hotdog bun':'hot dog buns',
+    'hotdog buns':'hot dog buns',
+    'hot dog roll':'hot dog rolls',
+    'hot dog rolls':'hot dog rolls',
+    'burger bun':'burger buns',
+    'burger buns':'burger buns',
+    'hamburger bun':'burger buns',
+    'hamburger buns':'burger buns',
+    'brioche bun':'brioche buns',
+    'brioche buns':'brioche buns',
+    'seeded bun':'seeded buns',
+    'seeded buns':'seeded buns',
+    'seeded roll':'seeded rolls',
+    'seeded rolls':'seeded rolls',
+    'baked bean':'baked beans',
+    'baked beans':'baked beans',
+    'tin of baked beans':'baked beans',
+    'can of baked beans':'baked beans',
+    'tinned baked beans':'baked beans',
+    'canned baked beans':'baked beans',
+    'baking powder':'baking powder',
+    'baking soda':'baking soda',
+    'bicarbonate of soda':'bicarbonate of soda',
+    'hot sauce':'hot sauce',
+    'hot honey':'hot honey',
+    'hot cross bun':'hot cross buns',
+    'hot cross buns':'hot cross buns',
+    'hot chocolate':'hot chocolate',
+    'warm water':'water',
+    'hot water':'water',
+    'cold water':'water',
+    'boiling water':'water'
+  };
+  if(protectedDirectMap[s])return protectedDirectMap[s];
 
   var removeWords=[
     'finely diced','roughly diced','coarsely diced','diced',
     'finely chopped','roughly chopped','coarsely chopped','chopped',
     'thinly sliced','thickly sliced','finely sliced','sliced',
     'finely minced','minced','finely grated','coarsely grated','grated','shredded',
-    'crushed','mashed','smashed','beaten','whisked',
-    'peeled and diced','peeled and chopped','peeled','unpeeled','deseeded','seeded','stemmed','pitted','cored','trimmed',
+    'beaten','whisked',
+    'peeled and diced','peeled and chopped','peeled','unpeeled','deseeded','stemmed','pitted','cored','trimmed',
     'halved','quartered','cubed',
-    'melted','softened','chilled','cold','warm','hot','boiling','frozen','thawed','room temperature',
-    'cooked','uncooked','raw','roasted','toasted','fried','baked','steamed',
-    'baking','jacket','roasting','mashing','boiled','floury','waxy',
+    'melted','softened','chilled','thawed','room temperature',
+    'uncooked','raw',
     'drained and rinsed','rinsed and drained','drained','rinsed',
-    'freshly ground','freshly grated','freshly squeezed','fresh',
-    'small','medium','large','extra large','xl','baby','big',
+    'freshly ground','freshly grated','freshly squeezed',
+    'small','medium','large','extra large','xl','big',
     'cloves of','clove of','stalks of','stalk of','sprigs of','sprig of',
     'bunches of','bunch of','heads of','head of','pieces of','piece of',
     'slices of','slice of','tins of','tin of','cans of','can of',
@@ -3564,6 +3620,8 @@ function cleanIngredientName(raw){
   }
 
   s=s.replace(/\s+/g,' ').trim();
+
+  if(protectedDirectMap[s])return protectedDirectMap[s];
 
   var directMap={
     'onion':'onion',
@@ -3717,7 +3775,7 @@ function cleanIngredientName(raw){
     if(s.endsWith('toes'))s=s.slice(0,-2);
     else if(s.endsWith('ches')||s.endsWith('shes')||s.endsWith('sses')||s.endsWith('xes'))s=s.slice(0,-2);
     else s=s.slice(0,-1);
-  }else if(s.endsWith('s')&&!s.endsWith('ss')&&!s.endsWith('us')&&!s.endsWith('is')&&!s.endsWith('couscous')&&!s.endsWith('hummus')&&!s.endsWith('molasses')&&!s.endsWith('oats')&&!s.endsWith('peas')&&!s.endsWith('olives')&&!s.endsWith('flakes')&&!s.endsWith('leaves')){
+  }else if(s.endsWith('s')&&!s.endsWith('ss')&&!s.endsWith('us')&&!s.endsWith('is')&&!s.endsWith('couscous')&&!s.endsWith('hummus')&&!s.endsWith('molasses')&&!s.endsWith('oats')&&!s.endsWith('peas')&&!s.endsWith('olives')&&!s.endsWith('flakes')&&!s.endsWith('leaves')&&!s.endsWith('beans')&&!s.endsWith('buns')&&!s.endsWith('rolls')&&!s.endsWith('noodles')&&!s.endsWith('chips')&&!s.endsWith('crisps')){
     s=s.slice(0,-1);
   }
 
@@ -4548,6 +4606,198 @@ function openRV(id, customServings){
   var editBtn=mkEl('button','btn','Edit');
   (function(rid){editBtn.addEventListener('click',function(){openEditR(rid);closeM('modal-rv');});})(r.id);
   act.appendChild(planBtn);act.appendChild(stockBtn);act.appendChild(cookBtn);act.appendChild(editBtn);cont.appendChild(act);
+  openM('modal-rv');
+}
+
+function openManualMealView(day, idx, dateKeyOverride){
+  var k = dateKeyOverride || planKey(day);
+  var m = plan[k] && plan[k][idx];
+  if(!m) return;
+  var cont = gr('rv-content');
+  if(!cont) return;
+
+  function renderViewMode(){
+    cont.innerHTML = '';
+    var hero = mkEl('div','rv-hero');
+    hero.appendChild(mkEl('div','rv-title', m.manualName || 'Manual Meal'));
+    var ings = Array.isArray(m.manualIngredients) ? m.manualIngredients : [];
+    var meta = ['Manual meal'];
+    if(day) meta.push(day + (m.mealType ? ' · ' + m.mealType : ''));
+    else if(m.mealType) meta.push(m.mealType);
+    if(m.manualTime) meta.push(formatCookTime(m.manualTime));
+    meta.push(ings.length + ' ingredient' + (ings.length === 1 ? '' : 's'));
+    hero.appendChild(mkEl('div','rv-meta', meta.join(' - ')));
+    cont.appendChild(hero);
+
+    if(m.note){
+      var rnDiv = mkEl('div','rn-box');
+      rnDiv.style.marginBottom = '16px';
+      rnDiv.textContent = '📝 ' + m.note;
+      cont.appendChild(rnDiv);
+    }
+
+    var iSec = mkEl('div','rv-section');
+    iSec.appendChild(mkEl('div','rv-section-title','Ingredients'));
+    if(ings.length){
+      var iList = mkEl('div');
+      ings.forEach(function(ing){
+        var row = mkEl('div','ing-list-item');
+        row.appendChild(mkEl('div','ing-dot'));
+        var nm = mkEl('div','ing-name', ing.name);
+        nm.style.flex = '1';
+        row.appendChild(nm);
+        row.appendChild(mkEl('div','ing-qty', fmt(ing.qty, ing.unit)));
+        iList.appendChild(row);
+      });
+      iSec.appendChild(iList);
+    } else {
+      var noIng = mkEl('div');
+      noIng.textContent = 'No ingredients added yet — tap Edit below to add ingredients to your shopping list';
+      noIng.style.cssText = 'padding:16px;text-align:center;color:var(--ink3);font-size:13px;background:var(--paper2);border-radius:var(--rs)';
+      iSec.appendChild(noIng);
+    }
+    cont.appendChild(iSec);
+
+    var act = mkEl('div');
+    act.style.cssText = 'display:flex;gap:8px;margin-top:4px;padding-bottom:8px;flex-wrap:wrap';
+    var editBtn = mkEl('button','btn btnp','✏️ Edit Meal & Ingredients');
+    editBtn.style.flex = '1';
+    editBtn.addEventListener('click', function(){ renderEditMode(); });
+
+    var saveRecBtn = mkEl('button','btn btnw','📖 Save to Recipes');
+    saveRecBtn.addEventListener('click', function(){
+      var newRec = {
+        id: Date.now(),
+        name: m.manualName || 'Manual Meal',
+        cuisine: 'Any',
+        time: parseInt(m.manualTime, 10) || 25,
+        servings: m.servings || 2,
+        diets: [],
+        allergens: [],
+        ingredients: (m.manualIngredients || []).map(function(x){ return {name:x.name, qty:parseFloat(x.qty)||1, unit:x.unit||''}; }),
+        steps: [],
+        notes: m.note || '',
+        rating: 0,
+        cookCount: 0,
+        updatedAt: Date.now()
+      };
+      recipes.push(newRec);
+      m.recipeId = newRec.id;
+      m.updatedAt = Date.now();
+      persist('recipes');
+      persist('plan', k);
+      renderAll();
+      showToast('Saved "' + newRec.name + '" to Recipes ✓');
+      closeM('modal-rv');
+    });
+
+    act.appendChild(editBtn);
+    act.appendChild(saveRecBtn);
+    cont.appendChild(act);
+  }
+
+  function renderEditMode(){
+    cont.innerHTML = '';
+    var titleEl = mkEl('div','rv-section-title','Edit Manual Meal');
+    cont.appendChild(titleEl);
+
+    var fgName = mkEl('div','fg');
+    fgName.appendChild(mkEl('label','fl','Meal name'));
+    var nameInp = document.createElement('input');
+    nameInp.className = 'fi';
+    nameInp.value = m.manualName || '';
+    nameInp.placeholder = 'e.g. Hot dogs & wedges';
+    fgName.appendChild(nameInp);
+    cont.appendChild(fgName);
+
+    var fgTime = mkEl('div','fg');
+    fgTime.appendChild(mkEl('label','fl','Cook time (minutes, optional)'));
+    var timeInp = document.createElement('input');
+    timeInp.type = 'number';
+    timeInp.min = '1';
+    timeInp.className = 'fi';
+    timeInp.value = m.manualTime || '';
+    timeInp.placeholder = 'e.g. 20';
+    fgTime.appendChild(timeInp);
+    cont.appendChild(fgTime);
+
+    var fgNote = mkEl('div','fg');
+    fgNote.appendChild(mkEl('label','fl','Meal note (optional)'));
+    var noteInp = document.createElement('input');
+    noteInp.className = 'fi';
+    noteInp.value = m.note || '';
+    noteInp.placeholder = 'e.g. Use brioche buns';
+    fgNote.appendChild(noteInp);
+    cont.appendChild(fgNote);
+
+    var fgIngs = mkEl('div','fg');
+    fgIngs.appendChild(mkEl('label','fl','Shopping list ingredients'));
+    var ingWrap = mkEl('div');
+    fgIngs.appendChild(ingWrap);
+
+    function addEditIngRow(name, qty, unit){
+      var row = document.createElement('div');
+      row.className = 'ingrow';
+      row.innerHTML = '<input class="fi" style="flex:2;padding:9px 10px;font-size:13px" placeholder="Ingredient" value="'+escHtml(name||'')+'"/>'+
+        '<input type="number" step="0.25" min="0" class="fi" style="width:65px;flex:0 0 65px;padding:9px 8px;font-size:13px" placeholder="Qty" value="'+(qty!==undefined&&qty!==null?qty:'')+'"/>'+
+        '<select class="fi" style="flex:1;padding:9px 8px;font-size:13px">'+UNITS.map(function(u){return'<option value="'+u+'"'+(u===(unit||'')?' selected':'')+'>'+(u||'—')+'</option>';}).join('')+'</select>'+
+        '<button type="button" class="btn btns btnd" onclick="this.parentElement.remove()" style="flex-shrink:0;padding:9px 10px">✕</button>';
+      ingWrap.appendChild(row);
+    }
+
+    var curIngs = Array.isArray(m.manualIngredients) ? m.manualIngredients : [];
+    if(curIngs.length){
+      curIngs.forEach(function(ing){ addEditIngRow(ing.name, ing.qty, ing.unit); });
+    } else {
+      addEditIngRow('', '', '');
+    }
+
+    var addIngBtn = mkEl('button','btn btns','+ Add ingredient');
+    addIngBtn.type = 'button';
+    addIngBtn.style.marginTop = '6px';
+    addIngBtn.addEventListener('click', function(){ addEditIngRow('', '', ''); });
+    fgIngs.appendChild(addIngBtn);
+    cont.appendChild(fgIngs);
+
+    var act = mkEl('div');
+    act.style.cssText = 'display:flex;gap:8px;margin-top:14px;padding-bottom:8px';
+    var cancelBtn = mkEl('button','btn','Cancel');
+    cancelBtn.addEventListener('click', function(){ renderViewMode(); });
+    var saveBtn = mkEl('button','btn btnp','Save Changes');
+    saveBtn.style.flex = '1';
+    saveBtn.addEventListener('click', function(){
+      var newName = nameInp.value.trim();
+      if(!newName){ showToast('Please enter a meal name'); return; }
+      var newTime = parseInt(timeInp.value, 10);
+      var newNote = noteInp.value.trim();
+      var rows = Array.from(ingWrap.querySelectorAll('.ingrow'));
+      var newIngs = rows.map(function(r){
+        var inps = r.querySelectorAll('input'), sel = r.querySelector('select');
+        var nm = inps[0] ? inps[0].value.trim() : '';
+        if(!nm) return null;
+        var q = parseFloat(inps[1] ? inps[1].value : '');
+        return { name: nm, qty: q > 0 ? q : 1, unit: sel ? sel.value : '' };
+      }).filter(Boolean);
+
+      m.manualName = newName;
+      if(newTime > 0) m.manualTime = newTime; else delete m.manualTime;
+      if(newNote) m.note = newNote; else delete m.note;
+      if(newIngs.length) m.manualIngredients = newIngs; else delete m.manualIngredients;
+      m.updatedAt = Date.now();
+
+      persist('plan', k);
+      renderPlanner();
+      renderShop();
+      renderDashboard();
+      renderViewMode();
+      showToast('Manual meal updated ✓');
+    });
+    act.appendChild(cancelBtn);
+    act.appendChild(saveBtn);
+    cont.appendChild(act);
+  }
+
+  renderViewMode();
   openM('modal-rv');
 }
 
@@ -7227,7 +7477,7 @@ function renderDashboardPlannedMeals(el){
       empty.textContent='No meals planned';
       wrap.appendChild(empty);
     }else{
-      group.meals.forEach(function(m){
+      group.meals.forEach(function(m,mIdx){
         var row=document.createElement('div');
         row.className='mini-stock-row clickable';
         row.style.cssText='display:flex;align-items:center;gap:10px;padding:9px 12px;margin-bottom:6px;min-height:44px';
@@ -7245,27 +7495,29 @@ function renderDashboardPlannedMeals(el){
         var metaInfo = [];
         if(srvCount && !m.isEatOut) metaInfo.push(srvCount + (srvCount === 1 ? ' serving' : ' servings'));
         if(r && r.time) metaInfo.push(formatCookTime(r.time));
+        else if(!r && m.manualTime) metaInfo.push(formatCookTime(m.manualTime));
         if(m.isEatOut && m.eatOutTime) metaInfo.push(m.eatOutTime);
         var metaStr = metaInfo.length ? ' <span style="font-size:11px;color:var(--ink3);font-weight:normal">(' + metaInfo.join(' · ') + ')</span>' : '';
 
         nameDiv.innerHTML='<strong>'+escHtml(m.mealType||'Meal')+'</strong> · '+escHtml(mealDisplayName(m))+metaStr+freezerBadge+eatOutBadge;
         row.appendChild(nameDiv);
 
-        if(m.recipeId || m.stockId){
+        if(m.recipeId || m.stockId || (!m.isEatOut && m.manualName)){
           var vb=document.createElement('button');
           vb.className='btn btns';
           vb.textContent='View';
           vb.style.cssText='flex-shrink:0;font-size:11px;padding:5px 10px;margin-left:auto';
           
-          (function(mealItem, srv){
+          (function(mealItem, srv, gDay, gKey, idx){
             var openHandler = function(e){
               if(e) e.stopPropagation();
               if(mealItem.stockId && !mealItem.recipeId) openStockViewModal(mealItem.stockId);
               else if(mealItem.recipeId) openRV(mealItem.recipeId, srv);
+              else openManualMealView(gDay, idx, gKey);
             };
             vb.addEventListener('click', openHandler);
             row.addEventListener('click', openHandler);
-          })(m, srvCount);
+          })(m, srvCount, group.day, group.key, mIdx);
           row.appendChild(vb);
         }else{
           row.addEventListener('click',function(){
