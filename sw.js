@@ -1,5 +1,5 @@
-var CACHE = 'mep-v1.2.7';
-var CORE_ASSETS = ['./', './index.html', './manifest.json', './app-icon.svg'];
+var CACHE = 'mep-v1.2.8';
+var CORE_ASSETS = ['./', './index.html', './manifest.json', './app-icon.svg', './apple-touch-icon.png', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', function(event) {
   self.skipWaiting();

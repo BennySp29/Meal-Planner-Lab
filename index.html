@@ -1,17 +1,21 @@
 <!DOCTYPE html>
 
-<!-- v1.2.7 -->
+<!-- v1.2.8 -->
 
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-title" content="Meals"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="theme-color" content="#0f172a"/>
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
+<link rel="icon" type="image/svg+xml" href="app-icon.svg"/>
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png"/>
 <link rel="manifest" href="manifest.json"/>
 <title>Mise en Place</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1147,7 +1151,7 @@ body.dark .voice-send-btn{background:var(--sage);color:#fff}
       <div class="fg"><label class="fl">Week starts on</label><div class="cwrap" id="prof-wk"></div></div>
       <div class="fg" style="margin-top:16px;padding-top:14px;border-top:1.5px dashed var(--paper3);display:flex;justify-content:space-between;align-items:center">
         <div>
-          <div style="font-size:13px;font-weight:700;color:var(--ink)">Mise en Place <span style="color:var(--sage);font-weight:700">v1.2.7</span></div>
+          <div style="font-size:13px;font-weight:700;color:var(--ink)">Mise en Place <span style="color:var(--sage);font-weight:700">v1.2.8</span></div>
           <div style="font-size:11px;color:var(--ink3)">Tap if you don't see new updates on your iPhone</div>
         </div>
         <button class="btn btns" onclick="forceAppUpdate()" style="font-size:12px;padding:7px 12px">🔄 Force Update</button>
@@ -1252,7 +1256,7 @@ body.dark .voice-send-btn{background:var(--sage);color:#fff}
 </div>
 
 <script>
-var APP_VERSION = '1.2.7';
+var APP_VERSION = '1.2.8';
 // ── CACHE NUKE: clears stale SW + caches, one-time reload on version upgrade ─
 (function(){
   if(typeof window==='undefined')return;
